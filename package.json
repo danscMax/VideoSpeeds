@@ -1,0 +1,25 @@
+{
+  "name": "video-speeds",
+  "version": "0.1.0",
+  "description": "Video Speed Controller for YouTube and RuTube — speed buttons, slider, hotkeys, diagnostics. Bilingual (EN/RU).",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "build:userscript": "vite build --config vite.userscript.config.ts",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.293",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vite-plugin-monkey": "^5.0.8",
+    "wxt": "^0.19.27"
+  }
+}

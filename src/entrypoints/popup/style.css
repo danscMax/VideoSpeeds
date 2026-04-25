@@ -1,0 +1,26 @@
+/* Popup styles — minimal placeholder for Wave 1. Real styling in Wave 2. */
+:root {
+  color-scheme: light dark;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+}
+
+body {
+  margin: 0;
+  padding: 14px 16px;
+  min-width: 280px;
+  background: #1c1c1c;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.4;
+}

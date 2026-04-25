@@ -5,31 +5,33 @@
  * page's `window`, `history`, `localStorage` as the page itself sees them.
  * Does NOT have chrome.* APIs (those only exist in isolated world).
  *
- * Why this exists: SPA frameworks like RuTube's React Router patch
- * window.history.pushState in page context. To intercept those calls (so we
- * can re-attach our speed controls after navigation) we have to be in the
- * same world they live in.
+ * SCOPE: RuTube only.
+ *   - RuTube React Router patches window.history.pushState in page context.
+ *     To intercept those calls (so we re-attach speed controls after SPA
+ *     navigation) we must run in the same world the patches live in.
+ *   - YouTube is intentionally excluded: its strict Trusted Types CSP blocks
+ *     world:'MAIN' content scripts. We don't need MAIN world for YouTube
+ *     anyway — yt-navigate-finish is a CustomEvent that crosses the
+ *     isolated/main boundary, so the isolated content.ts can observe it
+ *     directly.
  *
  * Communication with content.ts (isolated world): window.postMessage with
  * a namespaced `type` field. See utils/page-bridge.ts (TBD).
- *
- * This is the modern Chrome 95+ alternative to <script>-tag injection via
- * web_accessible_resources. WXT auto-translates `world: 'MAIN'` into the
- * correct manifest entry.
  */
 import { defineContentScript } from 'wxt/sandbox';
 
 export default defineContentScript({
-  matches: [
-    '*://*.youtube.com/*',
-    '*://*.piped.video/*',
-    '*://rutube.ru/*',
-    '*://*.rutube.ru/*',
-  ],
+  matches: ['*://rutube.ru/*', '*://*.rutube.ru/*'],
   runAt: 'document_start',
   world: 'MAIN',
   registration: 'manifest',
   main() {
+    try {
+      (window as unknown as { __VS_PAGE_WORLD?: string }).__VS_PAGE_WORLD =
+        'loaded@' + Date.now();
+    } catch {
+      /* readonly window? swallow */
+    }
     console.info('[VIDEO-SPEEDS] page-world script loaded on', location.hostname);
   },
 });

@@ -32,21 +32,12 @@ export default defineConfig({
           },
         }
       : {}),
-    // Lucide-style globe icon as default; we'll add real PNG icons later.
-    icons: {
-      16: 'icon/16.png',
-      32: 'icon/32.png',
-      48: 'icon/48.png',
-      128: 'icon/128.png',
-    },
+    // Icons intentionally omitted for Wave 1 dev — Chrome will use a default
+    // puzzle-piece icon. Real icons are produced and wired in Wave 5 (store
+    // assets) before publishing.
     action: {
       default_popup: 'popup.html',
       default_title: 'Video Speed Controller',
-      default_icon: {
-        16: 'icon/16.png',
-        32: 'icon/32.png',
-        48: 'icon/48.png',
-      },
     },
   }),
 });

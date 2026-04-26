@@ -13,6 +13,10 @@
     "zip:firefox": "wxt zip -b firefox",
     "build:userscript": "vite build --config vite.userscript.config.ts",
     "compile": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smoke": "playwright test",
     "postinstall": "wxt prepare"
   },
   "devDependencies": {

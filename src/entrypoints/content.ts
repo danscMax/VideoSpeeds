@@ -17,7 +17,6 @@ void browser;
 export default defineContentScript({
   matches: [
     '*://*.youtube.com/*',
-    '*://*.piped.video/*',
     '*://rutube.ru/*',
     '*://*.rutube.ru/*',
   ],

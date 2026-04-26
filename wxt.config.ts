@@ -29,19 +29,26 @@ export default defineConfig({
       'Adds speed buttons, slider, and hotkeys to YouTube and RuTube videos. Bilingual interface (English/Russian).',
     version: '0.1.0',
     permissions: ['storage'],
+    // Product scope is YouTube + RuTube. Audit H5 dropped the *.piped.video
+    // host that an earlier scaffold included -- it was out of product scope
+    // and would have read as CWS overreach during listing review.
     host_permissions: [
       '*://*.youtube.com/*',
-      '*://*.piped.video/*',
       '*://rutube.ru/*',
       '*://*.rutube.ru/*',
     ],
-    // Firefox needs explicit ID for AMO submission and storage isolation
+    // Firefox needs explicit ID for AMO submission and storage isolation.
+    // data_collection_permissions is required for all new AMO extensions
+    // since 2025-11-03 (Mozilla mandate). We don't transmit any personal
+    // data, so we declare 'none'. See docs/MIGRATION.md for the storage
+    // boundary that justifies the 'none' claim.
     ...(browser === 'firefox'
       ? {
           browser_specific_settings: {
             gecko: {
               id: 'video-speeds@maxscorpy',
               strict_min_version: '109.0',
+              data_collection_permissions: { required: ['none'] },
             },
           },
         }

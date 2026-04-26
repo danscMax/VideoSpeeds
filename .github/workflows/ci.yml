@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Cancel in-progress runs on the same ref when a new push lands.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # Per-browser build + typecheck + unit tests + bundle-size budget + zip artifact.
+  # Matrix keeps Chrome and Firefox honest on every PR.
+  build:
+    name: build (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      # --mv3 forces MV3 manifest for Firefox too (default is MV2 in WXT 0.19).
+      # No-op for Chrome (already MV3). Keeps output paths consistent: both
+      # browsers land at .output/<browser>-mv3/ which the budget check below
+      # and the zip step both rely on.
+      - name: Build extension
+        run: npx wxt build -b ${{ matrix.browser }} --mv3
+
+      # Hard-fail if any content-script bundle exceeds 500 KB. Keeps us honest
+      # as we port CSS/i18n/icons/logger and prevents review-time surprises.
+      - name: Bundle size budget (500 KB per content script)
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAX_BYTES=$((500 * 1024))
+          OUT_DIR=".output/${{ matrix.browser }}-mv3"
+          if [ ! -d "$OUT_DIR/content-scripts" ]; then
+            echo "::warning::No content-scripts directory at $OUT_DIR"
+            exit 0
+          fi
+          fail=0
+          for f in "$OUT_DIR"/content-scripts/*.js; do
+            [ -f "$f" ] || continue
+            sz=$(stat -c%s "$f")
+            printf '%s: %s bytes\n' "$f" "$sz"
+            if [ "$sz" -gt "$MAX_BYTES" ]; then
+              echo "::error file=$f::Bundle exceeds 500 KB budget ($sz > $MAX_BYTES)"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Package zip
+        run: npx wxt zip -b ${{ matrix.browser }} --mv3
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: videospeeds-${{ matrix.browser }}-${{ github.sha }}
+          path: .output/*.zip
+          retention-days: 14
+          if-no-files-found: error
+
+  # Browser smoke: load the unpacked Chrome build and assert the init banner
+  # fires on YouTube. xvfb-run gives Chromium a display because extensions are
+  # rejected in classic headless mode.
+  smoke-chrome:
+    name: smoke (Chrome)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build chrome-mv3
+        run: npx wxt build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke (xvfb)
+        run: xvfb-run -a npm run test:smoke
+        env:
+          CI: '1'
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Firefox: web-ext lint catches manifest/policy regressions (missing
+  # data_collection_permissions, broad host_permissions, etc.). Full headed
+  # smoke lives in Wave 4.
+  lint-firefox:
+    name: lint (Firefox)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build firefox-mv3
+        run: npx wxt build -b firefox --mv3
+
+      # Warnings-as-errors is intentionally OFF until Wave 5 (store assets):
+      # web-ext currently warns about missing icons (we dropped them on
+      # purpose for Wave 1 dev — see commit ce833d7). Errors still fail.
+      - name: web-ext lint
+        run: npx web-ext lint --source-dir=.output/firefox-mv3

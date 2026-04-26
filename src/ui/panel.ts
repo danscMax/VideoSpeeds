@@ -22,7 +22,6 @@ import { renderSettingsMenu, type ActiveTab } from './settings/modal';
 import { attachSettingsHandlers } from './settings/handlers';
 import { refreshDiagnosticStatus } from './settings/diag-status';
 import { safeSetInnerHTML } from './safe-html';
-import { insertPanel } from './insertion';
 import type { AppContext } from '../app/context';
 import { CleanupRegistry } from '../app/cleanup';
 import { speedBoundsFor } from '../config';
@@ -266,8 +265,47 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     refreshDiagnosticStatus(settingsMenu, menuCtx);
   }
 
-  // Re-render whenever settings change (language switch, etc.).
-  const offSubscribe = ctx.settingsStore.subscribe(() => {
+  // Layout applier. Mirrors .user.js:4854-4894 (`applyLayout`) -- see the
+  // `applyLayout` member below for the full rationale; that member just
+  // delegates here.
+  function applyLayoutImpl(): void {
+    const pos = ctx.settingsStore.getKey('sliderPosition');
+    root.dataset.vsSliderPosition = pos;
+
+    const chrome =
+      ctx.discovery.resolve('rightControls') ||
+      ctx.discovery.resolve('controlsContainer');
+
+    if (pos === 'video' && chrome) {
+      sliderContainer.classList.add('vs-slider-in-chrome');
+      if (sliderContainer.parentElement !== chrome
+          || sliderContainer !== chrome.firstChild) {
+        try { chrome.insertBefore(sliderContainer, chrome.firstChild); }
+        catch (e) { ctx.logger.warn('panel.applyLayout: chrome insert failed', e); }
+      }
+    } else {
+      sliderContainer.classList.remove('vs-slider-in-chrome');
+      if (sliderContainer.parentElement !== root
+          || sliderContainer.nextSibling !== gearWrapper) {
+        try { root.insertBefore(sliderContainer, gearWrapper); }
+        catch (e) { ctx.logger.warn('panel.applyLayout: root insert failed', e); }
+      }
+    }
+  }
+
+  // Re-render whenever settings change (language switch, etc.) AND
+  // re-apply layout if sliderPosition changed. The settings-menu handlers
+  // already invoke ctx.ui.applyLayout() directly on radio click, but the
+  // popup (and any future settings-source) updates the store without
+  // touching the UiPort -- this subscriber covers that path. Comparing
+  // against `lastPos` avoids re-running applyLayout on every unrelated
+  // setting toggle (rememberSpeed, language, hotkeys, ...).
+  let lastPos = ctx.settingsStore.getKey('sliderPosition');
+  const offSubscribe = ctx.settingsStore.subscribe((next) => {
+    if (next.sliderPosition !== lastPos) {
+      lastPos = next.sliderPosition;
+      applyLayoutImpl();
+    }
     if (settingsMenu.style.display !== 'none') {
       rerenderSettings();
     }
@@ -291,27 +329,10 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
         rerenderSettings();
       }
     },
-    applyLayout() {
-      // 1. Update the data-attribute so the CSS rules keyed off
-      //    [data-vs-slider-position="bottom"|"video"] take effect.
-      root.dataset.vsSliderPosition = ctx.settingsStore.getKey('sliderPosition');
-      // 2. Move the panel to the new anchor. insertPanel does the
-      //    "remove from current parent + insert at new anchor" dance --
-      //    so switching from `right` to `video` lifts the panel out of
-      //    #primary-inner and drops it into .ytp-right-controls (and
-      //    back). chooseAnchor reads sliderPosition from settings so no
-      //    extra arg needed. Quiet on failure -- if the new anchor
-      //    isn't present yet (player chrome not mounted), the
-      //    orchestrator's removal-observer + retry path picks up the
-      //    next opportunity.
-      try {
-        insertPanel(root, ctx);
-      } catch (e) {
-        ctx.logger.warn('panel.applyLayout: re-insert failed', e);
-      }
-    },
+    applyLayout: applyLayoutImpl,
     dispose() {
       root.remove();
+      sliderContainer.remove();
     },
   };
 }

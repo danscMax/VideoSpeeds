@@ -93,17 +93,15 @@ interface AnchorChoice {
 }
 
 function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
-  // 1. The 'video' position -- mount inside the player chrome's right-side
-  //    controls bar. Original .user.js:5001-5045 (`integrateVideoSlider`)
-  //    targets `.ytp-right-controls` on YouTube and the desktop-controls
-  //    column on RuTube. Use 'rightControls' as the canonical key
-  //    (controlsContainer is RuTube-only and doesn't exist for YouTube).
-  if (pos === 'video') {
-    const controls =
-      ctx.discovery.resolve('rightControls') ||
-      ctx.discovery.resolve('controlsContainer');
-    if (controls) return { parent: controls, anchor: 'video-overlay' };
-  }
+  // The `pos` argument is intentionally unused here. The original
+  // userscript (`.user.js:4884-4894`) keeps the main panel (buttons +
+  // gear) in its normal spot for ALL three positions -- only the
+  // SLIDER migrates into player chrome on `video`. Slider migration
+  // is owned by `panel.applyLayout()` which talks to discovery
+  // directly; the panel's own anchor is decided by the same fall-through
+  // chain regardless of `pos`. Keeping the arg for API symmetry +
+  // future-proofing (e.g. a "popup-window" position would need it).
+  void pos;
 
   // 2. YouTube fast path -- mirror the original userscript exactly
   //    (.user.js:4900-4933). ytd-watch-metadata is the metadata web-

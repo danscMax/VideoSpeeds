@@ -266,32 +266,36 @@ html[data-vs-theme="light"] {
   flex: 0 0 auto;
 }
 
-/* sliderPosition='video' on YouTube -- whole panel mounts inside
-   .ytp-right-controls. Compact it so it doesn't elbow native chrome
-   buttons off-screen on narrow players. Buttons row + slider sized
-   down, gear hidden (the YT chrome already has its own gear so ours
-   would be redundant inside chrome). */
-.ytp-right-controls .vs-panel,
-.vs-panel[data-vs-slider-position="video"] {
-  margin: 0;
-  gap: 8px;
-}
-.ytp-right-controls .vs-panel .vs-gear-wrapper,
-.vs-panel[data-vs-slider-position="video"] .vs-gear-wrapper {
-  display: none;
-}
-.ytp-right-controls .vs-panel .speed-button,
-.vs-panel[data-vs-slider-position="video"] .speed-button {
+/* sliderPosition='video' -- ONLY the slider container is detached from
+   the panel and re-parented into player chrome (.ytp-right-controls on
+   YouTube, the desktop-controls column on RuTube). Mirrors original
+   .user.js:4884-4892 + integrateVideoSlider. The buttons + gear stay
+   in their normal anchor between the player and the metadata block.
+   The .vs-slider-in-chrome class is added by panel.applyLayout() when
+   the slider sits inside chrome, so we can size it appropriately
+   without bleeding into the in-panel slider styles.
+
+   When the slider is gone, the panel renders as [buttons] [gear] --
+   no extra rules needed; flex naturally collapses the gap. */
+.speed-slider-container.vs-slider-in-chrome {
+  flex: 0 0 auto;
+  width: 140px;
+  min-width: 100px;
   height: 24px;
-  min-width: 40px;
-  padding: 0 8px;
+  padding: 0 4px;
+  margin: 0 6px;
+  /* Inside YouTube chrome the surrounding text is white-on-translucent;
+     pick the dark-theme tokens unconditionally so the label + track
+     stay legible regardless of host page theme. */
+  --vs-text-primary: rgba(255, 255, 255, 0.95);
+  --vs-bg-track: rgba(255, 255, 255, 0.22);
+}
+.speed-slider-container.vs-slider-in-chrome .speed-slider-label {
   font-size: 11px;
+  min-width: 36px;
 }
-.ytp-right-controls .vs-panel .speed-slider-container,
-.vs-panel[data-vs-slider-position="video"] .speed-slider-container {
-  flex: 0 0 120px;
-  min-width: 80px;
-  height: 24px;
+.speed-slider-container.vs-slider-in-chrome .speed-slider {
+  height: 3px;
 }
 
 /* Speed-button row: pill buttons. min-width keeps every label centred

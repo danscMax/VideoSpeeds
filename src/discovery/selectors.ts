@@ -16,10 +16,15 @@ export type SelectorMap = Partial<Record<SelectorKey, readonly string[]>>;
 
 const SELECTORS: Record<Site, SelectorMap> = {
   youtube: {
-    // ytd-watch-metadata is the only reliable container for watch-page
-    // metadata. The two #top-row variants cover both "modern" and
-    // "classic" layouts; #above-the-fold is the deepest fallback.
+    // ytd-watch-metadata as the WHOLE element (not its #top-row child).
+    // We then insert the panel as a SIBLING just before it, inside
+    // #primary -- OUTSIDE Polymer's component tree. This blocks YT's
+    // delegated click handlers (e.g. the action-row "Save to playlist"
+    // delegate) from reinterpreting our gear-button clicks as their own.
+    // Fallbacks point at #top-row variants for layout regressions where
+    // ytd-watch-metadata stops matching.
     infoElem: [
+      'ytd-watch-metadata',
       'ytd-watch-metadata #top-row',
       'div#top-row.style-scope.ytd-watch-metadata',
       'ytd-watch-metadata #above-the-fold',

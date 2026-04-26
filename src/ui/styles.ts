@@ -66,15 +66,18 @@ export function detectAndApplyTheme(site: Site, container: Document = document):
 // attribute the panel itself carries (see panel.ts), so YouTube gets red
 // and RuTube its blue.
 const BASE_STYLES = `
-/* Token sets per theme. The PANEL itself is transparent (matches the
-   original userscript layout: speed buttons sit on the host page
-   background, attached just below the player -- user feedback
-   2026-04-26 confirmed this). Buttons + gear carry their own dark
-   pills; slider track + label adapt to the surrounding page colour. */
+/* Token sets per theme. Panel itself is transparent; buttons + gear get
+   their own pills that ADAPT to the host page colour:
+     light page  -> light pills + dark text
+     dark page   -> dark pills + white text
+   Slider track + label inherit --vs-text-primary so they stay readable
+   on either background. Active button always uses the accent fill with
+   white text (overridden inside .speed-button.active below). */
 :root,
 html[data-vs-theme="dark"] {
-  --vs-bg-button: rgba(75, 75, 75, 0.85);
-  --vs-bg-button-hover: rgba(100, 100, 100, 0.95);
+  --vs-bg-button: rgba(255, 255, 255, 0.10);
+  --vs-bg-button-hover: rgba(255, 255, 255, 0.18);
+  --vs-button-text: rgba(255, 255, 255, 0.95);
   --vs-bg-track: rgba(255, 255, 255, 0.22);
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-text-secondary: rgba(255, 255, 255, 0.65);
@@ -82,9 +85,10 @@ html[data-vs-theme="dark"] {
   --vs-accent: #ff0000;
 }
 html[data-vs-theme="light"] {
-  --vs-bg-button: rgba(35, 35, 35, 0.90);
-  --vs-bg-button-hover: rgba(15, 15, 15, 0.97);
-  --vs-bg-track: rgba(0, 0, 0, 0.18);
+  --vs-bg-button: rgba(0, 0, 0, 0.06);
+  --vs-bg-button-hover: rgba(0, 0, 0, 0.12);
+  --vs-button-text: rgba(15, 15, 15, 0.88);
+  --vs-bg-track: rgba(0, 0, 0, 0.15);
   --vs-text-primary: rgba(15, 15, 15, 0.92);
   --vs-text-secondary: rgba(15, 15, 15, 0.55);
   --vs-border: rgba(0, 0, 0, 0.08);
@@ -143,7 +147,7 @@ html[data-vs-theme="light"] {
   outline: none;
   border-radius: 14px;
   background: var(--vs-bg-button);
-  color: #fff;
+  color: var(--vs-button-text);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -159,7 +163,7 @@ html[data-vs-theme="light"] {
 }
 .speed-button:hover {
   background: var(--vs-bg-button-hover);
-  color: #fff;
+  color: var(--vs-button-text);
   transform: translateY(-1px);
 }
 .speed-button.active {
@@ -280,7 +284,7 @@ html[data-vs-theme="light"] {
   border: none;
   border-radius: 50%;
   background: var(--vs-bg-button);
-  color: #fff;
+  color: var(--vs-button-text);
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -291,7 +295,7 @@ html[data-vs-theme="light"] {
 }
 .vs-gear-button:hover {
   background: var(--vs-bg-button-hover);
-  color: #fff;
+  color: var(--vs-button-text);
 }
 .vs-gear-button:hover svg {
   transform: rotate(60deg);

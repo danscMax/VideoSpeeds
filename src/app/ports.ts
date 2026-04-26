@@ -90,11 +90,8 @@ export interface DiscoveryPort {
 // render the diagnostics tab.
 // ---------------------------------------------------------------------------
 
-export interface DiagnosticReport {
-  // Filled in Wave 1.9. Will include structural checks, playback_started
-  // (via video.played.length > 0), waiting/ok/warn states.
-  readonly [key: string]: unknown;
-}
+export type { DiagnosticReport } from '../health/types';
+import type { DiagnosticReport } from '../health/types';
 
 export interface DiagnosticsPort {
   report(): DiagnosticReport;

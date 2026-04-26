@@ -89,7 +89,7 @@ function projectReport(ctx: AppContext): DiagViewModel {
 function safeReport(ctx: AppContext): Record<string, unknown> | null {
   try {
     const r = ctx.diagnostics.report();
-    return r && typeof r === 'object' ? (r as Record<string, unknown>) : null;
+    return r && typeof r === 'object' ? (r as unknown as Record<string, unknown>) : null;
   } catch {
     return null;
   }

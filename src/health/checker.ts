@@ -74,6 +74,8 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
     }
   }
 
+  /** Internal — runs report + side effects + notify. Used by start() /
+   *  startPolling() only. */
   function run(): DiagnosticReport {
     const report = buildReport(deps);
     lastReport = report;
@@ -85,6 +87,18 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
     lastHealthy = report.healthy;
 
     notify(report);
+    return report;
+  }
+
+  /** Public read-only --  builds a report on demand but does NOT
+   *  notify subscribers and does NOT trigger auto-recovery. The settings
+   *  modal's diag tab calls this on every rerender; if it ran the full
+   *  pipeline it would notify the panel.rerenderSettings subscriber and
+   *  recurse back into rerender, freezing the page. */
+  function runOnce(): DiagnosticReport {
+    const report = buildReport(deps);
+    lastReport = report;
+    lastHealthy = report.healthy;
     return report;
   }
 
@@ -131,7 +145,7 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
   return {
     start,
     stop,
-    runOnce: run,
+    runOnce,
     getLastReport: () => lastReport,
     isHealthy: () => lastHealthy,
     subscribe: (fn) => {

@@ -264,7 +264,15 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     refreshSlider(speed) {
       setSliderValue(sliderContainer, speed);
     },
-    rerenderSettings,
+    /** Public API: rerender the modal IF it's currently visible. Called
+     *  by the health-checker subscriber in index.ts on every report; we
+     *  no-op when the menu is hidden so the modal's rerender chain does
+     *  not run continuously in the background. */
+    rerenderSettings: () => {
+      if (settingsMenu.style.display !== 'none') {
+        rerenderSettings('public-api');
+      }
+    },
     applyLayout() {
       // Wave 1.8c stops at attribute-level reflow. Insertion-target swap
       // for sliderPosition='video' is wired by the orchestrator's insert

@@ -26,3 +26,7 @@ Thumbs.db
 # Stats
 stats.html
 stats-*.json
+
+# Playwright artifacts
+test-results/
+playwright-report/

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "playwright test",
+    "test:smoke:cdp": "node tests/smoke/cdp-smoke.mjs",
     "postinstall": "wxt prepare"
   },
   "devDependencies": {

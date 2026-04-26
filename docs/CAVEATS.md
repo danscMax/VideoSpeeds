@@ -16,6 +16,15 @@ handle this fine, but a few tools choke on the non-ASCII path:
   If you ever load the unpacked build manually with `--load-extension=`,
   copy `.output/chrome-mv3` to e.g. `C:\temp\videospeeds-build` first.
 
+- **Local CDP smoke** (`npm run test:smoke:cdp`): the Playwright test
+  runner crashes Node with STATUS_STACK_BUFFER_OVERRUN on at least one
+  Windows config (CI on Linux is unaffected). For a quick local
+  check, the recipe is: build, robocopy to `C:\Temp\videospeeds-build`,
+  launch the bundled Playwright Chromium with
+  `--load-extension=C:\Temp\videospeeds-build --remote-debugging-port=9333`,
+  then run `npm run test:smoke:cdp`. The script attaches to the running
+  Chromium via CDP and probes both YouTube and RuTube.
+
 - **PowerShell** for npm/wxt commands needs the explicit UTF-8 prefix
   (`[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`) and
   `Set-Location -LiteralPath '...'` with single quotes around the path.

@@ -61,9 +61,16 @@ const validators: Record<SelectorKey, Validator> = {
   infoElem(el) {
     if (!isElement(el)) return fail('not Element');
     if (!el.isConnected) return fail('detached');
-    if ((el as HTMLElement).clientHeight < 30) return fail('too short');
+    // clientHeight check from the userscript was filtering out empty
+    // elements, but on SPA navigations the watch-metadata container
+    // often has clientHeight=0 for the first ~200ms while YouTube
+    // hydrates its content. Use childElementCount as a lighter signal:
+    // anything with at least one child element is "real enough" to be
+    // a metadata anchor; the LCA distance check below filters out
+    // sidebar candidates.
+    if (el.childElementCount === 0) return fail('empty -- nothing inside');
     const video = document.querySelector('video');
-    if (video && lcaDistance(el, video) > 8) return fail('too far from video in DOM');
+    if (video && lcaDistance(el, video) > 10) return fail('too far from video in DOM');
     return ok;
   },
 

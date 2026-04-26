@@ -297,11 +297,26 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
   const MAX_ATTEMPTS = 20;
   const DELAY_MS = 750;
   let attempts = 0;
+
   function tryOnce(): void {
     attempts += 1;
-    const result = insertPanel(panelEl, ctx);
-    if (result.anchor !== 'no-anchor') {
-      ctx.logger.debug(`panel inserted via ${result.anchor} on attempt ${attempts}`);
+    let result;
+    try {
+      result = insertPanel(panelEl, ctx);
+    } catch (e) {
+      ctx.logger.warn(`insertPanel threw on attempt ${attempts}`, e);
+      result = { parent: null, anchor: 'no-anchor' as const };
+    }
+    const inDoc = document.contains(panelEl);
+
+    if (result.anchor !== 'no-anchor' && inDoc) {
+      ctx.logger.info(`panel inserted via ${result.anchor} on attempt ${attempts}`);
+      // Watch the parent: SPA frameworks (YouTube ytd-watch-flexy is the
+      // worst offender) periodically re-render their children and yank our
+      // panel out of the DOM. The observer runs once per removal and
+      // re-fires the retry loop -- if the parent itself is gone, the
+      // outer observer triggers fresh anchor resolution.
+      installRemovalObserver(panelEl, ctx, scheduleInsertWithRetry);
       return;
     }
     if (attempts >= MAX_ATTEMPTS) {
@@ -311,6 +326,31 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
     ctx.cleanup.setTimeout(tryOnce, DELAY_MS);
   }
   tryOnce();
+}
+
+/**
+ * Watch for our panel being removed from the document. When a SPA
+ * framework (YouTube's ytd-watch-flexy is the canonical case) re-renders
+ * its child list, our panel goes with it; this observer notices and
+ * re-runs scheduleInsertWithRetry to pick a fresh anchor.
+ */
+function installRemovalObserver(
+  panelEl: HTMLElement,
+  ctx: AppContext,
+  reschedule: (panel: HTMLElement, ctx: AppContext) => void,
+): void {
+  const observer = new MutationObserver(() => {
+    if (!document.contains(panelEl)) {
+      ctx.logger.info('panel removed from DOM by host framework; re-inserting');
+      observer.disconnect();
+      reschedule(panelEl, ctx);
+    }
+  });
+  // Observing the whole document is cheap (we only react when our
+  // specific panel disappears). Subtree+childList covers any ancestor
+  // re-render.
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  ctx.cleanup.addObserver(observer);
 }
 
 /**

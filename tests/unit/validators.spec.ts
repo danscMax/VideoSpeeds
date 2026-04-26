@@ -96,18 +96,17 @@ describe('Validators.playerContainer', () => {
 });
 
 describe('Validators.infoElem', () => {
-  it('rejects too-short element', () => {
+  it('rejects empty element (no children)', () => {
     const div = document.createElement('div');
     document.body.appendChild(div);
-    Object.defineProperty(div, 'clientHeight', { value: 10 });
     expect(Validators.infoElem(div).ok).toBe(false);
   });
 
-  it('accepts an element near the <video> in DOM', () => {
+  it('accepts an element with children near the <video> in DOM', () => {
     const wrapper = document.createElement('div');
     wrapper.appendChild(document.createElement('video'));
     const info = document.createElement('div');
-    Object.defineProperty(info, 'clientHeight', { value: 100 });
+    info.appendChild(document.createElement('h1')); // non-empty
     wrapper.appendChild(info);
     document.body.appendChild(wrapper);
 

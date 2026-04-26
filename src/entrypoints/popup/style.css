@@ -1,26 +1,65 @@
-/* Popup styles — minimal placeholder for Wave 1. Real styling in Wave 2. */
+/* Popup shell -- shares the in-player modal styles via styles.ts injection.
+   Only the popup shell sizing + the no-supported-page placeholder live here. */
+
 :root {
   color-scheme: light dark;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
+  --vs-accent: #2196F3;
 }
 
-body {
+html, body {
   margin: 0;
-  padding: 14px 16px;
-  min-width: 280px;
-  background: #1c1c1c;
+  padding: 0;
+  background: rgba(28, 28, 28, 0.98);
   color: rgba(255, 255, 255, 0.9);
 }
 
-h1 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
+body {
+  min-width: 360px;
+  max-width: 480px;
 }
 
-p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.55);
+.vs-popup-shell {
+  padding: 12px;
+}
+
+.vs-popup-loading,
+.vs-popup-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.vs-popup-empty-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* The settings menu, when rendered inside the popup, inherits the styles
+   injected by src/ui/styles.ts but we override position so it occupies the
+   popup body instead of floating absolute. */
+.vs-popup-shell .settings-menu {
+  position: static;
+  display: block !important;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  min-width: 0;
+}
+
+/* Diag tab "open in player" hint */
+.vs-popup-diag-hint {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 11px;
   line-height: 1.4;
+  color: rgba(255, 255, 255, 0.6);
 }

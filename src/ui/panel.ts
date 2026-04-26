@@ -276,18 +276,28 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       ctx.discovery.resolve('rightControls') ||
       ctx.discovery.resolve('controlsContainer');
 
+    ctx.logger.info(
+      `panel.applyLayout: pos=${pos} chrome=${chrome ? chrome.className : 'null'} sliderParent=${sliderContainer.parentElement?.className ?? '(orphan)'}`,
+    );
+
     if (pos === 'video' && chrome) {
       sliderContainer.classList.add('vs-slider-in-chrome');
       if (sliderContainer.parentElement !== chrome
           || sliderContainer !== chrome.firstChild) {
-        try { chrome.insertBefore(sliderContainer, chrome.firstChild); }
+        try {
+          chrome.insertBefore(sliderContainer, chrome.firstChild);
+          ctx.logger.info('panel.applyLayout: slider moved into chrome');
+        }
         catch (e) { ctx.logger.warn('panel.applyLayout: chrome insert failed', e); }
       }
     } else {
       sliderContainer.classList.remove('vs-slider-in-chrome');
       if (sliderContainer.parentElement !== root
           || sliderContainer.nextSibling !== gearWrapper) {
-        try { root.insertBefore(sliderContainer, gearWrapper); }
+        try {
+          root.insertBefore(sliderContainer, gearWrapper);
+          ctx.logger.info('panel.applyLayout: slider restored into panel');
+        }
         catch (e) { ctx.logger.warn('panel.applyLayout: root insert failed', e); }
       }
     }

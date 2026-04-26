@@ -49,9 +49,17 @@ export function attachSettingsHandlers(
   }
 
   // ----- Slider position (segmented control) -----
+  // preventDefault + stopPropagation match .user.js:4392-4393. Without
+  // them, YouTube's body-level click delegation occasionally swallowed
+  // the click before our async update completed (the panel-level
+  // settingsMenu.stopPropagation runs AFTER us in capture order, so
+  // handler-local stop is the safe place).
   for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-pos]'))) {
-    ctx.cleanup.addEventListener(btn, 'click', async () => {
+    ctx.cleanup.addEventListener(btn, 'click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       const pos = btn.dataset.vsPos as SliderPosition | undefined;
+      ctx.logger.info(`settings: sliderPosition click pos=${pos ?? '(missing)'}`);
       if (pos) {
         await ctx.settingsStore.update({ sliderPosition: pos });
         ctx.ui.applyLayout();

@@ -122,7 +122,23 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
   const info = ctx.discovery.resolve('infoElem');
   const player = ctx.discovery.resolve('playerContainer');
 
-  // 3. Preferred: insert before infoElem if it lives OUTSIDE the player.
+  // 3. RuTube fast path -- mirror .user.js:4955-4974. RuTube's
+  //    videoTitleSection / pageInfoContainerWrapper sits inside a flex
+  //    row alongside the player on some layouts; inserting OUR panel
+  //    BEFORE it as a sibling makes the panel another flex item in
+  //    that row, which squeezes the title into a narrow vertical
+  //    column. Insert AFTER the player container instead -- that
+  //    sibling-after-player is a normal block element, full width,
+  //    on its own line. Original userscript does this exact same.
+  if (ctx.site === 'rutube' && player?.parentElement) {
+    return {
+      parent: player.parentElement,
+      anchor: 'after-player',
+      before: player.nextSibling,
+    };
+  }
+
+  // 4. Preferred: insert before infoElem if it lives OUTSIDE the player.
   //    Some sites (RuTube live) render the title as a player-overlay --
   //    `infoElem.parentElement` is the player wrapper itself, so inserting
   //    there would put us on top of the <video>. Detect that case and skip.
@@ -134,7 +150,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     };
   }
 
-  // 4. Fallback: insert as the next sibling of the player container.
+  // 5. Fallback: insert as the next sibling of the player container.
   if (player?.parentElement) {
     return {
       parent: player.parentElement,
@@ -143,7 +159,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     };
   }
 
-  // 5. No anchor -- defer.
+  // 6. No anchor -- defer.
   return { parent: null, anchor: 'no-anchor' };
 }
 

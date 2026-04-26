@@ -37,67 +37,37 @@ export function attachSettingsHandlers(
   ctx: AppContext,
   deps: SettingsHandlersDeps,
 ): void {
-  const tabs = menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-tab]');
-  const positions = menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-pos]');
-  const langs = menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-lang]');
-  console.info('[VS:menu] attachHandlers counts', {
-    tabs: tabs.length,
-    positions: positions.length,
-    langs: langs.length,
-  });
-
   // ----- Tabs -----
-  for (const btn of Array.from(tabs)) {
-    ctx.cleanup.addEventListener(btn, 'click', (e) => {
+  for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-tab]'))) {
+    ctx.cleanup.addEventListener(btn, 'click', () => {
       const tab = btn.dataset.vsTab as ActiveTab | undefined;
-      const t0 = performance.now();
-      console.info('[VS:menu] tab click', {
-        tab,
-        targetTag: (e.target as Element | null)?.tagName,
-      });
       if (tab) {
         deps.setActiveTab(tab);
         deps.rerender();
-        console.info('[VS:menu] tab click done', {
-          tab,
-          dt_ms: (performance.now() - t0).toFixed(1),
-        });
       }
     });
   }
 
   // ----- Slider position (segmented control) -----
-  for (const btn of Array.from(positions)) {
+  for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-pos]'))) {
     ctx.cleanup.addEventListener(btn, 'click', async () => {
       const pos = btn.dataset.vsPos as SliderPosition | undefined;
-      const t0 = performance.now();
-      console.info('[VS:menu] pos click', { pos });
       if (pos) {
         await ctx.settingsStore.update({ sliderPosition: pos });
         ctx.ui.applyLayout();
         deps.rerender();
-        console.info('[VS:menu] pos click done', {
-          pos,
-          dt_ms: (performance.now() - t0).toFixed(1),
-        });
       }
     });
   }
 
   // ----- Language switcher -----
-  for (const btn of Array.from(langs)) {
+  for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-lang]'))) {
     ctx.cleanup.addEventListener(btn, 'click', async () => {
       const lang = btn.dataset.vsLang as Lang | undefined;
-      const t0 = performance.now();
-      console.info('[VS:menu] lang click', { lang });
       if (lang === 'en' || lang === 'ru') {
         await ctx.settingsStore.update({ language: lang });
         deps.rerender();
         ctx.ui.showNotification(ctx.i18n.t('toast.lang_switched'), 'info');
-        console.info('[VS:menu] lang click done', {
-          lang,
-          dt_ms: (performance.now() - t0).toFixed(1),
-        });
       }
     });
   }

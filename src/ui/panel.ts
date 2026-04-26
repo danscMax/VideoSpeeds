@@ -22,6 +22,7 @@ import { renderSettingsMenu, type ActiveTab } from './settings/modal';
 import { attachSettingsHandlers } from './settings/handlers';
 import { refreshDiagnosticStatus } from './settings/diag-status';
 import { safeSetInnerHTML } from './safe-html';
+import { insertPanel } from './insertion';
 import type { AppContext } from '../app/context';
 import { CleanupRegistry } from '../app/cleanup';
 import { speedBoundsFor } from '../config';
@@ -291,10 +292,23 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       }
     },
     applyLayout() {
-      // Wave 1.8c stops at attribute-level reflow. Insertion-target swap
-      // for sliderPosition='video' is wired by the orchestrator's insert
-      // logic in Wave 1.10 (it knows the discovery context).
+      // 1. Update the data-attribute so the CSS rules keyed off
+      //    [data-vs-slider-position="bottom"|"video"] take effect.
       root.dataset.vsSliderPosition = ctx.settingsStore.getKey('sliderPosition');
+      // 2. Move the panel to the new anchor. insertPanel does the
+      //    "remove from current parent + insert at new anchor" dance --
+      //    so switching from `right` to `video` lifts the panel out of
+      //    #primary-inner and drops it into .ytp-right-controls (and
+      //    back). chooseAnchor reads sliderPosition from settings so no
+      //    extra arg needed. Quiet on failure -- if the new anchor
+      //    isn't present yet (player chrome not mounted), the
+      //    orchestrator's removal-observer + retry path picks up the
+      //    next opportunity.
+      try {
+        insertPanel(root, ctx);
+      } catch (e) {
+        ctx.logger.warn('panel.applyLayout: re-insert failed', e);
+      }
     },
     dispose() {
       root.remove();

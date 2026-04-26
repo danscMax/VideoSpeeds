@@ -128,6 +128,52 @@ html[data-vs-theme="light"] {
   animation: vs-fade-in 0.3s ease;
 }
 
+/* sliderPosition='bottom' -- buttons row + slider on a separate line.
+   Mirrors original .user.js:2873-2877 (#more-speeds-container.layout-bottom).
+   Buttons stay at top, slider+label drop below as their own row. */
+.vs-panel[data-vs-slider-position="bottom"] {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.vs-panel[data-vs-slider-position="bottom"] .speed-buttons-row {
+  width: 100%;
+  flex-wrap: wrap;
+}
+.vs-panel[data-vs-slider-position="bottom"] .speed-slider-container {
+  width: 100%;
+  max-width: 600px;
+  flex: 0 0 auto;
+}
+
+/* sliderPosition='video' on YouTube -- whole panel mounts inside
+   .ytp-right-controls. Compact it so it doesn't elbow native chrome
+   buttons off-screen on narrow players. Buttons row + slider sized
+   down, gear hidden (the YT chrome already has its own gear so ours
+   would be redundant inside chrome). */
+.ytp-right-controls .vs-panel,
+.vs-panel[data-vs-slider-position="video"] {
+  margin: 0;
+  gap: 8px;
+}
+.ytp-right-controls .vs-panel .vs-gear-wrapper,
+.vs-panel[data-vs-slider-position="video"] .vs-gear-wrapper {
+  display: none;
+}
+.ytp-right-controls .vs-panel .speed-button,
+.vs-panel[data-vs-slider-position="video"] .speed-button {
+  height: 24px;
+  min-width: 40px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.ytp-right-controls .vs-panel .speed-slider-container,
+.vs-panel[data-vs-slider-position="video"] .speed-slider-container {
+  flex: 0 0 120px;
+  min-width: 80px;
+  height: 24px;
+}
+
 /* Speed-button row: pill buttons. min-width keeps every label centred
    even when the text varies (1x vs 1.25x); height fixed so the row is
    visually stable. Ported from .user.js:.speed-button. */

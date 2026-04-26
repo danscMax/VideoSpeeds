@@ -93,10 +93,16 @@ interface AnchorChoice {
 }
 
 function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
-  // 1. The 'video' position on YouTube -- in-chrome overlay.
-  if (pos === 'video' && ctx.site === 'youtube') {
-    const controlsBar = ctx.discovery.resolve('controlsContainer');
-    if (controlsBar) return { parent: controlsBar, anchor: 'video-overlay' };
+  // 1. The 'video' position -- mount inside the player chrome's right-side
+  //    controls bar. Original .user.js:5001-5045 (`integrateVideoSlider`)
+  //    targets `.ytp-right-controls` on YouTube and the desktop-controls
+  //    column on RuTube. Use 'rightControls' as the canonical key
+  //    (controlsContainer is RuTube-only and doesn't exist for YouTube).
+  if (pos === 'video') {
+    const controls =
+      ctx.discovery.resolve('rightControls') ||
+      ctx.discovery.resolve('controlsContainer');
+    if (controls) return { parent: controls, anchor: 'video-overlay' };
   }
 
   // 2. YouTube fast path -- mirror the original userscript exactly

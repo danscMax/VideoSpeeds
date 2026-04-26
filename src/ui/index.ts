@@ -24,3 +24,16 @@ export {
   generateHotkeyBlock,
   type HotkeyAction,
 } from './settings/hotkey-block';
+export {
+  attachSettingsHandlers,
+  type SettingsHandlersDeps,
+} from './settings/handlers';
+export { refreshDiagnosticStatus } from './settings/diag-status';
+export {
+  buildExportEnvelope,
+  exportSettingsToFile,
+  importSettingsFromText,
+  openImportPicker,
+  type ExportEnvelope,
+  type ImportResult,
+} from './settings/export-import';

@@ -191,8 +191,19 @@ export function renderSettingsMenu(opts: ModalRenderOptions): string {
         </button>
       </div>
 
-      <!-- Wave 1.8b adds Export/Import buttons here (TM migration workaround,
-           audit C5). Markup TODO. -->
+      <div class="vs-section">
+        <div class="vs-section-label">${e(t('settings.export'))}</div>
+        <div class="vs-action-grid">
+          <button class="vs-action" data-vs-action="export"
+                  title="${e(t('settings.export.tip'))}">
+            ${vsIcon('clipboard', 14)} ${e(t('settings.export'))}
+          </button>
+          <button class="vs-action" data-vs-action="import"
+                  title="${e(t('settings.import.tip'))}">
+            ${vsIcon('rotate-ccw', 14)} ${e(t('settings.import'))}
+          </button>
+        </div>
+      </div>
 
       <div class="vs-privacy-hint">
         ${vsIcon('lock', 11)}

@@ -224,8 +224,12 @@ export async function bootstrap(
     }
   }
 
-  // 9. Insert the panel into the player.
-  insertPanel(panel.element, ctx);
+  // 9. Insert the panel. Retries every 750ms (up to ~15s) because the
+  //    player container often appears after document_idle on SPA sites
+  //    (RuTube renders the player asynchronously). The retry stops as
+  //    soon as we land a real anchor; SPA-navigation listener (step 12)
+  //    handles subsequent page changes.
+  scheduleInsertWithRetry(panel.element, ctx);
   panel.applyLayout();
 
   // 10. Attach to <video> -- apply initial speed, install ratechange meter.
@@ -251,7 +255,7 @@ export async function bootstrap(
 
   // 12. Site-specific navigation listener -> re-insert + re-apply.
   const reattach = (): void => {
-    insertPanel(panel.element, ctx);
+    scheduleInsertWithRetry(panel.element, ctx);
     attachToVideo(ctx, meter);
   };
   if (site === 'youtube') {
@@ -282,6 +286,32 @@ export async function bootstrap(
 // Type-only check to keep NotificationKind import used. Kept here so
 // future "copy report" handler can read kind from settings.
 const NotificationKindCheck: NotificationKind = 'info';
+
+/**
+ * Try to insert the panel; retry up to 20 times (every 750ms) when the
+ * anchor isn't yet in the DOM. Stops as soon as insertion succeeds OR
+ * the retry budget is exhausted. Avoids the body-fallback that the
+ * earlier insertion logic produced (panel ended up far below the fold).
+ */
+function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
+  const MAX_ATTEMPTS = 20;
+  const DELAY_MS = 750;
+  let attempts = 0;
+  function tryOnce(): void {
+    attempts += 1;
+    const result = insertPanel(panelEl, ctx);
+    if (result.anchor !== 'no-anchor') {
+      ctx.logger.debug(`panel inserted via ${result.anchor} on attempt ${attempts}`);
+      return;
+    }
+    if (attempts >= MAX_ATTEMPTS) {
+      ctx.logger.warn(`panel insertion failed after ${attempts} attempts; giving up until next SPA nav`);
+      return;
+    }
+    ctx.cleanup.setTimeout(tryOnce, DELAY_MS);
+  }
+  tryOnce();
+}
 
 /**
  * Apply the chosen initial speed once the video element is ready, and

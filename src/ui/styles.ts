@@ -15,7 +15,8 @@ import type { Site } from '../app/ports';
 
 const STYLE_ID = 'vs-styles';
 
-export function injectStyles(_site: Site, container: Document = document): void {
+export function injectStyles(site: Site, container: Document = document): void {
+  detectAndApplyTheme(site, container);
   if (container.getElementById(STYLE_ID)) return;
   const style = container.createElement('style');
   style.id = STYLE_ID;
@@ -25,30 +26,111 @@ export function injectStyles(_site: Site, container: Document = document): void 
 
 export function removeStyles(container: Document = document): void {
   container.getElementById(STYLE_ID)?.remove();
+  delete container.documentElement.dataset.vsTheme;
 }
 
-// Compact base ruleset. Visual polish (per-site accent, theme overrides)
-// gets layered in Wave 1.8c. The selectors here line up with the markup
-// emitted by buttons.ts / slider.ts / popup.ts / settings/modal.ts.
+/**
+ * Decide the theme based on the site + the host's own theme attributes,
+ * then write `data-vs-theme="dark"|"light"` onto `<html>` so the CSS
+ * variable bundle above takes effect.
+ *
+ *   RuTube  -- always dark (the site has no light mode)
+ *   YouTube -- mirror the [dark] attribute YouTube sets when the user
+ *              picks dark; default light otherwise
+ */
+export function detectAndApplyTheme(site: Site, container: Document = document): void {
+  const root = container.documentElement;
+  let theme: 'dark' | 'light' = 'dark';
+  if (site === 'rutube') {
+    theme = 'dark';
+  } else if (site === 'youtube') {
+    theme =
+      root.hasAttribute('dark') ||
+      root.getAttribute('data-theme') === 'dark'
+        ? 'dark'
+        : 'light';
+  }
+  root.dataset.vsTheme = theme;
+}
+
+// Compact base ruleset with explicit theme handling.
+//
+// Theme is decided by detectAndApplyTheme() (called from bootstrap) which
+// writes `data-vs-theme="dark"|"light"` onto `<html>`. The decision rule:
+//   - RuTube: always dark (RuTube has no light mode)
+//   - YouTube: read its own `[dark]` attribute, default light otherwise
+//   - Other future sites: sample player's computed background color
+// CSS keys ONLY off our `data-vs-theme` attribute -- this avoids the brittle
+// "site might or might not set [dark]" guesses we had earlier.
+//
+// Per-site accent: --vs-accent overridden via the `[data-vs-site]`
+// attribute the panel itself carries (see panel.ts), so YouTube gets red
+// (its own brand) and RuTube gets its blue.
 const BASE_STYLES = `
+/* Default = dark theme. Set both at :root and on html[data-vs-theme="dark"]
+   so the panel still renders sanely if detectAndApplyTheme hasn't run yet. */
+:root,
+html[data-vs-theme="dark"] {
+  --vs-bg-panel: rgba(28, 28, 28, 0.95);
+  --vs-bg-button: rgba(255, 255, 255, 0.12);
+  --vs-bg-button-hover: rgba(255, 255, 255, 0.22);
+  --vs-bg-track: rgba(255, 255, 255, 0.2);
+  --vs-text-primary: rgba(255, 255, 255, 0.92);
+  --vs-text-secondary: rgba(255, 255, 255, 0.6);
+  --vs-border: rgba(255, 255, 255, 0.1);
+  --vs-accent: #ff0000;
+}
+html[data-vs-theme="light"] {
+  --vs-bg-panel: rgba(248, 248, 248, 0.96);
+  --vs-bg-button: rgba(0, 0, 0, 0.06);
+  --vs-bg-button-hover: rgba(0, 0, 0, 0.12);
+  --vs-bg-track: rgba(0, 0, 0, 0.1);
+  --vs-text-primary: rgba(0, 0, 0, 0.88);
+  --vs-text-secondary: rgba(0, 0, 0, 0.55);
+  --vs-border: rgba(0, 0, 0, 0.08);
+}
+
+/* Per-site accent. The panel root carries data-vs-site so each site gets
+   its own brand colour for the active button + slider fill. */
+.vs-panel[data-vs-site="rutube"] { --vs-accent: #00A1E7; }
+.vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; }
+
+.vs-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin: 8px 0;
+  background: var(--vs-bg-panel);
+  border-radius: 8px;
+  border: 1px solid var(--vs-border);
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--vs-text-primary);
+  /* Sticks above YouTube's lazy-loaded content blocks but below modals. */
+  position: relative;
+  z-index: 100;
+}
 .speed-buttons-row {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
 }
 .speed-button {
-  padding: 4px 10px;
+  padding: 5px 10px;
   border: none;
   border-radius: 6px;
-  background: rgba(255,255,255,0.1);
-  color: var(--text-color-primary, #fff);
+  background: var(--vs-bg-button);
+  color: var(--vs-text-primary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   transition: background-color 0.15s ease;
 }
-.speed-button:hover { background: rgba(255,255,255,0.2); }
+.speed-button:hover { background: var(--vs-bg-button-hover); }
 .speed-button.active {
-  background: var(--vs-accent, #ff0000);
+  background: var(--vs-accent);
   color: #fff;
 }
 
@@ -60,34 +142,55 @@ const BASE_STYLES = `
 }
 .speed-slider {
   -webkit-appearance: none;
-  width: 120px;
+  appearance: none;
+  width: 140px;
   height: 4px;
   border-radius: 2px;
   background: linear-gradient(
     to right,
-    var(--vs-accent, #ff0000) 0%,
-    var(--vs-accent, #ff0000) var(--vs-slider-fill, 0%),
-    rgba(255,255,255,0.2) var(--vs-slider-fill, 0%),
-    rgba(255,255,255,0.2) 100%
+    var(--vs-accent) 0%,
+    var(--vs-accent) var(--vs-slider-fill, 0%),
+    var(--vs-bg-track) var(--vs-slider-fill, 0%),
+    var(--vs-bg-track) 100%
   );
   outline: none;
   cursor: pointer;
 }
 .speed-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  appearance: none;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--vs-accent, #ff0000);
-  border: 2px solid #fff;
+  background: var(--vs-accent);
+  border: 2px solid var(--vs-bg-panel);
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .speed-slider-label {
-  min-width: 42px;
+  min-width: 46px;
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  color: var(--text-color-primary, #fff);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vs-text-primary);
 }
+
+/* Gear button -- compact icon button next to the slider. */
+.vs-gear-wrapper { position: relative; display: inline-flex; }
+.vs-gear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: var(--vs-bg-button);
+  color: var(--vs-text-primary);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.vs-gear-button:hover { background: var(--vs-bg-button-hover); }
 
 #speed-popup.speed-popup {
   position: absolute;
@@ -108,15 +211,18 @@ const BASE_STYLES = `
 }
 #speed-popup.speed-popup.show { opacity: 1; }
 
-/* Settings modal -- simplified Wave 1.8a base; full theming in 1.8c */
+/* Settings modal */
 .settings-menu {
   position: absolute;
-  background: var(--bg-color-primary, rgba(28,28,28,0.95));
-  color: var(--text-color-primary, #fff);
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--vs-bg-panel);
+  color: var(--vs-text-primary);
   border-radius: 12px;
   padding: 12px;
   min-width: 320px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  border: 1px solid var(--vs-border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   z-index: 100003;
 }
 .vs-menu-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }

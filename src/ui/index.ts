@@ -37,3 +37,6 @@ export {
   type ExportEnvelope,
   type ImportResult,
 } from './settings/export-import';
+export { createPanel, type CreatePanelOptions, type PanelHandle } from './panel';
+export { detachPanel, insertPanel, type InsertionResult } from './insertion';
+export { createUiPort, type CreateUiPortOptions } from './ui-port';

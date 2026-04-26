@@ -11,7 +11,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["chrome"],
+    "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"]
     }
@@ -20,7 +20,9 @@
     ".wxt/wxt.d.ts",
     "src/**/*",
     "entrypoints/**/*",
-    "wxt.config.ts"
+    "wxt.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
   ],
   "exclude": ["node_modules", ".output", "dist*"]
 }

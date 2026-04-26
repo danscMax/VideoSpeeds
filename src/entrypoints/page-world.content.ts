@@ -18,7 +18,7 @@
  * Communication with content.ts (isolated world): window.postMessage with
  * a namespaced `type` field. See utils/page-bridge.ts (TBD).
  */
-import { defineContentScript } from 'wxt/sandbox';
+import { defineContentScript } from 'wxt/utils/define-content-script';
 
 export default defineContentScript({
   matches: ['*://rutube.ru/*', '*://*.rutube.ru/*'],

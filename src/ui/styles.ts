@@ -115,8 +115,12 @@ html[data-vs-theme="light"] {
   border: none;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--vs-text-primary);
-  position: relative;
-  z-index: 1;
+  /* No z-index here on purpose: it would create a stacking context that
+     traps the settings modal (child) under any host-page element with a
+     higher z-index in the document context (YouTube comments header,
+     RuTube sidebar). The gear-wrapper still has position:relative so the
+     modal can anchor to it. */
+  position: static;
   animation: vs-fade-in 0.3s ease;
 }
 
@@ -333,14 +337,15 @@ html[data-vs-theme="light"] {
 }
 #speed-popup.speed-popup.show { opacity: 1; }
 
-/* Settings modal -- floating popover with its own dark glass surface,
-   independent of the host theme so it stays readable on light YouTube
-   too. Internal text + tokens are scoped to this rule. */
+/* Settings modal -- floating popover with its own dark surface, opaque
+   so it stays readable on any host theme without the cost of a real-time
+   backdrop-filter (cheap solid fill paints in one tile). Internal text +
+   tokens are scoped to this rule so descendants always render dark. */
 .settings-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: rgba(20, 20, 20, 0.96);
+  background: rgb(28, 28, 30);
   color: rgba(255, 255, 255, 0.95);
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-text-secondary: rgba(255, 255, 255, 0.65);
@@ -349,10 +354,8 @@ html[data-vs-theme="light"] {
   padding: 12px;
   min-width: 320px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
   z-index: 100003;
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
 .vs-menu-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .vs-menu-title  { display:flex; align-items:center; gap:6px; font-weight:600; }

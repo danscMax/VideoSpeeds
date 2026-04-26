@@ -153,6 +153,23 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   });
 
   // ----- Gear toggle -----
+  //
+  // After making the menu visible we measure its bounding box and flip
+  // its anchor to the LEFT if the default right-anchored position
+  // pushes it off the viewport (audit: user reported the menu vanishing
+  // off the screen on narrow layouts where the gear sits near the
+  // viewport's left edge -- happens in `bottom` layout when the panel
+  // wraps and the gear lands on the second row).
+  function adjustMenuPosition(): void {
+    if (settingsMenu.style.display === 'none') return;
+    // Reset flip first so the right-anchored measurement is honest.
+    settingsMenu.removeAttribute('data-vs-flip');
+    const rect = settingsMenu.getBoundingClientRect();
+    if (rect.left < 4) {
+      settingsMenu.setAttribute('data-vs-flip', 'left');
+    }
+  }
+
   ctx.cleanup.addEventListener(gearBtn, 'click', (event) => {
     event.stopPropagation();
     const isOpen = settingsMenu.style.display !== 'none';
@@ -163,6 +180,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       rerenderSettings();
       settingsMenu.style.display = '';
       settingsMenu.setAttribute('aria-hidden', 'false');
+      adjustMenuPosition();
     }
   });
 
@@ -263,6 +281,10 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     });
 
     refreshDiagnosticStatus(settingsMenu, menuCtx);
+    // Re-evaluate flip after the rerender -- modal width can change
+    // when the active tab is swapped (Diagnostics tab is wider than
+    // General). Cheap, runs only when the menu is open.
+    adjustMenuPosition();
   }
 
   // Layout applier. Mirrors .user.js:4854-4894 (`applyLayout`) -- see the

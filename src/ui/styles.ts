@@ -248,19 +248,31 @@ html[data-vs-theme="light"] {
   animation: vs-fade-in 0.3s ease;
 }
 
-/* sliderPosition='bottom' -- buttons row + slider on a separate line.
-   Mirrors original .user.js:2873-2877 (#more-speeds-container.layout-bottom).
-   Buttons stay at top, slider+label drop below as their own row. */
+/* sliderPosition='bottom' -- buttons + gear share the top row; slider
+   takes its own row below them. Mirrors .user.js:2873-2877 layout-bottom
+   where wrapperDiv (buttons + settings) sat above sliderContainer.
+   Implemented as CSS-grid so we don't have to wrap the buttons + gear
+   in a real DOM container -- the panel root keeps its three flat
+   children for easy detach in 'video' mode. */
 .vs-panel[data-vs-slider-position="bottom"] {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "buttons gear"
+    "slider  slider";
+  align-items: center;
+  gap: 12px 16px;
 }
 .vs-panel[data-vs-slider-position="bottom"] .speed-buttons-row {
-  width: 100%;
+  grid-area: buttons;
   flex-wrap: wrap;
 }
+.vs-panel[data-vs-slider-position="bottom"] .vs-gear-wrapper {
+  grid-area: gear;
+  justify-self: end;
+}
 .vs-panel[data-vs-slider-position="bottom"] .speed-slider-container {
+  grid-area: slider;
   width: 100%;
   max-width: 600px;
   flex: 0 0 auto;
@@ -521,6 +533,12 @@ html[data-vs-theme="light"] {
 .settings-menu {
   position: absolute;
   top: calc(100% + 6px);
+  /* Default anchor: right edge of menu = right edge of gear. Works
+     when gear is far enough from the left of the viewport. The opener
+     in panel.ts inspects the menu bounding box on display change and
+     sets data-vs-flip=left if the menu would overflow off the left
+     edge -- the rule below switches the anchor so the menu opens to
+     the RIGHT of the gear instead. */
   right: 0;
   background: rgb(28, 28, 30);
   color: rgba(255, 255, 255, 0.95);
@@ -530,9 +548,14 @@ html[data-vs-theme="light"] {
   border-radius: 12px;
   padding: 12px;
   min-width: 320px;
+  max-width: calc(100vw - 24px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0,0,0,0.45);
   z-index: 999999;
+}
+.settings-menu[data-vs-flip="left"] {
+  right: auto;
+  left: 0;
 }
 
 /* SVG protection: YouTube/RuTube ship global SVG rules (transform on

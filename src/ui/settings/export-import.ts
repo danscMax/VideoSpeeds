@@ -25,12 +25,19 @@ export interface ExportEnvelope {
 }
 
 export function buildExportEnvelope(ctx: AppContext): ExportEnvelope {
+  // Strip the TM-migration flag before export. Otherwise re-importing the
+  // file on a fresh extension install poisons the migration state -- the
+  // import sets `__migrated_from_tm: true` and the next bootstrap skips
+  // the page-localStorage scan, so any TM data the user wanted picked up
+  // is silently ignored (audit M13).
+  const { __migrated_from_tm: _migrated, ...exportable } = ctx.settingsStore.get();
+  void _migrated;
   return {
     type: 'video-speeds-settings',
     version: 1,
     exportedAt: new Date().toISOString(),
     site: ctx.site,
-    settings: ctx.settingsStore.get(),
+    settings: exportable,
   };
 }
 
@@ -89,6 +96,18 @@ export async function importSettingsFromText(ctx: AppContext, text: string): Pro
   }
 
   if (!patch) return { ok: false, message: 'unrecognized shape' };
+
+  // Always strip the TM-migration flag from imported data. The flag is
+  // an internal marker for "page localStorage already scanned"; it must
+  // not be transferred across installs (audit M13 -- defense-in-depth
+  // against legacy export files written before buildExportEnvelope was
+  // taught to strip it). The destination's bootstrap decides whether
+  // to migrate based on its OWN flag state.
+  if (patch && typeof patch === 'object') {
+    const cleaned = { ...patch } as Partial<Settings>;
+    delete cleaned.__migrated_from_tm;
+    patch = cleaned;
+  }
 
   try {
     await ctx.settingsStore.update(patch);

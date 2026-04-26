@@ -70,9 +70,15 @@ export function createSettingsStore(adapter: StorageAdapter): SettingsStoreImpl 
 
     async update(patch: Partial<Settings>): Promise<void> {
       const current = requireInit();
-      // Defensive copy so callers can't mutate the previous snapshot held by
-      // subscribers after this returns.
-      state = { ...current, ...patch };
+      // Sanitize incoming patch before merge -- update() is reachable from
+      // the import-settings flow (user-supplied JSON) and from the TM-
+      // migration scan; both can carry partly malformed sub-shapes.
+      // Trusted UI callers pay a tiny validation tax for a meaningful
+      // safety net (audit M11).
+      const safe = sanitizePatch(patch);
+      // Defensive copy so callers can't mutate the previous snapshot held
+      // by subscribers after this returns.
+      state = { ...current, ...safe };
       notify();
       if (storageKey) {
         await adapter.set(storageKey, state);
@@ -100,36 +106,80 @@ function mergeAndValidate(
   raw: Partial<Settings> | null,
   defaults: Settings,
 ): Settings {
-  if (!raw || typeof raw !== 'object') return defaults;
+  return { ...defaults, ...sanitizePatch(raw, defaults) };
+}
 
-  // Merge each field individually so a corrupt sub-shape (e.g. hotkeys = "x")
-  // falls back to defaults for that field only, not the whole record.
-  const merged: Settings = { ...defaults };
+/**
+ * Validate an arbitrary patch and return ONLY the keys that pass per-field
+ * shape checks. Used by both `init` (merging into defaults) and `update`
+ * (merging into the live state).
+ *
+ * Defensive against:
+ *   - null / non-object inputs (typeof null === 'object' was the classic
+ *     trap; explicit guards now)
+ *   - top-level arrays that masquerade as records (typeof [] === 'object')
+ *   - prototype-pollution shaped keys (`__proto__`, `constructor`,
+ *     `prototype`) -- modern JSON.parse already strips `__proto__` but we
+ *     belt-and-suspender it for any raw-object source (e.g. tests, future
+ *     adapters)
+ *   - corrupt sub-shapes (hotkeys === "x", language === 42, etc.) --
+ *     each field falls back to its default independently rather than
+ *     dragging the whole record down (audit M11).
+ *
+ * Note: the `defaults` arg is only consulted for the nested `hotkeys`
+ * field where `normalizeHotkeys` needs a fallback per-action array. All
+ * other fields are validated standalone -- caller spreads onto its own
+ * baseline.
+ */
+function sanitizePatch(
+  raw: unknown,
+  defaults: Settings = ARRAY_FALLBACK_DEFAULTS,
+): Partial<Settings> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  // Defensive snapshot: copy own enumerable string keys only, drop any
+  // proto-pollution-shaped keys upfront. JSON.parse already does this in
+  // modern engines; explicit defense for foreign call sites.
+  const safe: Record<string, unknown> = Object.create(null);
+  for (const k of Object.keys(raw as object)) {
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+    safe[k] = (raw as Record<string, unknown>)[k];
+  }
 
-  if (raw.sliderPosition === 'right' || raw.sliderPosition === 'bottom' || raw.sliderPosition === 'video') {
-    merged.sliderPosition = raw.sliderPosition;
+  const out: Partial<Settings> = {};
+
+  if (safe.sliderPosition === 'right' || safe.sliderPosition === 'bottom' || safe.sliderPosition === 'video') {
+    out.sliderPosition = safe.sliderPosition;
   }
-  if (typeof raw.rememberSpeed === 'boolean') {
-    merged.rememberSpeed = raw.rememberSpeed;
+  if (typeof safe.rememberSpeed === 'boolean') out.rememberSpeed = safe.rememberSpeed;
+  if (typeof safe.hidePlayerTitle === 'boolean') out.hidePlayerTitle = safe.hidePlayerTitle;
+  if (typeof safe.hidePremium === 'boolean') out.hidePremium = safe.hidePremium;
+  if (typeof safe.language === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(safe.language)) {
+    out.language = safe.language as Lang;
   }
-  if (typeof raw.hidePlayerTitle === 'boolean') {
-    merged.hidePlayerTitle = raw.hidePlayerTitle;
-  }
-  if (typeof raw.hidePremium === 'boolean') {
-    merged.hidePremium = raw.hidePremium;
-  }
-  if (typeof raw.language === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(raw.language)) {
-    merged.language = raw.language as Lang;
-  }
-  if (raw.hotkeys && typeof raw.hotkeys === 'object') {
-    merged.hotkeys = {
-      speedUp:   normalizeHotkeys(raw.hotkeys.speedUp,   defaults.hotkeys.speedUp),
-      speedDown: normalizeHotkeys(raw.hotkeys.speedDown, defaults.hotkeys.speedDown),
+  if (safe.hotkeys && typeof safe.hotkeys === 'object' && !Array.isArray(safe.hotkeys)) {
+    const hk = safe.hotkeys as { speedUp?: unknown; speedDown?: unknown };
+    out.hotkeys = {
+      speedUp:   normalizeHotkeys(hk.speedUp,   defaults.hotkeys.speedUp),
+      speedDown: normalizeHotkeys(hk.speedDown, defaults.hotkeys.speedDown),
     };
   }
-  if (raw.__migrated_from_tm === true) {
-    merged.__migrated_from_tm = true;
-  }
+  if (safe.__migrated_from_tm === true) out.__migrated_from_tm = true;
 
-  return merged;
+  return out;
 }
+
+// Last-ditch fallback hotkey defaults consulted only when a raw patch is
+// validated WITHOUT a real `defaults` (sanitizePatch's update-path call).
+// Mirrors `defaultSettings(...)` in storage/types.ts but inlined here so
+// the validator can stand alone in tests.
+const ARRAY_FALLBACK_DEFAULTS: Settings = {
+  sliderPosition: 'right',
+  rememberSpeed: true,
+  hidePlayerTitle: false,
+  hidePremium: false,
+  language: 'en' as Lang,
+  hotkeys: {
+    speedUp:   [{ ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' }],
+    speedDown: [{ ctrl: true, shift: false, alt: false, meta: false, key: 'KeyV' }],
+  },
+};

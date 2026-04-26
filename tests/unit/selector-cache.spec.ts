@@ -168,6 +168,77 @@ describe('SelectorCache', () => {
     });
   });
 
+  describe('tryRestoreBackup() (audit M12)', () => {
+    it('returns null when no entry has ever been written for the key', async () => {
+      const { cache } = makeCache();
+      await cache.hydrate();
+      expect(cache.tryRestoreBackup('video')).toBe(null);
+    });
+
+    it('returns null after the first set() (no signature drift yet)', async () => {
+      const { cache } = makeCache();
+      await cache.hydrate();
+      cache.set('video', {
+        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig-A',
+      });
+      expect(cache.tryRestoreBackup('video')).toBe(null);
+    });
+
+    it('archives the previous entry when signature changes', async () => {
+      const { cache } = makeCache();
+      await cache.hydrate();
+      cache.set('video', {
+        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+      });
+      cache.set('video', {
+        selector: 'video.v2', source: 'exact', confidence: 0.9, signature: 'sig-B',
+      });
+      expect(cache.tryRestoreBackup('video')?.selector).toBe('video.v1');
+      expect(cache.tryRestoreBackup('video')?.signature).toBe('sig-A');
+    });
+
+    it('does NOT archive when signature is unchanged', async () => {
+      const { cache } = makeCache();
+      await cache.hydrate();
+      cache.set('video', {
+        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+      });
+      cache.set('video', {
+        selector: 'video.v1-bumped', source: 'exact', confidence: 0.9, signature: 'sig-A',
+      });
+      expect(cache.tryRestoreBackup('video')).toBe(null);
+    });
+
+    it('persists backup map across hydrate cycles', async () => {
+      const { adapter, cache } = makeCache();
+      await cache.hydrate();
+      cache.set('video', {
+        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+      });
+      cache.set('video', {
+        selector: 'video.v2', source: 'exact', confidence: 0.9, signature: 'sig-B',
+      });
+      await flushPending(adapter);
+
+      const cache2 = createSelectorCache(adapter, { host: HOST, scriptVersion: VERSION });
+      await cache2.hydrate();
+      expect(cache2.tryRestoreBackup('video')?.selector).toBe('video.v1');
+    });
+
+    it('purge() drops backup too', async () => {
+      const { cache } = makeCache();
+      await cache.hydrate();
+      cache.set('video', {
+        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+      });
+      cache.set('video', {
+        selector: 'video.v2', source: 'exact', confidence: 0.9, signature: 'sig-B',
+      });
+      cache.purge('video');
+      expect(cache.tryRestoreBackup('video')).toBe(null);
+    });
+  });
+
   describe('buildSignature()', () => {
     it('returns a deterministic string for a stable element', async () => {
       const { cache } = makeCache();

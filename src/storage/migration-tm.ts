@@ -14,9 +14,20 @@
  *     are covered by this importer; older installs need the manual
  *     export/import flow added in Wave 1.8b.
  *
- * What it deliberately DOES NOT migrate:
- *   - SelectorCache (`vs-cache:*`). Stale heuristic data tied to old
- *     SCRIPT_VERSION + DOM signatures (audit M1).
+ * What it deliberately DOES NOT migrate (audit S18 + M1):
+ *   - SelectorCache. The userscript stored cache as PER-KEY entries:
+ *       `vs-cache:<host>:<selectorKey>`     (live entry)
+ *       `vs-cache:backup:<host>:<selectorKey>` (rollback shadow)
+ *     in GM-storage. The extension uses a different shape -- a
+ *     PER-HOST-BAG single key:
+ *       `vs-cache:<host>` -> { entries, backups }
+ *     in `browser.storage.local`. The two namespaces don't overlap (page
+ *     localStorage / GM-storage / extension storage are isolated), so
+ *     even if both shapes exist on the same machine they can't poison
+ *     each other. We choose NOT to translate one shape into the other:
+ *     the cache is heuristic state tied to a specific SCRIPT_VERSION +
+ *     DOM signature, and a cold start is safer than carrying over stale
+ *     guesses across a project boundary.
  */
 
 import { storageKeysFor, TM_MIGRATION_FLAG } from '../config';

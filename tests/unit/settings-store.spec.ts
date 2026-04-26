@@ -94,6 +94,55 @@ describe('SettingsStore', () => {
       );
       expect(persisted).toMatchObject({ rememberSpeed: false });
     });
+
+    // Audit M11: update() must sanitize incoming patches because import-
+    // settings flow and TM-migration both reach this entry point with
+    // user-supplied data.
+    describe('sanitizePatch defenses (audit M11)', () => {
+      it('drops fields that fail per-key validation, keeps the rest', async () => {
+        const store = createSettingsStore(createMemoryStorageAdapter());
+        await store.init('youtube');
+        await store.update({
+          sliderPosition: 'INVALID' as never,
+          rememberSpeed: false,
+          language: 'klingon' as never,
+        });
+        expect(store.getKey('sliderPosition')).toBe('right'); // rejected
+        expect(store.getKey('rememberSpeed')).toBe(false);    // accepted
+        expect(['en', 'ru']).toContain(store.getKey('language')); // rejected
+      });
+
+      it('rejects null and arrays at the top level', async () => {
+        const store = createSettingsStore(createMemoryStorageAdapter());
+        await store.init('youtube');
+        const before = store.get();
+        await store.update(null as never);
+        expect(store.get()).toEqual(before);
+        await store.update(['array', 'is', 'not', 'object'] as never);
+        expect(store.get()).toEqual(before);
+      });
+
+      it('drops __proto__/constructor/prototype keys (proto-pollution defense)', async () => {
+        const store = createSettingsStore(createMemoryStorageAdapter());
+        await store.init('youtube');
+        const malicious = JSON.parse('{"__proto__":{"isAdmin":true},"sliderPosition":"video"}');
+        await store.update(malicious);
+        expect(store.getKey('sliderPosition')).toBe('video');
+        expect((Object.prototype as unknown as { isAdmin?: boolean }).isAdmin).toBeUndefined();
+      });
+
+      it('rejects hotkeys when shape is corrupt', async () => {
+        const store = createSettingsStore(createMemoryStorageAdapter());
+        await store.init('youtube');
+        const before = store.getKey('hotkeys');
+        await store.update({ hotkeys: 'not-an-object' as never });
+        expect(store.getKey('hotkeys')).toEqual(before);
+        await store.update({ hotkeys: null as never });
+        expect(store.getKey('hotkeys')).toEqual(before);
+        await store.update({ hotkeys: [1, 2, 3] as never });
+        expect(store.getKey('hotkeys')).toEqual(before);
+      });
+    });
   });
 
   describe('subscribe()', () => {

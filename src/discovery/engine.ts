@@ -208,6 +208,31 @@ export function createDiscoveryEngine(deps: DiscoveryEngineDeps): DiscoveryEngin
       }
     }
 
+    // Strategy 1.5: backup (audit M12). Try the previous good entry that
+    // was archived just before the most recent signature drift. This saves
+    // a full re-scan when the rename was superficial -- the host page
+    // shipped a new build and the old selector still matches the same
+    // element via `[class*="..."]` substring lookups, etc. We only consult
+    // this when the primary cache missed AND we're allowed full-chain;
+    // exactOnly callers (revalidation passes) skip it. When the backup
+    // resolves AND validates, promote it back to primary cache so the
+    // next resolve hits strategy 1.
+    if (!opts?.skipCache && !opts?.exactOnly && useFullChain) {
+      const backup = cache.tryRestoreBackup(key);
+      if (backup?.selector) {
+        const el = trySelector(backup.selector);
+        if (el && ok(key, el)) {
+          cache.set(key, {
+            selector: backup.selector,
+            source: backup.source,
+            confidence: Math.max(0.5, backup.confidence * 0.8),
+            signature: cache.buildSignature(el),
+          });
+          return build(key, el, backup.source, backup.selector, Math.max(0.5, backup.confidence * 0.8));
+        }
+      }
+    }
+
     // Strategy 2: exact
     const exactList = selectors[key] ?? [];
     for (const sel of exactList) {

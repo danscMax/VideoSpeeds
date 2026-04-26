@@ -61,9 +61,17 @@ export function storageKeysFor(site: Site): StorageKeys {
 }
 
 /**
- * Cache key prefix used by SelectorCache (Wave 1.6) for per-host entries.
- * NOT migrated from the userscript -- audit M1: stale heuristic data tied
- * to old SCRIPT_VERSION + DOM signatures is worse than a cold start.
+ * Cache key prefix used by SelectorCache for per-host entries.
+ *
+ * Shape: `vs-cache:<host>` -> { schema_version, script_version, entries, backups }
+ * (single bag in `browser.storage.local`, hydrated once at bootstrap).
+ *
+ * NOT compatible with the legacy userscript shape (`vs-cache:<host>:<selectorKey>`,
+ * one GM-storage key per selector + parallel `vs-cache:backup:...`); the two
+ * namespaces are isolated so they can't overwrite each other, and the
+ * Wave 1.4 TM-migration deliberately skips cache translation (audit S18,
+ * see storage/migration-tm.ts). Stale heuristic state across a project
+ * boundary is worse than a cold start (audit M1).
  */
 export const SELECTOR_CACHE_PREFIX = 'vs-cache:';
 

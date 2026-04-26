@@ -61,23 +61,44 @@ describe('importSettingsFromText', () => {
   });
 
   it('rejects malformed sub-shapes per-field via SettingsStore validator', async () => {
+    // Audit M11: update() now sanitizes the patch -- previously this
+    // test documented the gap, now it documents the fix.
     const { ctx, settingsStore } = await createMockContext({ site: 'youtube' });
     const json = JSON.stringify({
       sliderPosition: 'INVALID',
       rememberSpeed: 'yes',
+      hidePremium: true,    // valid -- should land
     });
     const result = await importSettingsFromText(ctx, json);
-    // The import call itself succeeds (SettingsStore takes the patch);
-    // but the validator drops the invalid fields on the next get() since
-    // they go through update() -> in-memory state.
-    // We only verify the call completes; downstream get sees defaults
-    // because the patch contained nothing valid.
     expect(result.ok).toBe(true);
-    // sliderPosition stays at default because update merges raw values --
-    // the validator runs on init() not update(). Document this limitation:
-    // callers shouldn't trust import() to filter; they should re-init the
-    // store to get full validation.
-    // This test asserts only that import doesn't throw.
-    expect(settingsStore.getKey('rememberSpeed')).toBeDefined();
+    // Invalid fields dropped, valid ones preserved.
+    expect(settingsStore.getKey('sliderPosition')).toBe('right');  // default
+    expect(settingsStore.getKey('rememberSpeed')).toBe(true);      // default
+    expect(settingsStore.getKey('hidePremium')).toBe(true);        // imported
+  });
+
+  it('strips __migrated_from_tm from imports (audit M13)', async () => {
+    const { ctx, settingsStore } = await createMockContext({ site: 'youtube' });
+    const json = JSON.stringify({
+      type: 'video-speeds-settings',
+      version: 1,
+      site: 'youtube',
+      settings: { __migrated_from_tm: true, sliderPosition: 'video' },
+    });
+    const result = await importSettingsFromText(ctx, json);
+    expect(result.ok).toBe(true);
+    expect(settingsStore.getKey('sliderPosition')).toBe('video');
+    // Critical: import must NOT poison the destination's migration state.
+    expect(settingsStore.getKey('__migrated_from_tm')).toBeUndefined();
+  });
+});
+
+describe('buildExportEnvelope - audit M13', () => {
+  it('strips __migrated_from_tm from the exported settings', async () => {
+    const { ctx, settingsStore } = await createMockContext({ site: 'youtube' });
+    await settingsStore.update({ __migrated_from_tm: true, sliderPosition: 'video' });
+    const env = buildExportEnvelope(ctx);
+    expect(env.settings.sliderPosition).toBe('video');
+    expect((env.settings as { __migrated_from_tm?: boolean }).__migrated_from_tm).toBeUndefined();
   });
 });

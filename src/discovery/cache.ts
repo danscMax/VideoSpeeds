@@ -35,6 +35,14 @@ export interface SelectorCacheImpl {
   purge(key: SelectorKey): void;
   purgeAll(): Promise<void>;
   buildSignature(el: Element): string;
+  /**
+   * Last-good entry archived just before the most recent `set()` that
+   * changed signature. Used by the discovery engine as a fallback after
+   * the primary entry fails to resolve / validate (audit M12, mirrors
+   * .user.js:1153-1156 BACKUP_PREFIX behaviour). Returns null when no
+   * backup has ever been written for the key.
+   */
+  tryRestoreBackup(key: SelectorKey): CacheEntry | null;
 }
 
 export interface SetPayload {
@@ -64,6 +72,12 @@ interface PersistedShape {
   schema_version: number;
   script_version: string;
   entries: Partial<Record<SelectorKey, CacheEntry>>;
+  /**
+   * Last-good entry archived per key whenever the primary entry's
+   * signature changed (audit M12). Loaded alongside `entries` on hydrate.
+   * Older snapshots may not have this field -- handled defensively.
+   */
+  backups?: Partial<Record<SelectorKey, CacheEntry>>;
 }
 
 export function createSelectorCache(
@@ -77,6 +91,7 @@ export function createSelectorCache(
   const storageKey = `${SELECTOR_CACHE_PREFIX}${host}`;
 
   const memCache = new Map<SelectorKey, CacheEntry>();
+  const memBackups = new Map<SelectorKey, CacheEntry>();
   const tentative = new Map<SelectorKey, string[]>();
   let ready = false;
   let pendingWrite: Promise<void> | null = null;
@@ -88,6 +103,9 @@ export function createSelectorCache(
       schema_version: schemaVersion,
       script_version: scriptVersion,
       entries: Object.fromEntries(memCache.entries()) as Partial<Record<SelectorKey, CacheEntry>>,
+      backups: memBackups.size > 0
+        ? Object.fromEntries(memBackups.entries()) as Partial<Record<SelectorKey, CacheEntry>>
+        : undefined,
     };
     const next = (pendingWrite ?? Promise.resolve()).then(() =>
       adapter.set(storageKey, snapshot).catch(() => {
@@ -110,6 +128,11 @@ export function createSelectorCache(
       ) {
         for (const [key, entry] of Object.entries(raw.entries)) {
           if (entry) memCache.set(key as SelectorKey, entry);
+        }
+        if (raw.backups && typeof raw.backups === 'object') {
+          for (const [key, entry] of Object.entries(raw.backups)) {
+            if (entry) memBackups.set(key as SelectorKey, entry);
+          }
         }
       } else if (raw) {
         // Schema or script version drift: drop the persisted bag
@@ -145,6 +168,14 @@ export function createSelectorCache(
 
       const now = Date.now();
       const existing = memCache.get(key);
+      // Audit M12: when an existing entry's signature changes (DOM rerender,
+      // host-page upgrade), keep the previous good entry as a backup. The
+      // discovery engine consults `tryRestoreBackup` after the primary cache
+      // miss, before falling through to selector tables -- this saves us
+      // a full re-scan when the rename was superficial.
+      if (existing && existing.signature !== payload.signature) {
+        memBackups.set(key, existing);
+      }
       const entry: CacheEntry = {
         selector: payload.selector,
         source: payload.source,
@@ -184,12 +215,17 @@ export function createSelectorCache(
     },
 
     purge(key: SelectorKey): void {
-      if (memCache.delete(key)) persist();
+      const had = memCache.delete(key);
+      // Drop the backup too -- "user purged this key" is a strong signal
+      // that nothing about its previous shape is trustworthy.
+      const hadBackup = memBackups.delete(key);
+      if (had || hadBackup) persist();
       tentative.delete(key);
     },
 
     async purgeAll(): Promise<void> {
       memCache.clear();
+      memBackups.clear();
       tentative.clear();
       // Drain any in-flight write so we don't race a stale snapshot back
       // over the removal we're about to commit.
@@ -198,6 +234,10 @@ export function createSelectorCache(
         pendingWrite = null;
       }
       await adapter.remove(storageKey).catch(() => {});
+    },
+
+    tryRestoreBackup(key: SelectorKey): CacheEntry | null {
+      return memBackups.get(key) ?? null;
     },
 
     buildSignature(el: Element): string {

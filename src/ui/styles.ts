@@ -293,21 +293,40 @@ html[data-vs-theme="light"] {
   flex: 0 0 auto;
   width: 140px;
   min-width: 100px;
-  height: 24px;
+  height: 40px;            /* match .ytp-right-controls native height so
+                              we don't force a smaller box that YT then
+                              tries to vertically-center contents inside */
   padding: 0 4px;
   margin: 0 6px;
+  align-self: center;
   /* Inside YouTube chrome the surrounding text is white-on-translucent;
      pick the dark-theme tokens unconditionally so the label + track
      stay legible regardless of host page theme. */
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-bg-track: rgba(255, 255, 255, 0.22);
 }
+/* Hard reset against YouTube ytp-right-controls span rules (font-size 109%,
+   line-height) that otherwise stretched our label to ~56px tall, drifting
+   it out of vertical alignment with the track (audit screenshot
+   2026-04-26). !important is the only sustainable override of YT high-
+   specificity chrome rules. */
 .speed-slider-container.vs-slider-in-chrome .speed-slider-label {
-  font-size: 11px;
-  min-width: 36px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  line-height: 1 !important;
+  font-size: 12px !important;
+  min-width: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  vertical-align: middle !important;
 }
 .speed-slider-container.vs-slider-in-chrome .speed-slider {
+  align-self: center;
   height: 3px;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Speed-button row: pill buttons. min-width keeps every label centred

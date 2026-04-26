@@ -59,74 +59,64 @@ export function detectAndApplyTheme(site: Site, container: Document = document):
 // writes `data-vs-theme="dark"|"light"` onto `<html>`. The decision rule:
 //   - RuTube: always dark (RuTube has no light mode)
 //   - YouTube: read its own `[dark]` attribute, default light otherwise
-//   - Other future sites: sample player's computed background color
-// CSS keys ONLY off our `data-vs-theme` attribute -- this avoids the brittle
-// "site might or might not set [dark]" guesses we had earlier.
+// CSS keys off `data-vs-theme` so labels + slider track adapt to the
+// surrounding page colour (the panel itself is transparent).
 //
 // Per-site accent: --vs-accent overridden via the `[data-vs-site]`
 // attribute the panel itself carries (see panel.ts), so YouTube gets red
-// (its own brand) and RuTube gets its blue.
+// and RuTube its blue.
 const BASE_STYLES = `
-/* Default = dark theme. The panel uses dark-glass surfaces ALWAYS, even in
-   light-host mode -- the original userscript looked great with this style
-   on every site, and a dark capsule visually separates "our area" from
-   the page chrome (user feedback 2026-04-26). Light-theme tokens still
-   exist for the SETTINGS modal which lives in its own popover. */
+/* Token sets per theme. The PANEL itself is transparent (matches the
+   original userscript layout: speed buttons sit on the host page
+   background, attached just below the player -- user feedback
+   2026-04-26 confirmed this). Buttons + gear carry their own dark
+   pills; slider track + label adapt to the surrounding page colour. */
 :root,
-html[data-vs-theme="dark"],
-html[data-vs-theme="light"] {
-  /* Panel surface -- dark glass on every host. */
-  --vs-bg-panel: rgba(20, 20, 20, 0.92);
-  /* Button face: low-contrast dark fill, white text. */
-  --vs-bg-button: rgba(255, 255, 255, 0.10);
-  --vs-bg-button-hover: rgba(255, 255, 255, 0.18);
-  --vs-bg-track: rgba(255, 255, 255, 0.18);
+html[data-vs-theme="dark"] {
+  --vs-bg-button: rgba(75, 75, 75, 0.85);
+  --vs-bg-button-hover: rgba(100, 100, 100, 0.95);
+  --vs-bg-track: rgba(255, 255, 255, 0.22);
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-text-secondary: rgba(255, 255, 255, 0.65);
   --vs-border: rgba(255, 255, 255, 0.08);
   --vs-accent: #ff0000;
 }
-
-/* Settings modal can flip to light when the host is light -- it floats
-   above the page in its own popover and a dark modal on a white YouTube
-   would be jarring. Override only the modal-relevant tokens here. */
-html[data-vs-theme="light"] .settings-menu {
-  --vs-bg-panel: rgba(252, 252, 252, 0.98);
-  --vs-bg-button: rgba(0, 0, 0, 0.06);
-  --vs-bg-button-hover: rgba(0, 0, 0, 0.12);
-  --vs-text-primary: rgba(0, 0, 0, 0.88);
-  --vs-text-secondary: rgba(0, 0, 0, 0.55);
+html[data-vs-theme="light"] {
+  --vs-bg-button: rgba(35, 35, 35, 0.90);
+  --vs-bg-button-hover: rgba(15, 15, 15, 0.97);
+  --vs-bg-track: rgba(0, 0, 0, 0.18);
+  --vs-text-primary: rgba(15, 15, 15, 0.92);
+  --vs-text-secondary: rgba(15, 15, 15, 0.55);
   --vs-border: rgba(0, 0, 0, 0.08);
+  --vs-accent: #ff0000;
 }
 
 /* Per-site accent + accent-dark for the active-button gradient. */
 .vs-panel[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-rgb: 0,161,231; }
 .vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-rgb: 255,0,0; }
 
-/* The panel itself: dark glass capsule with fadeIn animation matching
-   the original userscript (ported from .user.js:#more-speeds-container). */
+/* The panel: TRANSPARENT flex row attached just below the player. No
+   capsule background -- buttons and the gear handle their own visual
+   weight so the row blends with whatever surface YouTube/RuTube paints
+   (matches the original userscript layout). */
 @keyframes vs-fade-in {
-  from { opacity: 0; transform: translateY(-6px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .vs-panel {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
-  margin: 12px 0;
+  gap: 12px;
+  padding: 8px 0;
+  margin: 8px 0;
   width: 100%;
   box-sizing: border-box;
-  background: var(--vs-bg-panel);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  border-radius: 12px;
-  border: 1px solid var(--vs-border);
+  background: transparent;
+  border: none;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--vs-text-primary);
   position: relative;
   z-index: 1;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
   animation: vs-fade-in 0.3s ease;
 }
 
@@ -149,7 +139,7 @@ html[data-vs-theme="light"] .settings-menu {
   outline: none;
   border-radius: 14px;
   background: var(--vs-bg-button);
-  color: var(--vs-text-primary);
+  color: #fff;
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -286,7 +276,7 @@ html[data-vs-theme="light"] .settings-menu {
   border: none;
   border-radius: 50%;
   background: var(--vs-bg-button);
-  color: var(--vs-text-primary);
+  color: #fff;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -343,19 +333,26 @@ html[data-vs-theme="light"] .settings-menu {
 }
 #speed-popup.speed-popup.show { opacity: 1; }
 
-/* Settings modal */
+/* Settings modal -- floating popover with its own dark glass surface,
+   independent of the host theme so it stays readable on light YouTube
+   too. Internal text + tokens are scoped to this rule. */
 .settings-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: var(--vs-bg-panel);
-  color: var(--vs-text-primary);
+  background: rgba(20, 20, 20, 0.96);
+  color: rgba(255, 255, 255, 0.95);
+  --vs-text-primary: rgba(255, 255, 255, 0.95);
+  --vs-text-secondary: rgba(255, 255, 255, 0.65);
+  --vs-border: rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 12px;
   min-width: 320px;
-  border: 1px solid var(--vs-border);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   z-index: 100003;
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
 .vs-menu-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .vs-menu-title  { display:flex; align-items:center; gap:6px; font-weight:600; }

@@ -135,6 +135,34 @@ don't spam the console for end users. Bug reports rely on the
 diagnostics-tab "copy" button (Wave 1.8b), not remote telemetry —
 there is none.
 
+## Release
+
+Tagged releases (`v*`) trigger `.github/workflows/release.yml`:
+
+1. typecheck + unit tests + tag/version match guard
+2. build chrome+firefox+userscript
+3. stage assets with version-stamped filenames
+4. SHA-256 checksums file
+5. GitHub Release created with all three artifacts attached
+
+Local-only release prep:
+
+```bash
+npm version patch          # bumps package.json
+git push --follow-tags     # GitHub Actions takes it from there
+```
+
+Optional auto-publish to Chrome Web Store / AMO is commented out in
+the workflow -- enable when these secrets exist:
+
+| Store | Secrets |
+|---|---|
+| Chrome Web Store | `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_EXTENSION_ID` |
+| Mozilla AMO | `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` |
+
+`chrome-webstore-upload-cli` (Chrome) and `web-ext sign` (AMO) handle
+the uploads. Both providers require an account in good standing first.
+
 ## Dropped scope
 
 - HDRezka is **not** part of this extension (Chrome Web Store policy

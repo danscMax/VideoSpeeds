@@ -67,85 +67,112 @@ export function detectAndApplyTheme(site: Site, container: Document = document):
 // attribute the panel itself carries (see panel.ts), so YouTube gets red
 // (its own brand) and RuTube gets its blue.
 const BASE_STYLES = `
-/* Default = dark theme. Set both at :root and on html[data-vs-theme="dark"]
-   so the panel still renders sanely if detectAndApplyTheme hasn't run yet. */
+/* Default = dark theme. The panel uses dark-glass surfaces ALWAYS, even in
+   light-host mode -- the original userscript looked great with this style
+   on every site, and a dark capsule visually separates "our area" from
+   the page chrome (user feedback 2026-04-26). Light-theme tokens still
+   exist for the SETTINGS modal which lives in its own popover. */
 :root,
-html[data-vs-theme="dark"] {
-  --vs-bg-panel: rgba(28, 28, 28, 0.95);
-  --vs-bg-button: rgba(255, 255, 255, 0.12);
-  --vs-bg-button-hover: rgba(255, 255, 255, 0.22);
-  --vs-bg-track: rgba(255, 255, 255, 0.2);
-  --vs-text-primary: rgba(255, 255, 255, 0.92);
-  --vs-text-secondary: rgba(255, 255, 255, 0.6);
-  --vs-border: rgba(255, 255, 255, 0.1);
+html[data-vs-theme="dark"],
+html[data-vs-theme="light"] {
+  /* Panel surface -- dark glass on every host. */
+  --vs-bg-panel: rgba(20, 20, 20, 0.92);
+  /* Button face: low-contrast dark fill, white text. */
+  --vs-bg-button: rgba(255, 255, 255, 0.10);
+  --vs-bg-button-hover: rgba(255, 255, 255, 0.18);
+  --vs-bg-track: rgba(255, 255, 255, 0.18);
+  --vs-text-primary: rgba(255, 255, 255, 0.95);
+  --vs-text-secondary: rgba(255, 255, 255, 0.65);
+  --vs-border: rgba(255, 255, 255, 0.08);
   --vs-accent: #ff0000;
 }
-html[data-vs-theme="light"] {
-  --vs-bg-panel: rgba(248, 248, 248, 0.96);
+
+/* Settings modal can flip to light when the host is light -- it floats
+   above the page in its own popover and a dark modal on a white YouTube
+   would be jarring. Override only the modal-relevant tokens here. */
+html[data-vs-theme="light"] .settings-menu {
+  --vs-bg-panel: rgba(252, 252, 252, 0.98);
   --vs-bg-button: rgba(0, 0, 0, 0.06);
   --vs-bg-button-hover: rgba(0, 0, 0, 0.12);
-  --vs-bg-track: rgba(0, 0, 0, 0.1);
   --vs-text-primary: rgba(0, 0, 0, 0.88);
   --vs-text-secondary: rgba(0, 0, 0, 0.55);
   --vs-border: rgba(0, 0, 0, 0.08);
 }
 
-/* Per-site accent. The panel root carries data-vs-site so each site gets
-   its own brand colour for the active button + slider fill. */
+/* Per-site accent. */
 .vs-panel[data-vs-site="rutube"] { --vs-accent: #00A1E7; }
 .vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; }
 
+/* The panel itself: a self-contained dark capsule that fills the
+   available width, doesn't push native page elements around (we insert
+   as a sibling -- ui/insertion.ts), and visually reads as "our zone". */
 .vs-panel {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 12px;
+  padding: 8px 14px;
   margin: 8px 0;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--vs-bg-panel);
-  border-radius: 8px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 10px;
   border: 1px solid var(--vs-border);
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--vs-text-primary);
-  /* Sticks above YouTube's lazy-loaded content blocks but below modals. */
   position: relative;
   z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
+
+/* Speed-button row: pill-shaped buttons. */
 .speed-buttons-row {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 .speed-button {
-  padding: 5px 10px;
+  padding: 6px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--vs-bg-button);
   color: var(--vs-text-primary);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  transition: background-color 0.15s ease;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  user-select: none;
 }
 .speed-button:hover { background: var(--vs-bg-button-hover); }
+.speed-button:active { transform: translateY(1px); }
 .speed-button.active {
   background: var(--vs-accent);
   color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset, 0 1px 4px rgba(0,0,0,0.25);
 }
 
+/* Slider sits between the buttons and the gear, takes the leftover
+   width so the panel reads as "buttons | full-width track | label | gear". */
 .speed-slider-container {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 6px;
+  gap: 10px;
+  padding: 0 4px;
+  flex: 1 1 auto;
+  min-width: 120px;
 }
 .speed-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 140px;
+  width: 100%;
+  flex: 1 1 auto;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: linear-gradient(
     to right,
     var(--vs-accent) 0%,
@@ -163,34 +190,50 @@ html[data-vs-theme="light"] {
   height: 14px;
   border-radius: 50%;
   background: var(--vs-accent);
-  border: 2px solid var(--vs-bg-panel);
+  border: 2px solid #fff;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.speed-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vs-accent);
+  border: 2px solid #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 .speed-slider-label {
-  min-width: 46px;
+  min-width: 50px;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--vs-text-primary);
+  text-align: right;
+  flex-shrink: 0;
 }
 
-/* Gear button -- compact icon button next to the slider. */
-.vs-gear-wrapper { position: relative; display: inline-flex; }
+/* Gear button -- pill icon button at the right end of the panel. */
+.vs-gear-wrapper {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
 .vs-gear-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--vs-bg-button);
   color: var(--vs-text-primary);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .vs-gear-button:hover { background: var(--vs-bg-button-hover); }
+.vs-gear-button:active { background: var(--vs-accent); color: #fff; }
 
 #speed-popup.speed-popup {
   position: absolute;

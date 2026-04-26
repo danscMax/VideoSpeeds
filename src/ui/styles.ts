@@ -99,34 +99,40 @@ html[data-vs-theme="light"] .settings-menu {
   --vs-border: rgba(0, 0, 0, 0.08);
 }
 
-/* Per-site accent. */
-.vs-panel[data-vs-site="rutube"] { --vs-accent: #00A1E7; }
-.vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; }
+/* Per-site accent + accent-dark for the active-button gradient. */
+.vs-panel[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-rgb: 0,161,231; }
+.vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-rgb: 255,0,0; }
 
-/* The panel itself: a self-contained dark capsule that fills the
-   available width, doesn't push native page elements around (we insert
-   as a sibling -- ui/insertion.ts), and visually reads as "our zone". */
+/* The panel itself: dark glass capsule with fadeIn animation matching
+   the original userscript (ported from .user.js:#more-speeds-container). */
+@keyframes vs-fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .vs-panel {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  margin: 8px 0;
+  gap: 16px;
+  padding: 10px 16px;
+  margin: 12px 0;
   width: 100%;
   box-sizing: border-box;
   background: var(--vs-bg-panel);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-radius: 10px;
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-radius: 12px;
   border: 1px solid var(--vs-border);
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--vs-text-primary);
   position: relative;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  z-index: 1;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  animation: vs-fade-in 0.3s ease;
 }
 
-/* Speed-button row: pill-shaped buttons. */
+/* Speed-button row: pill buttons. min-width keeps every label centred
+   even when the text varies (1x vs 1.25x); height fixed so the row is
+   visually stable. Ported from .user.js:.speed-button. */
 .speed-buttons-row {
   display: inline-flex;
   align-items: center;
@@ -135,36 +141,77 @@ html[data-vs-theme="light"] .settings-menu {
   flex-shrink: 0;
 }
 .speed-button {
-  padding: 6px 14px;
+  position: relative;
+  min-width: 56px;
+  height: 28px;
+  padding: 0 14px;
   border: none;
-  border-radius: 999px;
+  outline: none;
+  border-radius: 14px;
   background: var(--vs-bg-button);
   color: var(--vs-text-primary);
   cursor: pointer;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0.05px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
+  overflow: hidden;
 }
-.speed-button:hover { background: var(--vs-bg-button-hover); }
-.speed-button:active { transform: translateY(1px); }
-.speed-button.active {
-  background: var(--vs-accent);
+.speed-button:hover {
+  background: var(--vs-bg-button-hover);
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset, 0 1px 4px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+}
+.speed-button.active {
+  background: linear-gradient(135deg, var(--vs-accent) 0%, var(--vs-accent-dark) 100%);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+}
+.speed-button.active:hover {
+  background: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent) 100%);
+  box-shadow: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
 }
 
-/* Slider sits between the buttons and the gear, takes the leftover
-   width so the panel reads as "buttons | full-width track | label | gear". */
+/* Click ripple -- radial-gradient that grows from centre. */
+.speed-button::before {
+  position: absolute;
+  content: "";
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.4s ease;
+  pointer-events: none;
+}
+.speed-button:active::before {
+  transform: scale(2);
+  opacity: 1;
+  transition: 0s;
+}
+
+/* Slider sits between the buttons and the gear. The original userscript
+   used a 300px container; we let it stretch on the modern wide YouTube
+   layout (flex: 1) but keep a min-width so it doesn't collapse. Thumb
+   is white (matches video-player ergonomics) with the accent fill on
+   the track. */
 .speed-slider-container {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 4px;
-  flex: 1 1 auto;
-  min-width: 120px;
+  flex: 1 1 220px;
+  min-width: 160px;
+  height: 32px;
+  position: relative;
 }
 .speed-slider {
   -webkit-appearance: none;
@@ -182,26 +229,36 @@ html[data-vs-theme="light"] .settings-menu {
   );
   outline: none;
   cursor: pointer;
+  margin: 0;
+  transition: height 0.15s ease;
 }
+.speed-slider-container:hover .speed-slider { height: 6px; }
 .speed-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--vs-accent);
-  border: 2px solid #fff;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  transition: transform 0.15s ease;
+}
+.speed-slider-container:hover .speed-slider::-webkit-slider-thumb {
+  transform: scale(1.4);
+}
+.speed-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
-.speed-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--vs-accent);
-  border: 2px solid #fff;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+.speed-slider-container:hover .speed-slider::-moz-range-thumb {
+  transform: scale(1.4);
 }
 .speed-slider-label {
   min-width: 50px;
@@ -213,7 +270,8 @@ html[data-vs-theme="light"] .settings-menu {
   flex-shrink: 0;
 }
 
-/* Gear button -- pill icon button at the right end of the panel. */
+/* Gear -- circular icon button. Matches the original userscript
+   .settings-button (28x28 circle, 16px SVG, rotates 60deg on hover). */
 .vs-gear-wrapper {
   position: relative;
   display: inline-flex;
@@ -223,17 +281,48 @@ html[data-vs-theme="light"] .settings-menu {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: 999px;
+  border-radius: 50%;
   background: var(--vs-bg-button);
   color: var(--vs-text-primary);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
-.vs-gear-button:hover { background: var(--vs-bg-button-hover); }
-.vs-gear-button:active { background: var(--vs-accent); color: #fff; }
+.vs-gear-button svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+.vs-gear-button:hover {
+  background: var(--vs-bg-button-hover);
+  color: #fff;
+}
+.vs-gear-button:hover svg {
+  transform: rotate(60deg);
+}
+
+/* Health-warning dot: pulsing red marker on the gear when the
+   diagnostic checker reports an unhealthy state. Toggle via the
+   has-warning class (Wave 1.9 wires this up). */
+.vs-gear-button.has-warning::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f44336;
+  box-shadow: 0 0 4px rgba(244, 67, 54, 0.7);
+  animation: vs-warning-pulse 2s infinite;
+  pointer-events: none;
+}
+@keyframes vs-warning-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
 
 #speed-popup.speed-popup {
   position: absolute;

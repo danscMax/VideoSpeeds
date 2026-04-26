@@ -56,6 +56,23 @@ Fallback path is fully wired: `import { injectScript } from
 'wxt/utils/inject-script'` and move `page-world.content.ts` into an
 unlisted entrypoint registered under `web_accessible_resources`.
 
+**Wave 4 status (2026-04-26 attempt):** Firefox 150 + web-ext successfully
+installed `firefox-mv3` build as a temporary add-on -- this validates the
+manifest (incl. `data_collection_permissions`) and bundle structure end-to-end.
+Visual UI smoke (does the panel render in Firefox?) was deferred:
+- Playwright `firefox.launchPersistentContext` crashed Node with the same
+  STATUS_STACK_BUFFER_OVERRUN we hit in `chromium.launchPersistentContext`
+  on this Windows config.
+- Firefox 150's Remote Agent (port 9444) returns 404 on all standard CDP
+  paths (`/json/version`, `/json`, ...), suggesting BiDi-only.
+- Manual verification via the visible Firefox window is the recommended
+  workaround: `npx web-ext run --source-dir=.output/firefox-mv3
+  --target=firefox-desktop --start-url=https://rutube.ru/` and look for
+  the panel + check console for `[VIDEO-SPEEDS] page-world script loaded`.
+- The Chromium smoke (`npm run test:smoke:cdp`) already proved that
+  declarative `world: 'MAIN'` works -- if it broke in Firefox specifically
+  we'd see it in the manual smoke or, eventually, an issue report.
+
 ### YouTube CSP
 
 YouTube's Trusted Types CSP blocks `world: 'MAIN'` content_scripts. We

@@ -66,6 +66,7 @@ import {
   createUiPort,
   insertPanel,
   injectStyles,
+  installThemeWatcher,
 } from './ui';
 import { showNotification } from './ui/notifications';
 import { createKillSwitch } from './health/kill-switch';
@@ -272,8 +273,28 @@ export async function bootstrap(
   scheduleInsertWithRetry(panel.element, ctx);
   panel.applyLayout();
 
+  // 9a. Wire the theme watcher AFTER the panel exists so the parent-chain
+  //     luminance walk can use the panel as its reference element. The
+  //     watcher itself listens to OS theme + host-page attribute changes;
+  //     `reapplyTheme` is also invoked manually on each SPA reattach.
+  const reapplyTheme = installThemeWatcher(site, ctx, () => panel.element);
+
   // 10. Attach to <video> -- apply initial speed, install ratechange meter.
-  attachToVideo(ctx, meter);
+  //
+  // We use a NESTED CleanupRegistry (`attachCleanup`) so the listeners
+  // attachToVideo registers (loadedmetadata / ratechange / playing /
+  // loadstart + retry timers) get disposed on every SPA navigation
+  // BEFORE the next attach. Without this, RuTube (which reuses the same
+  // <video> element across navigations) would accumulate N copies of
+  // each listener after N navigations -- our ratechange handler would
+  // fire N times and stomp on each other's restore writes (audit S15).
+  //
+  // The outer dispose chain (cleanup.add below) makes sure the current
+  // attachCleanup goes down with the bootstrap when the extension
+  // reloads / unloads.
+  let attachCleanup = new CleanupRegistry();
+  cleanup.add(() => attachCleanup.dispose());
+  attachToVideo(ctx, meter, attachCleanup);
 
   // 11. Hotkey listener (global, capture so it wins over the page).
   //
@@ -315,18 +336,51 @@ export async function bootstrap(
   // brand attachToVideo would early-return and the new video plays
   // unattached -- speed-restore stops working from video #2 onward
   // (audit S14).
+  //
+  // Also dispose `attachCleanup` so the previous video's listeners
+  // (which may still be alive on the same reused element) drop before
+  // we register fresh ones. Without this we double-fire ratechange on
+  // every nav after the first (audit S15).
   const reattach = (): void => {
+    attachCleanup.dispose();
+    attachCleanup = new CleanupRegistry();
     for (const v of document.querySelectorAll('video')) {
       delete (v as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached;
     }
     scheduleInsertWithRetry(panel.element, ctx);
-    attachToVideo(ctx, meter);
+    attachToVideo(ctx, meter, attachCleanup);
+    // Re-detect theme: YouTube users sometimes toggle dark mode mid-session
+    // and we already re-evaluate on attribute change, but a manual reapply
+    // here is cheap and covers any edge case where the host-page DOM
+    // re-paints during the SPA transition (audit M10).
+    reapplyTheme();
   };
   if (site === 'youtube') {
     bootstrapYouTubeSite(ctx).onNavigation(reattach);
   } else {
     bootstrapRutubeSite(ctx).onNavigation(reattach);
   }
+
+  // 12a. bf-cache restore + browser back/forward navigation.
+  //
+  // `pageshow` fires with `event.persisted === true` when the page is
+  // restored from the bf-cache (Firefox + Chrome both ship this). In that
+  // path neither yt-navigate-finish nor RuTube's history bridge fire --
+  // the page DOM is exactly as it was before, so the framework's
+  // navigation hooks see no change. Force a reattach to be safe (audit
+  // S16). `popstate` covers history.back()/forward() that some SPA paths
+  // miss (RuTube sometimes only fires on pushState).
+  ctx.cleanup.addEventListener(window, 'pageshow', (event) => {
+    const ev = event as PageTransitionEvent;
+    if (ev.persisted) {
+      ctx.logger.info('pageshow: bf-cache restore, forcing reattach');
+      reattach();
+    }
+  });
+  ctx.cleanup.addEventListener(window, 'popstate', () => {
+    ctx.logger.debug('popstate: forcing reattach');
+    reattach();
+  });
 
   // 13. Start health watchdog.
   healthChecker.start();
@@ -394,23 +448,34 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
  * framework (YouTube's ytd-watch-flexy is the canonical case) re-renders
  * its child list, our panel goes with it; this observer notices and
  * re-runs scheduleInsertWithRetry to pick a fresh anchor.
+ *
+ * Narrow-scope: observe ONLY the panel's direct parent with
+ * `childList:true`. The previous implementation watched
+ * `document.documentElement` with `subtree:true`, which fired the callback
+ * on EVERY DOM mutation in the page (YouTube's player chrome alone fires
+ * thousands per minute) -- the whole-document watch was a measurable CPU
+ * hit on long-running tabs (audit S17). Direct-parent watch fires only
+ * when our specific sibling changes.
+ *
+ * If an ANCESTOR is removed (which takes our parent + panel down with it),
+ * this observer doesn't catch it -- but the next SPA-nav reattach calls
+ * insertPanel which detects the missing panel and re-anchors. The narrow
+ * scope is safe at the cost of relying on that fallback.
  */
 function installRemovalObserver(
   panelEl: HTMLElement,
   ctx: AppContext,
   reschedule: (panel: HTMLElement, ctx: AppContext) => void,
 ): void {
+  const parent = panelEl.parentElement;
+  if (!parent) return; // shouldn't happen -- caller invoked us post-insert
   const observer = new MutationObserver(() => {
-    if (!document.contains(panelEl)) {
-      ctx.logger.info('panel removed from DOM by host framework; re-inserting');
-      observer.disconnect();
-      reschedule(panelEl, ctx);
-    }
+    if (panelEl.parentNode === parent && document.contains(panelEl)) return;
+    ctx.logger.info('panel removed from DOM by host framework; re-inserting');
+    observer.disconnect();
+    reschedule(panelEl, ctx);
   });
-  // Observing the whole document is cheap (we only react when our
-  // specific panel disappears). Subtree+childList covers any ancestor
-  // re-render.
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(parent, { childList: true });
   ctx.cleanup.addObserver(observer);
 }
 
@@ -426,12 +491,24 @@ function installRemovalObserver(
  * orchestrator calls this on every navigation (`reattach`) -- previously
  * the brand was set-and-never-cleared, so calls 2..N silently no-op'd
  * (audit S14).
+ *
+ * `cleanup` argument MUST be a per-attach sub-registry the orchestrator
+ * disposes before each reattach. Without this, RuTube's reuse of the same
+ * <video> element across navigations doubles up listeners on every nav
+ * (audit S15).
  */
-function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechangeMeter>): void {
+function attachToVideo(
+  ctx: AppContext,
+  meter: ReturnType<typeof createRatechangeMeter>,
+  cleanup: CleanupRegistry,
+): void {
   const v = ctx.discovery.resolve('video');
   if (!(v instanceof HTMLVideoElement)) {
     // No video yet -- the discovery engine will resolve once one appears.
-    ctx.cleanup.setTimeout(() => attachToVideo(ctx, meter), 500);
+    // Use the per-attach cleanup so the retry stops if reattach disposes
+    // it before the timer fires (otherwise stale recursion hits the new
+    // attach pass and we end up with two listener stacks).
+    cleanup.setTimeout(() => attachToVideo(ctx, meter, cleanup), 500);
     return;
   }
   type Branded = HTMLVideoElement & { __vsAttached?: boolean };
@@ -456,11 +533,11 @@ function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechang
   if (v.readyState >= 1) {
     apply('ready');
   } else {
-    ctx.cleanup.addEventListener(v, 'loadedmetadata', () => apply('loadedmetadata'), { once: true });
+    cleanup.addEventListener(v, 'loadedmetadata', () => apply('loadedmetadata'), { once: true });
   }
   // Multi-shot reapply -- player clobbers the rate during HLS init.
   for (const ms of [100, 300, 500, 1000]) {
-    ctx.cleanup.setTimeout(() => apply(`retry+${ms}ms`), ms);
+    cleanup.setTimeout(() => apply(`retry+${ms}ms`), ms);
   }
 
   // ratechange revert protection: when the player snaps rate back to a
@@ -468,7 +545,7 @@ function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechang
   // float drift (<0.005) to avoid fighting our own writes -- isSelfWrite
   // is also a belt for tight races. Original .user.js:2534-2557.
   let prev = v.playbackRate;
-  ctx.cleanup.addEventListener(v, 'ratechange', () => {
+  cleanup.addEventListener(v, 'ratechange', () => {
     const next = v.playbackRate;
     meter.tick(prev, next);
     prev = next;
@@ -481,7 +558,7 @@ function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechang
 
   // playing-event revert: covers seek + quality switch + tab-resume
   // resets that don't always fire ratechange. .user.js:2477-2501.
-  ctx.cleanup.addEventListener(v, 'playing', () => {
+  cleanup.addEventListener(v, 'playing', () => {
     if (isSelfWrite) return;
     const target = pickInitialSpeed(ctx);
     if (Math.abs(v.playbackRate - target) > 0.005) {
@@ -491,7 +568,7 @@ function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechang
 
   // loadstart fires on every HLS-segment fetch. Don't clear smart-speed
   // unless this is an actual src change. .user.js:2504-2515.
-  ctx.cleanup.addEventListener(v, 'loadstart', () => {
+  cleanup.addEventListener(v, 'loadstart', () => {
     const nowSrc = v.currentSrc || v.src || '';
     if (nowSrc && nowSrc !== lastSrc) {
       lastSrc = nowSrc;
@@ -499,7 +576,7 @@ function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechang
       // Re-apply at multiple delays for HLS players that initialise rate
       // late on src change.
       for (const ms of [100, 300, 500, 1000]) {
-        ctx.cleanup.setTimeout(() => apply(`src-change+${ms}ms`), ms);
+        cleanup.setTimeout(() => apply(`src-change+${ms}ms`), ms);
       }
     }
   });

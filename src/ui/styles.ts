@@ -12,6 +12,7 @@
  */
 
 import type { Site } from '../app/ports';
+import type { AppContext } from '../app/context';
 
 const STYLE_ID = 'vs-styles';
 
@@ -34,23 +35,142 @@ export function removeStyles(container: Document = document): void {
  * then write `data-vs-theme="dark"|"light"` onto `<html>` so the CSS
  * variable bundle above takes effect.
  *
- *   RuTube  -- always dark (the site has no light mode)
- *   YouTube -- mirror the [dark] attribute YouTube sets when the user
- *              picks dark; default light otherwise
+ *   YouTube -- mirror the [dark] attribute YouTube sets on `<html>`
+ *              (their canonical signal). Fallback to prefers-color-scheme.
+ *   RuTube  -- walk parent chain from `referenceEl` (or body), find
+ *              first ancestor with a non-transparent background, decide
+ *              by perception-weighted luminance (YIQ formula). Future-
+ *              proofs against RuTube ever shipping a light theme.
+ *              Mirrors .user.js:1614-1662 detectPageTheme().
  */
-export function detectAndApplyTheme(site: Site, container: Document = document): void {
+export function detectAndApplyTheme(
+  site: Site,
+  container: Document = document,
+  referenceEl?: Element | null,
+): void {
   const root = container.documentElement;
   let theme: 'dark' | 'light' = 'dark';
-  if (site === 'rutube') {
-    theme = 'dark';
-  } else if (site === 'youtube') {
-    theme =
-      root.hasAttribute('dark') ||
-      root.getAttribute('data-theme') === 'dark'
-        ? 'dark'
-        : 'light';
+  if (site === 'youtube') {
+    if (root.hasAttribute('dark') || root.getAttribute('data-theme') === 'dark') {
+      theme = 'dark';
+    } else if (root.getAttribute('data-theme') === 'light') {
+      theme = 'light';
+    } else {
+      theme = preferredColorScheme(container) ?? 'light';
+    }
+  } else if (site === 'rutube') {
+    theme = detectByLuminance(referenceEl ?? container.body, container)
+      ?? preferredColorScheme(container)
+      ?? 'dark';
   }
   root.dataset.vsTheme = theme;
+}
+
+function preferredColorScheme(container: Document): 'dark' | 'light' | null {
+  try {
+    const mql = container.defaultView?.matchMedia?.('(prefers-color-scheme: dark)');
+    if (mql) return mql.matches ? 'dark' : 'light';
+  } catch { /* swallow */ }
+  return null;
+}
+
+interface RGBA { r: number; g: number; b: number; a: number }
+
+function parseRgb(s: string | null | undefined): RGBA | null {
+  if (!s) return null;
+  const m = /rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,/]+([\d.]+))?\s*\)/.exec(s);
+  if (!m) return null;
+  return {
+    r: Number(m[1]),
+    g: Number(m[2]),
+    b: Number(m[3]),
+    a: m[4] !== undefined ? Number(m[4]) : 1,
+  };
+}
+
+/**
+ * Walk up from `start` finding the first ancestor with an opaque-enough
+ * background (alpha >= 0.1). Decide via YIQ luminance (lum > 160 = light).
+ * Falls back to body, then to <html>. Returns null when no usable background
+ * surfaces -- caller layers on prefers-color-scheme.
+ */
+function detectByLuminance(start: Element | null, container: Document): 'dark' | 'light' | null {
+  if (!start) return null;
+  const win = container.defaultView;
+  if (!win) return null;
+  let bg: RGBA | null = null;
+  for (let el: Element | null = start; el; el = el.parentElement) {
+    let cs: CSSStyleDeclaration;
+    try { cs = win.getComputedStyle(el); } catch { continue; }
+    const parsed = parseRgb(cs.backgroundColor);
+    if (parsed && parsed.a >= 0.1) { bg = parsed; break; }
+  }
+  if (!bg && container.body) {
+    const bodyBg = parseRgb(win.getComputedStyle(container.body).backgroundColor);
+    if (bodyBg && bodyBg.a >= 0.1) bg = bodyBg;
+  }
+  if (!bg) {
+    const htmlBg = parseRgb(win.getComputedStyle(container.documentElement).backgroundColor);
+    if (htmlBg && htmlBg.a >= 0.1) bg = htmlBg;
+  }
+  if (!bg) return null;
+  const lum = 0.299 * bg.r + 0.587 * bg.g + 0.114 * bg.b;
+  return lum > 160 ? 'light' : 'dark';
+}
+
+/**
+ * Watch for theme changes triggered by:
+ *   1. OS-level prefers-color-scheme toggle (matchMedia listener)
+ *   2. Host site toggling its own theme via class / data-theme / [dark]
+ *      attribute on <html> or <body> (MutationObserver, attribute-only,
+ *      no subtree -- cheap)
+ *   3. SPA navigation (caller invokes the returned function on each nav)
+ *
+ * Returns a `reapplyTheme` function the orchestrator calls inside
+ * `reattach()` so theme also re-evaluates after each yt-navigate-finish.
+ *
+ * All listeners + observers register against ctx.cleanup so they vanish
+ * on extension reload / dispose. Mirrors .user.js:1678-1750 theme-watch
+ * scaffolding.
+ */
+export function installThemeWatcher(
+  site: Site,
+  ctx: AppContext,
+  referenceEl: () => Element | null = () => null,
+): () => void {
+  const reapply = (): void => {
+    try {
+      detectAndApplyTheme(site, document, referenceEl());
+    } catch (e) {
+      ctx.logger.warn('theme: reapply failed', e);
+    }
+  };
+
+  if (typeof window.matchMedia === 'function') {
+    try {
+      const mql = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (): void => reapply();
+      mql.addEventListener('change', handler);
+      ctx.cleanup.add(() => {
+        try { mql.removeEventListener('change', handler); } catch { /* swallow */ }
+      });
+    } catch { /* swallow -- ancient browser */ }
+  }
+
+  const themeObserver = new MutationObserver(() => reapply());
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'data-theme', 'dark', 'style'],
+  });
+  if (document.body) {
+    themeObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme', 'style'],
+    });
+  }
+  ctx.cleanup.addObserver(themeObserver);
+
+  return reapply;
 }
 
 // Compact base ruleset with explicit theme handling.

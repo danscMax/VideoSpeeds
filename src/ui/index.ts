@@ -14,7 +14,12 @@ export {
   updateSliderFill,
   type SliderOptions,
 } from './slider';
-export { injectStyles, removeStyles } from './styles';
+export {
+  injectStyles,
+  removeStyles,
+  detectAndApplyTheme,
+  installThemeWatcher,
+} from './styles';
 export {
   renderSettingsMenu,
   type ActiveTab,

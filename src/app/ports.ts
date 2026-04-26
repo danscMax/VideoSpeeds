@@ -28,13 +28,15 @@ export type Site = 'youtube' | 'rutube';
 // Storage ports — hydrated sync getters, async writes (audit C1).
 // `init()` is the ONLY async surface. After it resolves, hot paths
 // (ratechange, hotkeys, click-handler) read state synchronously.
+//
+// The concrete Settings + Hotkey shapes live in src/storage/types.ts so
+// the storage layer can own its data model. We re-export them as types
+// (erased at runtime, no runtime dep cycle) so port consumers can stay
+// fully typed without crossing the abstraction.
 // ---------------------------------------------------------------------------
 
-export interface Settings {
-  // Filled in Wave 1.4. Kept open here so port surface doesn't churn when
-  // we add fields like sliderPosition, hotkeys, language, rememberSpeed.
-  readonly [key: string]: unknown;
-}
+export type { Hotkey, Settings, SliderPosition } from '../storage/types';
+import type { Settings } from '../storage/types';
 
 export interface SettingsStore {
   init(site: Site): Promise<void>;

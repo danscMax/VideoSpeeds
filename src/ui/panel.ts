@@ -23,6 +23,7 @@ import { attachSettingsHandlers } from './settings/handlers';
 import { refreshDiagnosticStatus } from './settings/diag-status';
 import { safeSetInnerHTML } from './safe-html';
 import type { AppContext } from '../app/context';
+import { CleanupRegistry } from '../app/cleanup';
 import { speedBoundsFor } from '../config';
 
 export interface PanelHandle {
@@ -111,17 +112,40 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     });
   }
 
+  // ----- Diagnostic counters (visible in DevTools console). Helps spot
+  //       runaway render loops or handler-leak that would surface as
+  //       "menu opens slowly / page freezes after click". -----
+  let rerenderCount = 0;
+
+  // ----- Menu-scoped cleanup registry. Disposed + replaced on every
+  //       rerender so attachSettingsHandlers' ~25 listeners-per-render
+  //       don't accumulate on the panel's main registry forever. The
+  //       previous build leaked listeners to detached DOM nodes, which
+  //       (combined with YouTube's deep DOM observers) plausibly drove
+  //       the "everything freezes" symptom after a few interactions. -----
+  let menuRegistry: CleanupRegistry | null = null;
+  ctx.cleanup.add(() => {
+    if (menuRegistry) {
+      try { menuRegistry.dispose(); } catch { /* swallow */ }
+      menuRegistry = null;
+    }
+  });
+
   // ----- Gear toggle -----
   ctx.cleanup.addEventListener(gearBtn, 'click', (event) => {
+    const t0 = performance.now();
     event.stopPropagation();
     const isOpen = settingsMenu.style.display !== 'none';
+    console.info('[VS:menu] gear-click start', { isOpen, t: t0.toFixed(1) });
     if (isOpen) {
       settingsMenu.style.display = 'none';
       settingsMenu.setAttribute('aria-hidden', 'true');
+      console.info('[VS:menu] gear-click close', { dt_ms: (performance.now() - t0).toFixed(1) });
     } else {
-      rerenderSettings();
+      rerenderSettings('gear-open');
       settingsMenu.style.display = '';
       settingsMenu.setAttribute('aria-hidden', 'false');
+      console.info('[VS:menu] gear-click open done', { dt_ms: (performance.now() - t0).toFixed(1) });
     }
   });
 
@@ -132,6 +156,8 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   // from .user.js:4758). Also keeps the document-close handler below
   // from firing on intra-menu clicks.
   ctx.cleanup.addEventListener(settingsMenu, 'click', (event) => {
+    const target = (event.target as Element | null)?.tagName;
+    console.info('[VS:menu] menu-click stopProp', { target });
     event.stopPropagation();
   });
 
@@ -139,47 +165,93 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   ctx.cleanup.addEventListener(document, 'click', (event) => {
     if (settingsMenu.style.display === 'none') return;
     const target = event.target as Node | null;
-    if (target && !gearWrapper.contains(target)) {
+    const insideWrapper = !!(target && gearWrapper.contains(target));
+    console.info('[VS:menu] doc-click', {
+      insideWrapper,
+      targetTag: (target as Element | null)?.tagName,
+      targetClass: (target as Element | null)?.className?.toString().slice(0, 60),
+    });
+    if (target && !insideWrapper) {
       settingsMenu.style.display = 'none';
       settingsMenu.setAttribute('aria-hidden', 'true');
+      console.info('[VS:menu] doc-click closed menu');
     }
   });
 
   // ----- Settings re-renderer -----
-  function rerenderSettings(): void {
-    safeSetInnerHTML(
-      settingsMenu,
-      renderSettingsMenu({
-        settings: ctx.settingsStore.get(),
-        site: ctx.site,
-        i18n: ctx.i18n,
-        activeTab,
-        scriptVersion,
-        discoveryEnabled: ctx.diagnostics.killSwitchEngaged() ? false : true,
-        healthCheckEnabled: true,
-      }),
-    );
-    attachSettingsHandlers(settingsMenu, ctx, {
+  function rerenderSettings(reason: string = 'unknown'): void {
+    rerenderCount += 1;
+    const t0 = performance.now();
+    console.info('[VS:menu] rerender start', { reason, n: rerenderCount });
+
+    // Dispose the previous menu's listeners FIRST. This is what stops
+    // listener accumulation on the main cleanup registry across many
+    // rerenders.
+    if (menuRegistry) {
+      const sizesBefore = menuRegistry.sizes;
+      menuRegistry.dispose();
+      console.debug('[VS:menu] rerender:disposed previous menu registry', sizesBefore);
+    }
+    menuRegistry = new CleanupRegistry();
+    const menuCtx: AppContext = { ...ctx, cleanup: menuRegistry };
+
+    const html = renderSettingsMenu({
+      settings: ctx.settingsStore.get(),
+      site: ctx.site,
+      i18n: ctx.i18n,
+      activeTab,
+      scriptVersion,
+      discoveryEnabled: ctx.diagnostics.killSwitchEngaged() ? false : true,
+      healthCheckEnabled: true,
+    });
+    const tBuilt = performance.now();
+    console.info('[VS:menu] rerender:html-built', {
+      bytes: html.length,
+      dt_ms: (tBuilt - t0).toFixed(1),
+    });
+
+    safeSetInnerHTML(settingsMenu, html);
+    const tHtml = performance.now();
+    console.info('[VS:menu] rerender:innerHTML-set', {
+      dt_ms: (tHtml - tBuilt).toFixed(1),
+      childCount: settingsMenu.childElementCount,
+    });
+
+    attachSettingsHandlers(settingsMenu, menuCtx, {
       setActiveTab: (t) => {
         activeTab = t;
       },
-      rerender: rerenderSettings,
+      rerender: () => rerenderSettings('handler-rerender'),
       onDiag: (action) => {
-        // Wave 1.9 will wire these to HealthChecker/KillSwitch. For now we
-        // just log so the rest of the UI keeps working end-to-end.
         ctx.logger.info('diagnostics action', action);
         if (action === 'recheck') {
-          refreshDiagnosticStatus(settingsMenu, ctx);
+          refreshDiagnosticStatus(settingsMenu, menuCtx);
         }
       },
     });
-    refreshDiagnosticStatus(settingsMenu, ctx);
+    const tHandlers = performance.now();
+    console.info('[VS:menu] rerender:handlers-attached', {
+      dt_ms: (tHandlers - tHtml).toFixed(1),
+      menu_cleanup: menuRegistry.sizes,
+    });
+
+    refreshDiagnosticStatus(settingsMenu, menuCtx);
+    const tDiag = performance.now();
+    console.info('[VS:menu] rerender done', {
+      reason,
+      n: rerenderCount,
+      total_ms: (tDiag - t0).toFixed(1),
+      diag_ms: (tDiag - tHandlers).toFixed(1),
+      panel_cleanup: ctx.cleanup.sizes,
+      menu_cleanup: menuRegistry.sizes,
+    });
   }
 
   // Re-render whenever settings change (language switch, etc.).
   const offSubscribe = ctx.settingsStore.subscribe(() => {
     if (settingsMenu.style.display !== 'none') {
-      rerenderSettings();
+      console.info('[VS:menu] settings-subscribe -> rerender');
+      rerenderSettings('settings-subscribe');
     }
   });
   ctx.cleanup.add(offSubscribe);

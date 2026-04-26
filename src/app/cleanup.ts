@@ -31,6 +31,19 @@ export class CleanupRegistry {
     return this.disposed;
   }
 
+  /** Diagnostic snapshot of the registry size. Useful for spotting
+   *  listener leaks (e.g. menu rerenders adding to `custom` without
+   *  ever disposing). */
+  get sizes(): { aborters: number; intervals: number; timeouts: number; observers: number; custom: number } {
+    return {
+      aborters: this.aborters.size,
+      intervals: this.intervals.size,
+      timeouts: this.timeouts.size,
+      observers: this.observers.size,
+      custom: this.custom.size,
+    };
+  }
+
   /**
    * Returns a fresh AbortSignal scoped to this registry. The matching controller
    * is tracked, so dispose() aborts everything that consumed the signal.

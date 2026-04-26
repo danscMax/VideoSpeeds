@@ -46,24 +46,25 @@ try {
 export function safeSetInnerHTML(element: Element, html: string): void {
   try {
     if (trustedPolicy) {
-      // The cast here is intentional: TT policies return a `TrustedHTML`
-      // brand on browsers that support it, but the runtime accepts it on
-      // the innerHTML setter without complaint.
       (element as unknown as { innerHTML: unknown }).innerHTML =
         trustedPolicy.createHTML(html);
+      console.debug('[VS:safe-html] tt-policy path', { bytes: html.length });
       return;
     }
     element.innerHTML = html;
-  } catch {
-    // Last-ditch: DOMParser doesn't trip Trusted Types checks because we
-    // don't write to .innerHTML on a live element.
+    console.debug('[VS:safe-html] innerHTML path', { bytes: html.length });
+  } catch (e) {
+    console.warn('[VS:safe-html] innerHTML/TT failed, falling back to DOMParser', e);
     try {
       const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
       const fresh = Array.from(doc.body.childNodes).map((n) => n.cloneNode(true));
       element.replaceChildren(...fresh);
-    } catch {
-      // If even DOMParser fails we surrender silently rather than throw
-      // out of a UI-render path. Caller will see an empty element.
+      console.debug('[VS:safe-html] DOMParser path', {
+        bytes: html.length,
+        nodes: fresh.length,
+      });
+    } catch (e2) {
+      console.error('[VS:safe-html] all paths failed; modal will be empty', e2);
     }
   }
 }

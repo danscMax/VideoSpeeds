@@ -110,20 +110,20 @@ html[data-vs-theme="light"] {
 .vs-panel {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  margin: 8px 0;
+  gap: 16px;
+  padding: 0;
+  margin: 12px 0;
   width: 100%;
   box-sizing: border-box;
   background: transparent;
   border: none;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--vs-text-primary);
-  /* No z-index here on purpose: it would create a stacking context that
-     traps the settings modal (child) under any host-page element with a
-     higher z-index in the document context (YouTube comments header,
-     RuTube sidebar). The gear-wrapper still has position:relative so the
-     modal can anchor to it. */
+  /* No z-index on purpose: it would create a stacking context that traps
+     the settings modal (child) under host-page elements with a higher
+     z-index in the document context (YouTube comments header, RuTube
+     sidebar). The gear-wrapper still has position:relative so the modal
+     can anchor to it. */
   position: static;
   animation: vs-fade-in 0.3s ease;
 }

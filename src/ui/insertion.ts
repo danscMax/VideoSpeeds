@@ -99,10 +99,30 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     if (controlsBar) return { parent: controlsBar, anchor: 'video-overlay' };
   }
 
+  // 2. YouTube fast path -- mirror the original userscript exactly
+  //    (.user.js:4900-4933). ytd-watch-metadata is the metadata web-
+  //    component below the player; its parentNode is #primary-inner
+  //    (the column the player + metadata + comments live in). Inserting
+  //    OUR panel there as a sibling-before-metadata gives the reliable
+  //    "between the player and the title" placement we want, no matter
+  //    what's happening inside the metadata's shadow tree. We bypass
+  //    Discovery here so a stale SelectorCache entry can't pin us back
+  //    onto #top-row inside Polymer.
+  if (ctx.site === 'youtube') {
+    const metadata = document.querySelector('ytd-watch-metadata');
+    if (metadata?.parentNode && metadata.parentElement) {
+      return {
+        parent: metadata.parentElement,
+        anchor: 'before-info',
+        before: metadata,
+      };
+    }
+  }
+
   const info = ctx.discovery.resolve('infoElem');
   const player = ctx.discovery.resolve('playerContainer');
 
-  // 2. Preferred: insert before infoElem if it lives OUTSIDE the player.
+  // 3. Preferred: insert before infoElem if it lives OUTSIDE the player.
   //    Some sites (RuTube live) render the title as a player-overlay --
   //    `infoElem.parentElement` is the player wrapper itself, so inserting
   //    there would put us on top of the <video>. Detect that case and skip.
@@ -114,7 +134,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     };
   }
 
-  // 3. Fallback: insert as the next sibling of the player container.
+  // 4. Fallback: insert as the next sibling of the player container.
   if (player?.parentElement) {
     return {
       parent: player.parentElement,
@@ -123,7 +143,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     };
   }
 
-  // 4. No anchor -- defer.
+  // 5. No anchor -- defer.
   return { parent: null, anchor: 'no-anchor' };
 }
 

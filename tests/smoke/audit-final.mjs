@@ -1,144 +1,122 @@
-/**
- * Final functional + visual audit -- screenshots both YT and RuTube
- * panels with magenta outline, runs click + hotkey tests, dumps verdict.
- */
+import { chromium } from 'playwright';
+import { writeFileSync, mkdirSync } from 'fs';
+const PORT = 9333;
+const OUT = 'C:/Temp/vs-audit-2';
+mkdirSync(OUT, { recursive: true });
 
-import { chromium } from '@playwright/test';
-import { mkdirSync, existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SHOTS = resolve(__dirname, 'audit-shots');
-if (!existsSync(SHOTS)) mkdirSync(SHOTS, { recursive: true });
-
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9333');
-const ctx = browser.contexts()[0];
-await ctx.addCookies([
-  { name: 'CONSENT', value: 'YES+', domain: '.youtube.com', path: '/', expires: Math.floor(Date.now() / 1000) + 86400 },
-  { name: 'SOCS', value: 'CAISEwgDEgk0NjI0MjY3NjQaAmVuIAEaBgiA_LyaBg', domain: '.youtube.com', path: '/', expires: Math.floor(Date.now() / 1000) + 86400 },
-]);
-
-async function probeAndShoot(page, name) {
-  await page.bringToFront();
-  await page.waitForTimeout(2000);
-  await page.evaluate(() => document.querySelector('.vs-panel')?.scrollIntoView({ block: 'center' }));
-  await page.waitForTimeout(400);
-
-  const probe = await page.evaluate(() => {
-    const panel = document.querySelector('.vs-panel');
-    if (!panel) return null;
-    const computed = getComputedStyle(panel);
-    const r = panel.getBoundingClientRect();
-    return {
-      rect: { x: r.x, y: r.y, w: r.width, h: r.height },
-      panelBg: computed.backgroundColor,
-      panelColor: computed.color,
-      buttonCount: panel.querySelectorAll('.speed-button').length,
-      activeButton: panel.querySelector('.speed-button.active')?.textContent?.trim(),
-      sliderPresent: !!panel.querySelector('.speed-slider'),
-      sliderLabel: panel.querySelector('.speed-slider-label')?.textContent,
-      gearPresent: !!panel.querySelector('.vs-gear-button'),
-      videoRate: document.querySelector('video')?.playbackRate,
-      themeAttr: document.documentElement.hasAttribute('dark') || document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-    };
-  });
-
-  await page.evaluate(() => {
-    const p = document.querySelector('.vs-panel');
-    if (p) { p.style.outline = '3px solid magenta'; p.style.outlineOffset = '3px'; }
-  });
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: join(SHOTS, `${name}-final.png`), fullPage: false });
-  await page.evaluate(() => {
-    const p = document.querySelector('.vs-panel');
-    if (p) { p.style.outline = ''; p.style.outlineOffset = ''; }
-  });
-
-  return probe;
+const browser = await chromium.connectOverCDP(`http://localhost:${PORT}`);
+function findPage(pred) {
+  for (const c of browser.contexts()) for (const p of c.pages()) if (pred(p)) return p;
+  return null;
 }
+const findings = [];
+const F = (s, a, t) => { findings.push({ s, a, t }); console.error(`[${s}] ${a}: ${t}`); };
 
-async function clickTest(page, label) {
-  console.log(`\n--- ${label} click 2x ---`);
-  const before = await page.evaluate(() => document.querySelector('video')?.playbackRate);
+async function rawShot(cdp, name, clip) {
   try {
-    await page.locator('.speed-button:has-text("2x")').first().click({ timeout: 5000 });
-    await page.waitForTimeout(700);
-    const after = await page.evaluate(() => ({
-      rate: document.querySelector('video')?.playbackRate,
-      activeButton: document.querySelector('.speed-button.active')?.textContent?.trim(),
-    }));
-    console.log(`  before=${before} → after=${after.rate}, active="${after.activeButton}"`);
-    return { before, after, ok: after.rate === 2 };
-  } catch (e) {
-    console.log(`  click error: ${e.message.slice(0, 100)}`);
-    return { error: e.message };
-  }
+    const r = await cdp.send('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) });
+    writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.data, 'base64'));
+    console.error('  -> ' + name);
+  } catch (e) { console.error('  X ' + name + ': ' + e.message.slice(0, 100)); }
 }
 
-async function settingsModalTest(page, label) {
-  console.log(`\n--- ${label} settings modal ---`);
-  try {
-    await page.locator('.vs-gear-button').first().click({ timeout: 5000 });
-    await page.waitForTimeout(400);
-    const open = await page.evaluate(() => {
-      const m = document.querySelector('.settings-menu');
-      if (!m) return null;
-      const r = m.getBoundingClientRect();
-      const cs = getComputedStyle(m);
-      return {
-        display: cs.display,
-        rect: { x: r.x, y: r.y, w: r.width, h: r.height },
-        bg: cs.backgroundColor,
-      };
-    });
-    console.log(`  modal opened:`, JSON.stringify(open));
-    await page.screenshot({ path: join(SHOTS, `${label}-settings-open.png`), fullPage: false });
-    // Close.
-    await page.locator('.vs-gear-button').first().click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(300);
-    return open;
-  } catch (e) {
-    return { error: e.message };
-  }
+const yt = findPage(p => p.url().includes('youtube.com'));
+if (!yt) { console.error('no YT'); await browser.close(); process.exit(1); }
+const ytCdp = await yt.context().newCDPSession(yt);
+
+console.error('=== YT ===');
+await yt.reload({ waitUntil: 'domcontentloaded' });
+await new Promise(r => setTimeout(r, 5000));
+
+async function setPos(p, pos) {
+  await p.evaluate(() => {
+    const m = document.querySelector('.settings-menu');
+    if (m && m.style.display === 'none') document.querySelector('.vs-gear-button')?.click();
+  });
+  await new Promise(r => setTimeout(r, 300));
+  await p.evaluate((x) => document.querySelector(`[data-vs-pos="${x}"]`)?.click(), pos);
+  await new Promise(r => setTimeout(r, 800));
+  await p.evaluate(() => document.querySelector('.vs-gear-button')?.click());
+  await new Promise(r => setTimeout(r, 200));
 }
 
-const results = {};
+console.error('[1] right layout');
+await setPos(yt, 'right');
+const r1 = await yt.evaluate(() => ({ pos: document.querySelector('.vs-panel')?.dataset?.vsSliderPosition, version: document.querySelector('.vs-menu-version')?.textContent?.trim() }));
+console.log(r1);
+await rawShot(ytCdp, '01-right-fullpage');
+const pBox = await yt.evaluate(() => document.querySelector('.vs-panel')?.getBoundingClientRect());
+if (pBox) await rawShot(ytCdp, '02-right-panel', { x: Math.max(0, pBox.x - 5), y: Math.max(0, pBox.y - 5), width: pBox.width + 10, height: pBox.height + 10 });
 
-// YouTube
-const yt = ctx.pages().find((p) => p.url().includes('youtube.com'));
-if (yt) {
-  console.log('=== YouTube ===');
-  results.youtube = {
-    probe: await probeAndShoot(yt, 'yt'),
-    click: await clickTest(yt, 'YT'),
-    settings: await settingsModalTest(yt, 'yt'),
-  };
-  console.log(JSON.stringify(results.youtube.probe, null, 2));
+await yt.evaluate(() => document.querySelector('.vs-gear-button')?.click());
+await new Promise(r => setTimeout(r, 400));
+const mBox = await yt.evaluate(() => {
+  const p = document.querySelector('.vs-panel');
+  const m = document.querySelector('.settings-menu');
+  if (!p || !m) return null;
+  const pr = p.getBoundingClientRect(), mr = m.getBoundingClientRect();
+  return { x: Math.max(0, Math.min(pr.x, mr.x) - 5), y: Math.min(pr.y, mr.y) - 5,
+           w: Math.max(pr.right, mr.right) - Math.max(0, Math.min(pr.x, mr.x) - 5) + 5,
+           h: Math.max(pr.bottom, mr.bottom) - Math.min(pr.y, mr.y) + 10 };
+});
+if (mBox) await rawShot(ytCdp, '03-right-menu-general', { x: mBox.x, y: mBox.y, width: mBox.w, height: mBox.h });
+await yt.evaluate(() => document.querySelector('[data-vs-tab="hotkeys"]')?.click());
+await new Promise(r => setTimeout(r, 300));
+if (mBox) await rawShot(ytCdp, '04-right-menu-hotkeys', { x: mBox.x, y: mBox.y, width: mBox.w, height: mBox.h });
+await yt.evaluate(() => document.querySelector('[data-vs-tab="diag"]')?.click());
+await new Promise(r => setTimeout(r, 500));
+if (mBox) await rawShot(ytCdp, '05-right-menu-diag', { x: mBox.x, y: mBox.y, width: mBox.w, height: mBox.h });
+await yt.evaluate(() => document.querySelector('.vs-gear-button')?.click());
+await new Promise(r => setTimeout(r, 200));
+
+console.error('[2] bottom layout');
+await setPos(yt, 'bottom');
+const pBox2 = await yt.evaluate(() => document.querySelector('.vs-panel')?.getBoundingClientRect());
+if (pBox2) await rawShot(ytCdp, '06-bottom-panel', { x: Math.max(0, pBox2.x - 5), y: Math.max(0, pBox2.y - 5), width: pBox2.width + 10, height: pBox2.height + 10 });
+
+console.error('[3] video layout');
+await setPos(yt, 'video');
+await yt.evaluate(() => {
+  document.querySelector('video')?.pause();
+  document.querySelector('#movie_player')?.classList.remove('ytp-autohide');
+});
+const playerBox = await yt.evaluate(() => document.querySelector('#movie_player')?.getBoundingClientRect());
+if (playerBox) await rawShot(ytCdp, '07-video-chrome', { x: Math.max(0, playerBox.x), y: Math.max(0, playerBox.y + playerBox.height - 64), width: Math.min(1280, playerBox.width), height: 64 });
+
+console.error('[4] slider drag');
+await setPos(yt, 'right');
+await yt.evaluate(() => { for (const b of document.querySelectorAll('.speed-button')) if (b.dataset.vsSpeed === '1.5') b.click(); });
+await new Promise(r => setTimeout(r, 600));
+const dragBefore = await yt.evaluate(() => document.querySelector('video')?.playbackRate);
+await yt.evaluate(() => {
+  const sl = document.querySelector('.speed-slider');
+  sl.value = '1.25';
+  sl.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await new Promise(r => setTimeout(r, 1500));
+const dragAfter = await yt.evaluate(() => ({
+  rate: document.querySelector('video')?.playbackRate,
+  label: document.querySelector('.speed-slider-label')?.textContent,
+  active: Array.from(document.querySelectorAll('.speed-button.active')).map(b => b.dataset.vsSpeed),
+}));
+console.log('drag 1.5->1.25:', { before: dragBefore, after: dragAfter });
+if (Math.abs((dragAfter.rate ?? 0) - 1.25) > 0.01) F('FAIL', 'drag', `rate=${dragAfter.rate}`);
+
+console.error('[5] RuTube');
+const rt = findPage(p => p.url().includes('rutube.ru'));
+if (rt) {
+  const rtCdp = await rt.context().newCDPSession(rt);
+  const rtm = await rt.evaluate(() => {
+    const p = document.querySelector('.vs-panel');
+    return p ? { pos: p.dataset.vsSliderPosition, rect: p.getBoundingClientRect() } : null;
+  });
+  console.log('RT:', rtm);
+  if (!rtm) F('WARN', 'RT', 'no panel');
+  await rawShot(rtCdp, '08-rt-fullpage');
+  if (rtm?.rect) await rawShot(rtCdp, '09-rt-panel', { x: Math.max(0, rtm.rect.x - 5), y: Math.max(0, rtm.rect.y - 5), width: rtm.rect.width + 10, height: rtm.rect.height + 10 });
 }
 
-// RuTube
-const ru = ctx.pages().find((p) => p.url().includes('rutube.ru')) ?? await ctx.newPage();
-if (!ru.url().includes('rutube.ru')) {
-  await ru.goto('https://rutube.ru/video/9ae8e8a6dc58bdad66190475f9872ecd/', { waitUntil: 'domcontentloaded' });
-  await ru.waitForTimeout(8000);
-}
-console.log('\n=== RuTube ===');
-results.rutube = {
-  probe: await probeAndShoot(ru, 'rutube'),
-  click: await clickTest(ru, 'RuTube'),
-  settings: await settingsModalTest(ru, 'rutube'),
-};
-console.log(JSON.stringify(results.rutube.probe, null, 2));
-
+console.log('\n=== FINDINGS ===');
+console.log(JSON.stringify(findings, null, 2));
+writeFileSync(`${OUT}/findings.json`, JSON.stringify(findings, null, 2));
 await browser.close();
-
-console.log('\n=== VERDICT ===');
-const okYt = results.youtube?.probe?.buttonCount === 9 &&
-  results.youtube?.click?.ok &&
-  results.youtube?.settings?.display === 'block';
-const okRu = results.rutube?.probe?.buttonCount === 7 &&
-  results.rutube?.click?.ok &&
-  results.rutube?.settings?.display === 'block';
-console.log('YouTube:', okYt ? 'PASS' : 'FAIL');
-console.log('RuTube: ', okRu ? 'PASS' : 'FAIL');

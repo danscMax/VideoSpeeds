@@ -57,14 +57,23 @@ function clamp(ctx: AppContext, speed: number): number {
 }
 
 /**
- * Apply a speed and persist it as the current value. UI + popup updates
- * are issued through ctx.ui regardless of whether the video element was
- * available -- the panel buttons should reflect intent immediately.
+ * Apply a speed and persist it as the current value. Used by slider drag
+ * and by external (programmatic) callers that want a "set this and remember
+ * it" semantic without the toast/force-rememberSpeed of `setGlobal`.
+ *
+ * IMPORTANT: clears the smart (one-shot) speed before applying. Otherwise
+ * a prior `setTemporary` leaves smart=X stuck, and the ratechange-revert
+ * watchdog in attachToVideo (which pickInitialSpeed -> smart || current)
+ * yanks playbackRate back to X immediately after our write -- audit-2026-04
+ * caught a slider drag that visually moved but the rate snapped right
+ * back. Mirrors .user.js:2369 (`temporarySpeed = null` inside setSpeed
+ * when save=true).
  */
 export async function setSpeed(ctx: AppContext, speed: number): Promise<void> {
   const validSpeed = clamp(ctx, speed);
-  applyToVideo(ctx, validSpeed);
+  await ctx.speedStore.setSmart(null);
   await ctx.speedStore.setCurrent(validSpeed);
+  applyToVideo(ctx, validSpeed);
   ctx.ui.refreshButtons(validSpeed);
   ctx.ui.refreshSlider(validSpeed);
   ctx.logger.debug('controller.setSpeed', validSpeed);

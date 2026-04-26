@@ -344,7 +344,10 @@ html[data-vs-theme="light"] {
 /* Settings modal -- floating popover with its own dark surface, opaque
    so it stays readable on any host theme without the cost of a real-time
    backdrop-filter (cheap solid fill paints in one tile). Internal text +
-   tokens are scoped to this rule so descendants always render dark. */
+   tokens are scoped to this rule so descendants always render dark. The
+   z-index matches the original userscript (.user.js:3032) -- 999999 is
+   high enough to clear YouTube's masthead/comments header which use
+   z-indices up to ~100000 in newer layouts. */
 .settings-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -359,7 +362,26 @@ html[data-vs-theme="light"] {
   min-width: 320px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0,0,0,0.45);
-  z-index: 100003;
+  z-index: 999999;
+}
+
+/* SVG protection: YouTube/RuTube ship global SVG rules (transform on
+   hover, fill/stroke overrides) that mangle our Lucide-style icons.
+   Reset them inside our scoped UI roots only. Ported from
+   .user.js:3071-3082. */
+.vs-panel svg,
+.settings-menu svg {
+  transform: none !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.vs-panel svg *,
+.settings-menu svg * {
+  fill: none !important;
+  stroke: currentColor !important;
+  transform: none !important;
 }
 .vs-menu-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .vs-menu-title  { display:flex; align-items:center; gap:6px; font-weight:600; }

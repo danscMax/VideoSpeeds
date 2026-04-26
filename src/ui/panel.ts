@@ -125,6 +125,16 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     }
   });
 
+  // Stop clicks INSIDE the menu from bubbling to YouTube's body-level
+  // click delegation (Polymer/React event delegate would otherwise
+  // re-interpret tab/toggle clicks as host-page actions and open
+  // their own popovers, which made the modal feel "frozen" -- ported
+  // from .user.js:4758). Also keeps the document-close handler below
+  // from firing on intra-menu clicks.
+  ctx.cleanup.addEventListener(settingsMenu, 'click', (event) => {
+    event.stopPropagation();
+  });
+
   // Click outside the gear-wrapper closes the menu.
   ctx.cleanup.addEventListener(document, 'click', (event) => {
     if (settingsMenu.style.display === 'none') return;

@@ -36,7 +36,10 @@ import type {
   UiPort,
 } from './app/ports';
 import { detectFeatures } from './utils/feature-detect';
-import { createBrowserStorageAdapter } from './storage/adapter';
+import {
+  createBrowserStorageAdapter,
+  type StorageAdapter,
+} from './storage/adapter';
 import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { runTmMigration } from './storage/migration-tm';
@@ -74,7 +77,17 @@ declare const __VS_VERSION__: string | undefined;
 const SCRIPT_VERSION =
   typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
 
-export async function bootstrap(wxtCtx: ContentScriptContext): Promise<void> {
+export interface BootstrapOptions {
+  /** Storage adapter override. Defaults to the wxt/browser-backed one;
+   *  the userscript build (Wave 3) injects a GM-storage adapter here so
+   *  the same code path runs unchanged inside Tampermonkey. */
+  adapter?: StorageAdapter;
+}
+
+export async function bootstrap(
+  wxtCtx: ContentScriptContext,
+  options: BootstrapOptions = {},
+): Promise<void> {
   // 0. Site detection.
   const site = detectSite();
   if (!site) {
@@ -105,8 +118,9 @@ export async function bootstrap(wxtCtx: ContentScriptContext): Promise<void> {
   const logger = createLogger({ scriptName: 'VIDEO-SPEEDS' });
   logger.info(`bootstrap site=${site} version=${SCRIPT_VERSION}`);
 
-  // 2. Storage stores.
-  const adapter = createBrowserStorageAdapter();
+  // 2. Storage stores. The userscript build supplies a GM-storage adapter
+  //    here so the same wiring runs inside Tampermonkey unchanged.
+  const adapter = options.adapter ?? createBrowserStorageAdapter();
   const settingsStore = createSettingsStore(adapter);
   const speedStore = createSpeedStore(adapter);
   await settingsStore.init(site);

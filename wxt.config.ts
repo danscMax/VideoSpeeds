@@ -3,6 +3,9 @@ import { defineConfig } from 'wxt';
 // WXT config: builds Chrome MV3 + Firefox MV3 from the same source.
 // Browser-specific manifest tweaks are handled via the `manifest` callback below.
 //
+// See docs/MIGRATION.md for the TM-userscript -> extension data path.
+// See docs/CAVEATS.md for build/dev/cross-browser constraints.
+//
 // Two content scripts are declared (in src/entrypoints/):
 //   - content (isolated world): main logic, has chrome.* APIs
 //   - page-world (MAIN world): runs in page context, can patch

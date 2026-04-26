@@ -7,12 +7,6 @@
  * SPA navigation hooks), see entrypoints/page-world.ts which runs in MAIN world.
  */
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import { browser } from 'wxt/browser';
-
-// Touching `browser` here keeps tree-shaking honest: we want the WXT runtime
-// shim included so that downstream porting waves can import it without a
-// per-entrypoint roundtrip. The `void` cast also confirms the type is wired.
-void browser;
 
 export default defineContentScript({
   matches: [
@@ -22,9 +16,9 @@ export default defineContentScript({
   ],
   runAt: 'document_idle',
   allFrames: false,
-  async main() {
-    // Initial sanity log — confirms the script is injected and TS toolchain works.
-    // Will be replaced with the full init pipeline in subsequent porting waves.
+  async main(ctx) {
     console.info('[VIDEO-SPEEDS] content script loaded on', location.hostname);
+    const { bootstrap } = await import('../index');
+    await bootstrap(ctx);
   },
 });

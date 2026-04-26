@@ -25,10 +25,21 @@ export interface AppContext {
   readonly site: Site;
   readonly settingsStore: SettingsStore;
   readonly speedStore: SpeedStore;
-  readonly ui: UiPort;
+  /**
+   * UI surface. Mutable specifically so the orchestrator can swap a stub
+   * for the real impl during bootstrap (panel needs ctx -> stub UI is
+   * passed in so panel can build -> real UiPort wraps the panel handle ->
+   * orchestrator overwrites this field). After bootstrap returns, treat
+   * as effectively-readonly.
+   */
+  ui: UiPort;
   readonly discovery: DiscoveryPort;
-  readonly diagnostics: DiagnosticsPort;
+  /** Mutable for the same bootstrap-time swap reason as `ui`. */
+  diagnostics: DiagnosticsPort;
   readonly cleanup: CleanupRegistry;
   readonly logger: Logger;
-  readonly i18n: Translator;
+  /** Mutable for the same reason as `ui`: language switch in settings
+   *  rebuilds the translator, and downstream modules need to see the new
+   *  one without rebuilding ctx. */
+  i18n: Translator;
 }

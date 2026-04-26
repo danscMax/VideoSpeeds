@@ -29,6 +29,9 @@
  */
 import { defineContentScript } from 'wxt/utils/define-content-script';
 
+const SOURCE = 'video-speeds';
+const INSTALL_FLAG = '__vs_historyHookInstalled';
+
 export default defineContentScript({
   matches: ['*://rutube.ru/*', '*://*.rutube.ru/*'],
   runAt: 'document_start',
@@ -39,8 +42,44 @@ export default defineContentScript({
       (window as unknown as { __VS_PAGE_WORLD?: string }).__VS_PAGE_WORLD =
         'loaded@' + Date.now();
     } catch {
-      /* readonly window? swallow */
+      /* readonly window -- swallow */
     }
+
+    // Install the history hook exactly once per page, regardless of how many
+    // isolated content scripts mount/unmount. Audit H3: idempotency flag on
+    // pageWindow + sessionId-aware envelope so multiple isolated subscribers
+    // can coexist without crossed wires.
+    const w = window as unknown as { [INSTALL_FLAG]?: boolean };
+    if (w[INSTALL_FLAG]) {
+      console.info('[VIDEO-SPEEDS] page-world: history hook already installed, skipping');
+      return;
+    }
+    w[INSTALL_FLAG] = true;
+
+    const broadcast = (type: 'history-changed' | 'navigated', method: string): void => {
+      try {
+        window.postMessage(
+          { source: SOURCE, sessionId: 'page', type, payload: { method } },
+          window.location.origin,
+        );
+      } catch { /* swallow */ }
+    };
+
+    for (const method of ['pushState', 'replaceState'] as const) {
+      const original = history[method].bind(history);
+      history[method] = function patched(...args: unknown[]): void {
+        // History.pushState / replaceState are typed with three args
+        // upstream; we pass through unchanged via a forced `any` to
+        // avoid duplicating the lib.dom signature here.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        original.apply(history, args as any);
+        // Microtask defer so the URL is already updated by the time the
+        // isolated side handler runs.
+        Promise.resolve().then(() => broadcast('history-changed', method));
+      } as History[typeof method];
+    }
+    window.addEventListener('popstate', () => broadcast('navigated', 'popstate'));
+
     console.info('[VIDEO-SPEEDS] page-world script loaded on', location.hostname);
   },
 });

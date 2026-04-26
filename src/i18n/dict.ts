@@ -80,6 +80,7 @@ export const I18N_DICT = {
     'diag.btn.purge.tip': 'Delete remembered player selectors. Useful if the script picked the wrong element and keeps breaking the UI on every page load.',
     'diag.btn.full_reset': 'Reset everything',
     'diag.btn.full_reset.tip': 'Erase ALL settings and cache. The script returns to its fresh-install state. This cannot be undone.',
+    'diag.full_reset_confirm': 'Erase ALL settings and selector cache?\n\nThis cannot be undone -- you will lose your shortcuts, language preference, default speed, and discovery cache. Reload the page after the reset.',
     'diag.privacy': 'Reports do not include search queries or URL fragments -- only the domain and the page path.',
 
     // diag.status.*
@@ -206,6 +207,7 @@ export const I18N_DICT = {
     'diag.btn.purge.tip': 'Удалить запомненные селекторы плеера. Полезно, если скрипт выбрал не тот элемент и постоянно ломает интерфейс при каждой загрузке.',
     'diag.btn.full_reset': 'Сбросить всё',
     'diag.btn.full_reset.tip': 'Стереть ВСЕ настройки и кеш. Скрипт вернётся в состояние свежей установки. Это действие нельзя отменить.',
+    'diag.full_reset_confirm': 'Удалить ВСЕ настройки и кеш селекторов?\n\nЭто действие нельзя отменить -- вы потеряете горячие клавиши, выбор языка, скорость по умолчанию и кеш discovery. После сброса перезагрузите страницу.',
     'diag.privacy': 'Отчёты не содержат поисковых запросов и фрагментов URL -- только домен и путь страницы.',
 
     // diag.status.*

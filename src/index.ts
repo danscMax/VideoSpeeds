@@ -53,7 +53,7 @@ import {
   setSpeed,
   setTemporary,
 } from './speed/controller';
-import { SPEED_STEP } from './config';
+import { SPEED_STEP, speedBoundsFor } from './config';
 import { createTranslator } from './i18n/translator';
 import { detectBrowserLang } from './i18n/detect';
 import { createLogger } from './utils/logger';
@@ -200,7 +200,47 @@ export async function bootstrap(
 
   // 7. Inject styles, build panel, build real UiPort.
   injectStyles(site);
-  const panel = createPanel({ ctx, scriptVersion: SCRIPT_VERSION });
+  const panel = createPanel({
+    ctx,
+    scriptVersion: SCRIPT_VERSION,
+    killSwitch: {
+      isDiscoveryEnabled: () => killSwitch.isDiscoveryEnabled(),
+      isHealthCheckEnabled: () => killSwitch.isHealthCheckEnabled(),
+      setDiscoveryEnabled: (on) => killSwitch.setDiscoveryEnabled(on),
+      setHealthCheckEnabled: (on) => killSwitch.setHealthCheckEnabled(on),
+    },
+    diagActions: {
+      recheck: () => { void healthChecker.runOnce(); },
+      copyReport: async () => {
+        const report = healthChecker.getLastReport() ?? healthChecker.runOnce();
+        const text = reportToClipboardText(report);
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      purgeCache: async () => {
+        await cache.purgeAll();
+        logger.info('diag: selector cache purged');
+      },
+      fullReset: async () => {
+        const confirmText = ctx.i18n.t('diag.full_reset_confirm');
+        // window.confirm is intentional here -- the reset is destructive
+        // and the user should explicitly approve. There's no toast for
+        // "are you sure" in the modal.
+        const ok = typeof window.confirm === 'function' ? window.confirm(confirmText) : true;
+        if (!ok) return;
+        await cache.purgeAll();
+        await settingsStore.reset();
+        // SpeedStore has no reset(); clear smart + reapply default current.
+        await speedStore.setSmart(null);
+        await speedStore.setCurrent(speedBoundsFor(site).defaultSpeed);
+        logger.info('diag: full reset performed');
+      },
+    },
+  });
   const realUi = createUiPort({
     panel,
     playerContainer: () => discoveryPort.resolve('playerContainer'),
@@ -301,9 +341,6 @@ export async function bootstrap(
   );
 
   logger.info('bootstrap complete');
-  // Suppress the unused-binding warning for rare branches; reportToClipboardText
-  // is wired into the diag "copy" button by Wave 1.10.5 follow-up.
-  void reportToClipboardText;
   void NotificationKindCheck;
 }
 

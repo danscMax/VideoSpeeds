@@ -23,9 +23,75 @@ export interface RutubeSiteHandle {
   sessionId: string;
 }
 
+const HIDE_TITLE_STYLE_ID = 'vs-rutube-hide-title-style';
+const HIDE_PREMIUM_STYLE_ID = 'vs-rutube-hide-premium-style';
+
+const HIDE_TITLE_CSS = `
+[class*="title-module__wrapper"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+:fullscreen [class*="title-module__wrapper"],
+:-webkit-full-screen [class*="title-module__wrapper"],
+:-moz-full-screen [class*="title-module__wrapper"] {
+  display: none !important;
+}
+`;
+
+const HIDE_PREMIUM_CSS = `
+[class*="premium-subscription"],
+[class*="subscription-entrypoint"],
+.premium-subscription-entrypoint-module__desktop,
+.premium-subscription-entrypoint-module__premium-entrypoint {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+`;
+
+/**
+ * Inject or remove a style element keyed by id. Idempotent. Ports the
+ * applyRutubeTitleHide / applyRutubePremiumHide pattern from
+ * .user.js:1537-1605.
+ */
+function setStyleEnabled(id: string, css: string, enabled: boolean): void {
+  const existing = document.getElementById(id);
+  if (enabled) {
+    if (existing) return;
+    const el = document.createElement('style');
+    el.id = id;
+    el.textContent = css;
+    (document.head || document.documentElement).appendChild(el);
+  } else if (existing) {
+    existing.remove();
+  }
+}
+
 export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
   const subscribers = new Set<() => void>();
   const sessionId = generateSessionId();
+
+  // Initial application of hide-title / hide-Premium toggles + reactive
+  // re-application on settings change. Mirrors .user.js:2199-2204 (bootstrap)
+  // and the change handlers wired into the modal toggles in the original.
+  const applyHides = (): void => {
+    const s = ctx.settingsStore.get();
+    setStyleEnabled(HIDE_TITLE_STYLE_ID, HIDE_TITLE_CSS, !!s.hidePlayerTitle);
+    setStyleEnabled(HIDE_PREMIUM_STYLE_ID, HIDE_PREMIUM_CSS, !!s.hidePremium);
+  };
+  applyHides();
+  const offSettings = ctx.settingsStore.subscribe(applyHides);
+  ctx.cleanup.add(offSettings);
+  ctx.cleanup.add(() => {
+    document.getElementById(HIDE_TITLE_STYLE_ID)?.remove();
+    document.getElementById(HIDE_PREMIUM_STYLE_ID)?.remove();
+  });
 
   ctx.cleanup.addEventListener(window, 'message', (event) => {
     const ev = event as MessageEvent;

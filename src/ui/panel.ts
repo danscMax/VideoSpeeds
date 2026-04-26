@@ -26,6 +26,24 @@ import type { AppContext } from '../app/context';
 import { CleanupRegistry } from '../app/cleanup';
 import { speedBoundsFor } from '../config';
 
+/** Diag-action sink. The orchestrator passes a real implementation that
+ *  can purge cache, copy report, or trip the KillSwitch. */
+export interface DiagActions {
+  recheck(): void;
+  copyReport(): Promise<boolean>;
+  purgeCache(): Promise<void>;
+  fullReset(): Promise<void>;
+}
+
+/** KillSwitch read/write, surfaced through the panel so the settings
+ *  modal can bind discovery/healthcheck toggles. */
+export interface KillSwitchControl {
+  isDiscoveryEnabled(): boolean;
+  isHealthCheckEnabled(): boolean;
+  setDiscoveryEnabled(on: boolean): Promise<void>;
+  setHealthCheckEnabled(on: boolean): Promise<void>;
+}
+
 export interface PanelHandle {
   /** The root DOM node to insert into the player. */
   element: HTMLElement;
@@ -44,12 +62,19 @@ export interface CreatePanelOptions {
   scriptVersion: string;
   /** Custom preset list per site; falls back to DEFAULT_PRESETS. */
   presets?: readonly number[];
+  /** Real KillSwitch handle. Populated by the orchestrator (Wave 1.10);
+   *  the popup builds a stub that returns true/no-ops. */
+  killSwitch?: KillSwitchControl;
+  /** Diagnostic action sink. Defaults to no-ops when not provided. */
+  diagActions?: DiagActions;
 }
 
 export function createPanel(opts: CreatePanelOptions): PanelHandle {
   const { ctx, scriptVersion } = opts;
   const presets = opts.presets ?? DEFAULT_PRESETS[ctx.site] ?? [1, 1.5, 2];
   const bounds = speedBoundsFor(ctx.site);
+  const killSwitch = opts.killSwitch;
+  const diagActions = opts.diagActions;
 
   const root = document.createElement('div');
   root.className = 'vs-panel';
@@ -176,8 +201,12 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
         i18n: ctx.i18n,
         activeTab,
         scriptVersion,
-        discoveryEnabled: ctx.diagnostics.killSwitchEngaged() ? false : true,
-        healthCheckEnabled: true,
+        // Read each flag from its OWN getter. The previous code used
+        // killSwitchEngaged() (= !healthCheckEnabled) for the discovery
+        // toggle, so the discovery checkbox always mirrored the
+        // healthcheck state -- regression M8.
+        discoveryEnabled: killSwitch ? killSwitch.isDiscoveryEnabled() : true,
+        healthCheckEnabled: killSwitch ? killSwitch.isHealthCheckEnabled() : true,
       }),
     );
 
@@ -187,9 +216,50 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       onDiag: (action) => {
         ctx.logger.info('diagnostics action', action);
         if (action === 'recheck') {
+          if (diagActions) {
+            diagActions.recheck();
+          }
           refreshDiagnosticStatus(settingsMenu, menuCtx);
+          // Toast the result so the user gets feedback. Mirrors
+          // .user.js:4585-4588.
+          const ok = ctx.diagnostics.isHealthy();
+          ctx.ui.showNotification(
+            ctx.i18n.t(ok ? 'toast.diag_ok' : 'toast.diag_issues'),
+            ok ? 'success' : 'warn',
+          );
+        } else if (action === 'copy') {
+          if (diagActions) {
+            void diagActions.copyReport().then((copied) => {
+              ctx.ui.showNotification(
+                ctx.i18n.t(copied ? 'toast.report_copied' : 'toast.report_copy_failed'),
+                copied ? 'success' : 'error',
+              );
+            });
+          }
+        } else if (action === 'purge-cache') {
+          if (diagActions) {
+            void diagActions.purgeCache().then(() => {
+              ctx.ui.showNotification(ctx.i18n.t('toast.cache_cleared'), 'info');
+              refreshDiagnosticStatus(settingsMenu, menuCtx);
+            });
+          }
+        } else if (action === 'full-reset') {
+          if (diagActions) {
+            void diagActions.fullReset().then(() => {
+              ctx.ui.showNotification(ctx.i18n.t('toast.reset_done'), 'info');
+            });
+          }
         }
       },
+      // Wire the KillSwitch toggles only when a real KillSwitch was
+      // injected (the popup uses no-op stubs since it can't trip a
+      // foreign content script's discovery anyway).
+      setDiscoveryEnabled: killSwitch
+        ? (on) => { void killSwitch.setDiscoveryEnabled(on); }
+        : undefined,
+      setHealthCheckEnabled: killSwitch
+        ? (on) => { void killSwitch.setHealthCheckEnabled(on); }
+        : undefined,
     });
 
     refreshDiagnosticStatus(settingsMenu, menuCtx);

@@ -21,6 +21,7 @@
     "test:smoke:full": "node tests/smoke/full-smoke.mjs",
     "test:smoke:audit": "node tests/smoke/audit-final.mjs",
     "test:smoke:popup": "node tests/smoke/popup-probe.mjs",
+    "smoke:shots": "node tests/smoke/store-screenshots.mjs",
     "postinstall": "wxt prepare"
   },
   "devDependencies": {

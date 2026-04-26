@@ -236,25 +236,49 @@ export async function bootstrap(
   attachToVideo(ctx, meter);
 
   // 11. Hotkey listener (global, capture so it wins over the page).
+  //
+  // Behaviour notes (matches .user.js:5055-5113):
+  //   - speedUp/speedDown are TEMPORARY by design -- they shouldn't promote
+  //     the value to "global default", so we go through setTemporary, not
+  //     setSpeed. The previous wiring (setSpeed) wrote to current and, with
+  //     rememberSpeed=true (the default), made every "+0.1" stick to the
+  //     site for all future videos. Audit S8.
+  //   - preventDefault stops Ctrl+C from also firing the browser copy.
+  //   - skip when focus is in an editable element OR there is a selection
+  //     OR a hotkey-input is in capture-mode -- otherwise binding Ctrl+C
+  //     in settings would speed-up while typing and copy-paste would
+  //     accelerate the video.
   ctx.cleanup.addEventListener(
     document,
     'keydown',
     (event) => {
       const ev = event as KeyboardEvent;
+      if (shouldSkipHotkey(ev)) return;
       const hk = settingsStore.getKey('hotkeys');
+      const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
       if (matchesHotkeyArray(ev, hk.speedUp)) {
-        const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
-        if (v) void setSpeed(ctx, v.playbackRate + SPEED_STEP);
+        ev.preventDefault();
+        if (v) void setTemporary(ctx, v.playbackRate + SPEED_STEP);
       } else if (matchesHotkeyArray(ev, hk.speedDown)) {
-        const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
-        if (v) void setSpeed(ctx, v.playbackRate - SPEED_STEP);
+        ev.preventDefault();
+        if (v) void setTemporary(ctx, v.playbackRate - SPEED_STEP);
       }
     },
     { capture: true },
   );
 
   // 12. Site-specific navigation listener -> re-insert + re-apply.
+  //
+  // Clear the __vsAttached brand on every <video> in the document before
+  // calling attachToVideo. Some SPA paths (RuTube most often) keep the
+  // same <video> element and only swap its src; without clearing the
+  // brand attachToVideo would early-return and the new video plays
+  // unattached -- speed-restore stops working from video #2 onward
+  // (audit S14).
   const reattach = (): void => {
+    for (const v of document.querySelectorAll('video')) {
+      delete (v as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached;
+    }
     scheduleInsertWithRetry(panel.element, ctx);
     attachToVideo(ctx, meter);
   };
@@ -354,44 +378,122 @@ function installRemovalObserver(
 }
 
 /**
- * Apply the chosen initial speed once the video element is ready, and
- * install a ratechange listener that feeds the meter (audit M for the
- * RuTube/HDRezka rate-resets storm detection in HealthChecker).
+ * Apply the chosen initial speed once the video element is ready, install
+ * a ratechange listener that feeds the meter, AND fight HLS-driven
+ * playbackRate resets (the player's ABR / quality-change / manifest
+ * reload silently snaps rate back to 1.0; on RuTube and any HLS site this
+ * happens routinely). Mirrors .user.js:2456-2531 + 2477-2501.
+ *
+ * Re-attach safety: SPA navigation can replace the <video> element; we
+ * detect a fresh element by the `__vsAttached` brand and re-bind. The
+ * orchestrator calls this on every navigation (`reattach`) -- previously
+ * the brand was set-and-never-cleared, so calls 2..N silently no-op'd
+ * (audit S14).
  */
 function attachToVideo(ctx: AppContext, meter: ReturnType<typeof createRatechangeMeter>): void {
   const v = ctx.discovery.resolve('video');
   if (!(v instanceof HTMLVideoElement)) {
     // No video yet -- the discovery engine will resolve once one appears.
-    // Try once more shortly; site-specific re-attach will also fire.
     ctx.cleanup.setTimeout(() => attachToVideo(ctx, meter), 500);
     return;
   }
-  if ((v as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached) return;
-  (v as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached = true;
+  type Branded = HTMLVideoElement & { __vsAttached?: boolean };
+  if ((v as Branded).__vsAttached) return;
+  (v as Branded).__vsAttached = true;
 
-  const apply = (): void => {
-    const initial = pickInitialSpeed(ctx);
-    void setSpeed(ctx, initial);
+  // Track which src we last saw so loadstart can distinguish a real
+  // src-change from the constant HLS-segment loadstart storm. Only a
+  // src-change should clear smart-speed and re-apply initial.
+  let lastSrc = v.currentSrc || v.src || '';
+  let isSelfWrite = false;
+
+  const apply = (reason: string): void => {
+    const target = pickInitialSpeed(ctx);
+    if (Math.abs(v.playbackRate - target) < 0.005) return;
+    isSelfWrite = true;
+    void setSpeed(ctx, target).finally(() => { isSelfWrite = false; });
+    ctx.logger.debug(`attachToVideo: re-applying ${target}x (${reason})`);
   };
+
+  // Initial application + cascading retries to fight HLS init (.user.js:2455-2463).
   if (v.readyState >= 1) {
-    apply();
+    apply('ready');
   } else {
-    ctx.cleanup.addEventListener(v, 'loadedmetadata', apply);
+    ctx.cleanup.addEventListener(v, 'loadedmetadata', () => apply('loadedmetadata'), { once: true });
+  }
+  // Multi-shot reapply -- player clobbers the rate during HLS init.
+  for (const ms of [100, 300, 500, 1000]) {
+    ctx.cleanup.setTimeout(() => apply(`retry+${ms}ms`), ms);
   }
 
+  // ratechange revert protection: when the player snaps rate back to a
+  // value that doesn't match our intent, re-apply. We tolerate small
+  // float drift (<0.005) to avoid fighting our own writes -- isSelfWrite
+  // is also a belt for tight races. Original .user.js:2534-2557.
   let prev = v.playbackRate;
   ctx.cleanup.addEventListener(v, 'ratechange', () => {
     const next = v.playbackRate;
     meter.tick(prev, next);
     prev = next;
+    if (isSelfWrite) return;
+    const target = pickInitialSpeed(ctx);
+    if (Math.abs(next - target) > 0.005) {
+      apply('ratechange-revert');
+    }
   });
 
-  // Reset smart speed on src change (new video starts fresh).
+  // playing-event revert: covers seek + quality switch + tab-resume
+  // resets that don't always fire ratechange. .user.js:2477-2501.
+  ctx.cleanup.addEventListener(v, 'playing', () => {
+    if (isSelfWrite) return;
+    const target = pickInitialSpeed(ctx);
+    if (Math.abs(v.playbackRate - target) > 0.005) {
+      apply('playing-revert');
+    }
+  });
+
+  // loadstart fires on every HLS-segment fetch. Don't clear smart-speed
+  // unless this is an actual src change. .user.js:2504-2515.
   ctx.cleanup.addEventListener(v, 'loadstart', () => {
-    void ctx.speedStore.setSmart(null);
+    const nowSrc = v.currentSrc || v.src || '';
+    if (nowSrc && nowSrc !== lastSrc) {
+      lastSrc = nowSrc;
+      void ctx.speedStore.setSmart(null);
+      // Re-apply at multiple delays for HLS players that initialise rate
+      // late on src change.
+      for (const ms of [100, 300, 500, 1000]) {
+        ctx.cleanup.setTimeout(() => apply(`src-change+${ms}ms`), ms);
+      }
+    }
   });
+}
 
-  // Mark unused-suppress for setTemporary; it's used by handlers via the
-  // controller already, just keep the import alive.
-  void setTemporary;
+/**
+ * Skip hotkey processing when:
+ *   - focus is in an input/textarea/select/contenteditable (typing)
+ *   - a hotkey-input is in capture-mode (settings tab)
+ *   - the user has a non-empty text selection on the page (about to copy)
+ * Mirrors .user.js:5060-5073.
+ */
+function shouldSkipHotkey(ev: KeyboardEvent): boolean {
+  const target = ev.target as Element | null;
+  if (target instanceof HTMLInputElement) {
+    const t = target.type.toLowerCase();
+    // checkboxes/radio/range buttons aren't "typing into a field" so the
+    // hotkey should still fire (toggling rememberSpeed shouldn't gate the
+    // hotkey). Original limits the skip to actual text-entry types.
+    if (t === 'text' || t === 'search' || t === 'url' || t === 'email' || t === 'password' || t === 'number' || t === 'tel') {
+      return true;
+    }
+  }
+  if (target instanceof HTMLTextAreaElement) return true;
+  if (target instanceof HTMLSelectElement) return true;
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+  // Hotkey-capture in settings: input element with .vs-hotkey-input class
+  // is focused -- pressing keys there should bind, not change speed.
+  if (target?.classList.contains('vs-hotkey-input')) return true;
+  // Non-empty selection -- user is about to copy.
+  const sel = window.getSelection?.();
+  if (sel && sel.toString().length > 0) return true;
+  return false;
 }

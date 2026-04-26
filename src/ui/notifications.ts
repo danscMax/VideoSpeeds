@@ -19,9 +19,10 @@ import type { NotificationKind } from '../app/ports';
 const STACK_ID = 'speed-notifications';
 
 const DOT_COLORS: Record<NotificationKind, string> = {
-  info:  '#2196F3',
-  warn:  '#ff9800',
-  error: '#f44336',
+  info:    '#2196F3',
+  success: '#4CAF50',
+  warn:    '#ff9800',
+  error:   '#f44336',
 };
 
 export interface NotificationOptions {

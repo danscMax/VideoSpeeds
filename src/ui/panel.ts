@@ -10,7 +10,7 @@
  * and the orchestrator (Wave 1.10) wires the UiPort hook afterwards.
  */
 
-import { handleSpeedButtonClick } from '../speed/controller';
+import { handleSpeedButtonClick, setSpeed } from '../speed/controller';
 import { vsIcon } from './icons';
 import {
   DEFAULT_PRESETS,
@@ -97,17 +97,20 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   });
 
   // ----- Slider input -----
+  // Drag goes through plain setSpeed(), NOT through handleSpeedButtonClick.
+  // The click router has a 400ms debounce counter that increments on every
+  // tick; routing slider 'input' events through it counted each pixel of
+  // drag as another click and after 2 ticks force-promoted the drag to
+  // setGlobal (toast + force-enabled rememberSpeed) -- regression flagged
+  // by Wave A audit. Original userscript at .user.js:4817-4821 also
+  // sidesteps the click semantics for slider drag.
   const sliderInput = sliderContainer.querySelector<HTMLInputElement>('.speed-slider');
   if (sliderInput) {
     ctx.cleanup.addEventListener(sliderInput, 'input', () => {
       const value = parseFloat(sliderInput.value);
       if (Number.isFinite(value)) {
         updateSliderFill(sliderInput);
-        // Use the speed controller so persistence + UI refresh stay
-        // consistent. setTemporary is the right semantic for a drag
-        // (continuous change), final position can be made global by
-        // the user via settings/double-click on a button.
-        void handleSpeedButtonClick(ctx, value);
+        void setSpeed(ctx, value);
       }
     });
   }

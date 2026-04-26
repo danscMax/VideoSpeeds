@@ -48,7 +48,12 @@ function applyToVideo(ctx: AppContext, speed: number): boolean {
 function clamp(ctx: AppContext, speed: number): number {
   const bounds = speedBoundsFor(ctx.site);
   if (!Number.isFinite(speed)) return bounds.defaultSpeed;
-  return Math.min(bounds.max, Math.max(bounds.min, speed));
+  // Round to 1 decimal so successive +0.1 / -0.1 hotkey presses don't
+  // accumulate float drift (1 + 0.1 + 0.1 + ... -> 1.7000000000000002).
+  // Original userscript does Math.round(x*10)/10 in every speedUp/Down
+  // hotkey path (.user.js:5078,5088,5099,5108).
+  const rounded = Math.round(speed * 100) / 100;
+  return Math.min(bounds.max, Math.max(bounds.min, rounded));
 }
 
 /**
@@ -84,6 +89,11 @@ export async function setTemporary(ctx: AppContext, speed: number): Promise<void
  * current, force-enables rememberSpeed (audit-aligned with userscript
  * semantics: a deliberate double-click is a strong signal), clears the
  * smart override, and surfaces a toast so the user knows the choice stuck.
+ *
+ * Order matters (matches .user.js:2296-2326): clear smart + persist BEFORE
+ * touching video.playbackRate. If a ratechange-driven re-attach fires
+ * between applyToVideo and setSmart(null), the old code path read stale
+ * smart and re-applied the previous value.
  */
 export async function setGlobal(ctx: AppContext, speed: number): Promise<void> {
   const validSpeed = clamp(ctx, speed);
@@ -94,14 +104,16 @@ export async function setGlobal(ctx: AppContext, speed: number): Promise<void> {
     ctx.logger.info('controller.setGlobal: rememberSpeed auto-enabled');
   }
 
-  applyToVideo(ctx, validSpeed);
+  // Persist first, then push to video. Storage writes are fire-and-forget
+  // (in-memory mirror updates synchronously) so we don't actually block.
   await ctx.speedStore.setSmart(null);
   await ctx.speedStore.setCurrent(validSpeed);
+  applyToVideo(ctx, validSpeed);
   ctx.ui.refreshButtons(validSpeed);
   ctx.ui.refreshSlider(validSpeed);
   ctx.ui.showNotification(
     ctx.i18n.t('toast.speed_global', { speed: validSpeed }),
-    'info',
+    'success',
   );
   ctx.logger.debug('controller.setGlobal', validSpeed);
 }

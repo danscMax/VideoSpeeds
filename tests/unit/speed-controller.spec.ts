@@ -95,7 +95,7 @@ describe('setGlobal', () => {
     expect(speedStore.current()).toBe(1.75);
     expect(speedStore.smart()).toBe(null);
     expect((ui as { showNotification: ReturnType<typeof vi.fn> }).showNotification)
-      .toHaveBeenCalledWith(expect.stringContaining('1.75'), 'info');
+      .toHaveBeenCalledWith(expect.stringContaining('1.75'), 'success');
   });
 
   it('force-enables rememberSpeed if it was off', async () => {

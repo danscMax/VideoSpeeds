@@ -61,7 +61,7 @@ export interface SpeedStore {
 // reaches into DOM directly. Wave 1.8 supplies a concrete impl.
 // ---------------------------------------------------------------------------
 
-export type NotificationKind = 'info' | 'warn' | 'error';
+export type NotificationKind = 'info' | 'success' | 'warn' | 'error';
 
 export interface UiPort {
   refreshButtons(speed: number): void;

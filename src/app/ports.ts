@@ -1,0 +1,126 @@
+/**
+ * Port interfaces for AppContext.
+ *
+ * These declare the *shape* of every collaborator that downstream features
+ * (speed controller, UI, health, sites) consume. Concrete implementations
+ * land in their own waves:
+ *   - SettingsStore / SpeedStore         -> Wave 1.4 storage/
+ *   - UiPort impls                       -> Wave 1.8a/b/c ui/
+ *   - DiscoveryPort                      -> Wave 1.6 discovery/
+ *   - DiagnosticsPort                    -> Wave 1.9 health/
+ *   - Logger                             -> Wave 1.5 utils/logger.ts
+ *   - Translator                         -> Wave 1.3 i18n/
+ *
+ * The point of declaring them now (audit C2) is so each feature module can
+ * code against an interface and never reach back into another feature. If
+ * `ui/settings/handlers.ts` wants to flip a setting, it asks ctx.settingsStore
+ * — never imports `storage/settings-store.ts` directly. Same for everything
+ * else. That is what keeps the import graph acyclic.
+ *
+ * The data-shape types (Settings, DiagnosticReport, NotificationKind) are
+ * left as `unknown` placeholders here on purpose: each owning wave fills
+ * them in without touching the port surface.
+ */
+
+export type Site = 'youtube' | 'rutube';
+
+// ---------------------------------------------------------------------------
+// Storage ports — hydrated sync getters, async writes (audit C1).
+// `init()` is the ONLY async surface. After it resolves, hot paths
+// (ratechange, hotkeys, click-handler) read state synchronously.
+// ---------------------------------------------------------------------------
+
+export interface Settings {
+  // Filled in Wave 1.4. Kept open here so port surface doesn't churn when
+  // we add fields like sliderPosition, hotkeys, language, rememberSpeed.
+  readonly [key: string]: unknown;
+}
+
+export interface SettingsStore {
+  init(site: Site): Promise<void>;
+  get(): Settings;
+  getKey<K extends keyof Settings>(key: K): Settings[K];
+  update(patch: Partial<Settings>): Promise<void>;
+  subscribe(fn: (next: Settings) => void): () => void;
+}
+
+export interface SpeedStore {
+  init(site: Site): Promise<void>;
+  /** Currently selected speed (e.g. 1.5). Sync after init. */
+  current(): number;
+  /** Last "smart" speed (Wave 1.7) — null if rememberSpeed is off. */
+  smart(): number | null;
+  setCurrent(speed: number): Promise<void>;
+  setSmart(speed: number | null): Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// UI port — the speed controller talks to the panel through this and never
+// reaches into DOM directly. Wave 1.8 supplies a concrete impl.
+// ---------------------------------------------------------------------------
+
+export type NotificationKind = 'info' | 'warn' | 'error';
+
+export interface UiPort {
+  refreshButtons(speed: number): void;
+  refreshSlider(speed: number): void;
+  showNotification(text: string, kind?: NotificationKind): void;
+  /** Re-apply layout (slider position, button row order) after settings change. */
+  applyLayout(): void;
+}
+
+// ---------------------------------------------------------------------------
+// Discovery port — finds page elements (video, controls bar, gear container).
+// Backed by a hydrated SelectorCache mirror (audit H1) so resolve() is sync.
+// ---------------------------------------------------------------------------
+
+export interface DiscoveryPort {
+  /** Hydrate the in-memory cache mirror from browser.storage.local. */
+  hydrate(): Promise<void>;
+  resolve(key: string): Element | null;
+  invalidate(key: string): void;
+  cacheStats(): { hits: number; misses: number; ready: boolean };
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostics port — health checker, kill-switch, structured report.
+// Wave 1.9 supplies the concrete impl. Settings/UI consume report() to
+// render the diagnostics tab.
+// ---------------------------------------------------------------------------
+
+export interface DiagnosticReport {
+  // Filled in Wave 1.9. Will include structural checks, playback_started
+  // (via video.played.length > 0), waiting/ok/warn states.
+  readonly [key: string]: unknown;
+}
+
+export interface DiagnosticsPort {
+  report(): DiagnosticReport;
+  isHealthy(): boolean;
+  killSwitchEngaged(): boolean;
+  trip(reason: string): void;
+}
+
+// ---------------------------------------------------------------------------
+// Logger — vendor wrapper around Userscript Logger Pro (Wave 1.5) plus a
+// build-time log-level filter (audit L4). All features log through this.
+// ---------------------------------------------------------------------------
+
+export interface Logger {
+  debug(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+}
+
+// ---------------------------------------------------------------------------
+// Translator — i18n surface (Wave 1.3). Pure functions, no globals.
+// Contract (audit M3): t() returns plain text only. Markup is built from
+// trusted templates outside i18n. escHtml() always wraps user-facing text
+// when the template uses backticks + ${} interpolation.
+// ---------------------------------------------------------------------------
+
+export interface Translator {
+  t(key: string, vars?: Record<string, string | number>): string;
+  escHtml(input: string): string;
+}

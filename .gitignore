@@ -30,4 +30,5 @@ stats-*.json
 # Playwright artifacts
 test-results/
 playwright-report/
-tests/smoke/*.png
+tests/smoke/**/*.png
+tests/smoke/audit-shots/

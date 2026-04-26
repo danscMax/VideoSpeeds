@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import pkg from './package.json' with { type: 'json' };
 
 // WXT config: builds Chrome MV3 + Firefox MV3 from the same source.
 // Browser-specific manifest tweaks are handled via the `manifest` callback below.
@@ -26,11 +27,21 @@ import { defineConfig } from 'wxt';
 //   pre-commit to either side until Wave 4 has hard data.
 export default defineConfig({
   srcDir: 'src',
+  // Mirror pkg.version into the bundle so SCRIPT_VERSION (which keys the
+  // SelectorCache via script_version) is bumped automatically when
+  // package.json is bumped. Without this, version was hardcoded twice
+  // (here + index.ts fallback) and the cache happily served stale
+  // selectors across releases. See discovery/cache.ts:hydrate.
+  vite: () => ({
+    define: {
+      __VS_VERSION__: JSON.stringify(pkg.version),
+    },
+  }),
   manifest: ({ browser }) => ({
     name: 'Video Speed Controller (YouTube + RuTube)',
     description:
       'Adds speed buttons, slider, and hotkeys to YouTube and RuTube videos. Bilingual interface (English/Russian).',
-    version: '0.1.0',
+    version: pkg.version,
     permissions: ['storage'],
     // Product scope is YouTube + RuTube. Audit H5 dropped the *.piped.video
     // host that an earlier scaffold included -- it was out of product scope

@@ -284,20 +284,26 @@ html[data-vs-theme="light"] {
    children for easy detach in 'video' mode. */
 .vs-panel[data-vs-slider-position="bottom"] {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto auto 1fr;
   grid-template-areas:
-    "buttons gear"
-    "slider  slider";
+    "buttons gear  ."
+    "slider  slider slider";
   align-items: center;
-  gap: 12px 16px;
+  gap: 12px 12px;
 }
 .vs-panel[data-vs-slider-position="bottom"] .speed-buttons-row {
   grid-area: buttons;
   flex-wrap: wrap;
 }
+/* gear sits flush against the buttons (column 2). Column 3 = 1fr soaks
+   up the remaining horizontal space — without it, justify-self: end
+   would push the gear to the far right edge of the panel and leave a
+   visual chasm between the buttons and the gear. Mirror userscript's
+   #more-speeds-wrapper which kept buttons + gear as a content-sized
+   flex row. */
 .vs-panel[data-vs-slider-position="bottom"] .vs-gear-wrapper {
   grid-area: gear;
-  justify-self: end;
+  justify-self: start;
 }
 .vs-panel[data-vs-slider-position="bottom"] .speed-slider-container {
   grid-area: slider;

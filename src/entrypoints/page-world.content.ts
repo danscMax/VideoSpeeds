@@ -65,6 +65,24 @@ export default defineContentScript({
       } catch { /* swallow */ }
     };
 
+    // Primary path: Navigation API (audit C4.1). Modern Chromium ships
+    // window.navigation; React-Router and similar SPA routers use it
+    // directly. When available, this fires on EVERY navigation including
+    // some that pushState patches miss (e.g. soft-redirect routers).
+    // We still install the history-patch below as a defensive twin —
+    // some routers go through pushState only, and Firefox doesn't ship
+    // Navigation API at all yet.
+    type NavLike = { addEventListener?: (type: string, fn: () => void) => void };
+    const nav = (window as unknown as { navigation?: NavLike }).navigation;
+    if (nav && typeof nav.addEventListener === 'function') {
+      try {
+        nav.addEventListener('navigate', () => {
+          Promise.resolve().then(() => broadcast('navigated', 'nav-api'));
+        });
+        console.info('[VIDEO-SPEEDS] page-world: Navigation API hook installed');
+      } catch { /* swallow — fallback to history-patch below */ }
+    }
+
     for (const method of ['pushState', 'replaceState'] as const) {
       const original = history[method].bind(history);
       history[method] = function patched(...args: unknown[]): void {

@@ -298,6 +298,11 @@ export async function bootstrap(
   cleanup.add(() => attachCleanup.dispose());
   attachToVideo(ctx, meter, attachCleanup);
 
+  // RuTube same-URL debounce (audit B4.1). RuTube fires history events
+  // for same-URL replaceState calls during widget mount; without this
+  // we rebuild listeners + cascading retries on every spurious event.
+  let lastRutubePath = location.pathname;
+
   // 11. Hotkey listener (global, capture so it wins over the page).
   //
   // Behaviour notes (matches .user.js:5055-5113):
@@ -344,6 +349,14 @@ export async function bootstrap(
   // we register fresh ones. Without this we double-fire ratechange on
   // every nav after the first (audit S15).
   const reattach = (): void => {
+    if (ctx.site === 'rutube') {
+      const path = location.pathname;
+      if (path === lastRutubePath) {
+        ctx.logger.debug(`reattach: same RT path (${path}), skip`);
+        return;
+      }
+      lastRutubePath = path;
+    }
     attachCleanup.dispose();
     attachCleanup = new CleanupRegistry();
     for (const v of document.querySelectorAll('video')) {
@@ -399,6 +412,17 @@ export async function bootstrap(
     installFullscreenReparent(() => discoveryPort.resolve('playerContainer')),
   );
 
+  // 12c. Re-integrate the slider into player chrome on fullscreen
+  //      transitions (audit B4.2). When YouTube swaps its chrome layout
+  //      between fullscreen and inline, our injected slider gets
+  //      detached. Mirror .user.js:2600-2616 — re-run applyLayout after
+  //      a 500ms grace so the new chrome has finished mounting.
+  ctx.cleanup.addEventListener(document, 'fullscreenchange', () => {
+    if (ctx.settingsStore.getKey('sliderPosition') === 'video') {
+      ctx.cleanup.setTimeout(() => panel.applyLayout(), 500);
+    }
+  });
+
   // 13. Start health watchdog.
   healthChecker.start();
   // Wire the diagnostic-action buttons to real handlers (panel re-renders
@@ -423,15 +447,22 @@ export async function bootstrap(
 const NotificationKindCheck: NotificationKind = 'info';
 
 /**
- * Try to insert the panel; retry up to 20 times (every 750ms) when the
- * anchor isn't yet in the DOM. Stops as soon as insertion succeeds OR
- * the retry budget is exhausted. Avoids the body-fallback that the
- * earlier insertion logic produced (panel ended up far below the fold).
+ * Try to insert the panel; retry with exponential backoff (audit B4.3)
+ * until total ~30s elapsed when the anchor isn't yet in the DOM. Stops
+ * as soon as insertion succeeds OR the retry budget is exhausted.
+ *
+ * Backoff schedule: 500ms → 750ms → 1125ms → ... × 1.5 capped at 5000ms.
+ * Approximate total: ~30s before giving up. RuTube on a slow connection
+ * can take 15+ seconds to mount the player; the previous flat 750ms × 20
+ * = 15s budget gave up before the player appeared on those installs.
  */
 function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
-  const MAX_ATTEMPTS = 20;
-  const DELAY_MS = 750;
+  const MAX_ATTEMPTS = 16;
+  const BASE_DELAY = 500;
+  const MAX_DELAY = 5000;
+  const BACKOFF = 1.5;
   let attempts = 0;
+  let delay = BASE_DELAY;
 
   function tryOnce(): void {
     attempts += 1;
@@ -458,7 +489,8 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
       ctx.logger.warn(`panel insertion failed after ${attempts} attempts; giving up until next SPA nav`);
       return;
     }
-    ctx.cleanup.setTimeout(tryOnce, DELAY_MS);
+    ctx.cleanup.setTimeout(tryOnce, delay);
+    delay = Math.min(MAX_DELAY, Math.round(delay * BACKOFF));
   }
   tryOnce();
 }

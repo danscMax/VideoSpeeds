@@ -171,7 +171,23 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     };
   }
 
-  // 6. No anchor -- defer.
+  // 6. RuTube last-resort: anchor before the page <h1>. Fires only when
+  //    every modular layout selector failed (post-RuTube-redesign cold
+  //    start, or the page-info module has been swapped out under us).
+  //    Mirror .user.js:4967-4974 final fallback. Without it the panel
+  //    has nowhere to land and gets discarded after the retry budget.
+  if (ctx.site === 'rutube') {
+    const h1 = document.querySelector('h1');
+    if (h1?.parentElement) {
+      return {
+        parent: h1.parentElement,
+        anchor: 'before-info',
+        before: h1,
+      };
+    }
+  }
+
+  // 7. No anchor -- defer.
   return { parent: null, anchor: 'no-anchor' };
 }
 

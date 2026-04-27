@@ -56,8 +56,9 @@ describe('setSpeed', () => {
     });
 
     await setSpeed(ctx, 1.5);
+    // refreshButtons receives (speed, opts) — opts can be {} or { silent: true }.
     expect((ui as { refreshButtons: ReturnType<typeof vi.fn> }).refreshButtons)
-      .toHaveBeenCalledWith(1.5);
+      .toHaveBeenCalledWith(1.5, expect.any(Object));
     expect(speedStore.current()).toBe(1.5);
   });
 });

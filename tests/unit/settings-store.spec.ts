@@ -13,9 +13,12 @@ describe('SettingsStore', () => {
       const s = store.get();
       expect(s.sliderPosition).toBe('right');
       expect(s.rememberSpeed).toBe(true);
-      expect(s.hotkeys.speedUp).toHaveLength(1);
+      // Defaults: Ctrl+C/V plus Insert/Shift+Insert second slot (audit B2.5).
+      expect(s.hotkeys.speedUp).toHaveLength(2);
       expect(s.hotkeys.speedUp[0]?.key).toBe('KeyC');
+      expect(s.hotkeys.speedUp[1]?.key).toBe('Insert');
       expect(s.hotkeys.speedDown[0]?.key).toBe('KeyV');
+      expect(s.hotkeys.speedDown[1]?.key).toBe('Insert');
     });
 
     it('hydrates from prior storage value', async () => {
@@ -48,7 +51,7 @@ describe('SettingsStore', () => {
       const s = store.get();
       expect(s.sliderPosition).toBe('right');         // bad enum value rejected
       expect(s.rememberSpeed).toBe(true);             // bad type rejected
-      expect(s.hotkeys.speedUp).toHaveLength(1);      // bad shape -> defaults
+      expect(s.hotkeys.speedUp).toHaveLength(2);      // bad shape -> defaults (with Insert second slot)
       expect(s.language === 'en' || s.language === 'ru').toBe(true);
     });
 

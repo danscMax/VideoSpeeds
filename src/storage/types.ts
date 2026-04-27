@@ -49,6 +49,12 @@ export interface Settings {
 /**
  * Built fresh per init from the detected language. Hotkeys mirror the
  * userscript defaults (Ctrl+C / Ctrl+V) so existing users feel no change.
+ *
+ * Second slot per action: Ctrl+Insert / Shift+Insert. The original
+ * userscript hardcoded these as a never-removed fallback for HTPC
+ * remotes; we surface them as removable defaults instead — the user
+ * still discovers them in Settings → Shortcuts and can drop them if
+ * they're hostile to anyone's keyboard layout (audit B2.5).
  */
 export function defaultSettings(language: Lang): Settings {
   return {
@@ -60,9 +66,11 @@ export function defaultSettings(language: Lang): Settings {
     hotkeys: {
       speedUp: [
         { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' },
+        { ctrl: true, shift: false, alt: false, meta: false, key: 'Insert' },
       ],
       speedDown: [
         { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyV' },
+        { ctrl: false, shift: true, alt: false, meta: false, key: 'Insert' },
       ],
     },
   };

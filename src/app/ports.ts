@@ -63,8 +63,19 @@ export interface SpeedStore {
 
 export type NotificationKind = 'info' | 'success' | 'warn' | 'error';
 
+export interface RefreshOptions {
+  /**
+   * Suppress the centred "1.50x" speed popup. Use when the rate change is
+   * NOT user-initiated (HLS cascade reset, ratechange-revert, retry storms,
+   * or accepting an external YouTube speed-menu pick) — those would
+   * otherwise spam the popup on every video start. Mirrors the
+   * `showPopup=false` flag in .user.js setSpeed/loaders (audit B2.6).
+   */
+  silent?: boolean;
+}
+
 export interface UiPort {
-  refreshButtons(speed: number): void;
+  refreshButtons(speed: number, opts?: RefreshOptions): void;
   refreshSlider(speed: number): void;
   showNotification(text: string, kind?: NotificationKind): void;
   /** Re-apply layout (slider position, button row order) after settings change. */

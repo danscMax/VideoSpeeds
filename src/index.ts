@@ -52,6 +52,7 @@ import {
   pickInitialSpeed,
   setSpeed,
   setTemporary,
+  SELF_WRITE_GRACE_MS,
 } from './speed/controller';
 import { SPEED_STEP, speedBoundsFor } from './config';
 import { createTranslator } from './i18n/translator';
@@ -69,6 +70,7 @@ import {
   installThemeWatcher,
 } from './ui';
 import { showNotification } from './ui/notifications';
+import { installFullscreenReparent } from './ui/popup';
 import { createKillSwitch } from './health/kill-switch';
 import { createHealthChecker } from './health/checker';
 import { reportToClipboardText } from './health/report';
@@ -347,6 +349,13 @@ export async function bootstrap(
     for (const v of document.querySelectorAll('video')) {
       delete (v as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached;
     }
+    // Clear smart (one-shot) speed on every SPA navigation. Without this
+    // a `setTemporary` from the previous video leaks into the new one
+    // when YouTube auto-plays the next clip — pickInitialSpeed reads
+    // smart and applies the prior temp to the fresh video. Mirrors
+    // .user.js:1990 (yt-navigate-finish) + 2241 (handleRutubeNavigation).
+    // Audit A2.2 / A2.3 / B2.3.
+    void ctx.speedStore.setSmart(null);
     scheduleInsertWithRetry(panel.element, ctx);
     attachToVideo(ctx, meter, attachCleanup);
     // Re-detect theme: YouTube users sometimes toggle dark mode mid-session
@@ -381,6 +390,14 @@ export async function bootstrap(
     ctx.logger.debug('popstate: forcing reattach');
     reattach();
   });
+
+  // 12b. Re-parent the speed-popup into the fullscreen element so it
+  //      stays visible during fullscreen playback. Without this the
+  //      popup's `position:absolute` anchor stays in the underlying
+  //      document and renders off-screen (audit B2.7).
+  cleanup.add(
+    installFullscreenReparent(() => discoveryPort.resolve('playerContainer')),
+  );
 
   // 13. Start health watchdog.
   healthChecker.start();
@@ -504,62 +521,95 @@ function attachToVideo(
 ): void {
   const v = ctx.discovery.resolve('video');
   if (!(v instanceof HTMLVideoElement)) {
-    // No video yet -- the discovery engine will resolve once one appears.
-    // Use the per-attach cleanup so the retry stops if reattach disposes
-    // it before the timer fires (otherwise stale recursion hits the new
-    // attach pass and we end up with two listener stacks).
     cleanup.setTimeout(() => attachToVideo(ctx, meter, cleanup), 500);
     return;
   }
-  type Branded = HTMLVideoElement & { __vsAttached?: boolean };
+  type Branded = HTMLVideoElement & { __vsAttached?: boolean; __vsSelfWriteAt?: number };
   if ((v as Branded).__vsAttached) return;
   (v as Branded).__vsAttached = true;
 
-  // Track which src we last saw so loadstart can distinguish a real
-  // src-change from the constant HLS-segment loadstart storm. Only a
-  // src-change should clear smart-speed and re-apply initial.
+  // Pre-clear smart on fresh attach. Mirror .user.js:2446 — every fresh
+  // video binding wipes the temp so an old smart from the previous
+  // <video> can't bleed (audit B2.3 / A2.4).
+  void ctx.speedStore.setSmart(null);
+
   let lastSrc = v.currentSrc || v.src || '';
   let isSelfWrite = false;
+
+  const isSite = (s: 'youtube' | 'rutube'): boolean => ctx.site === s;
+
+  /** Recent self-write check: controller stamps `__vsSelfWriteAt` on the
+   *  video each time it writes playbackRate. We honour that timestamp
+   *  here so click-router writes are not reverted by their own
+   *  ratechange callback (audit C2.4). */
+  const isFreshSelfWrite = (): boolean => {
+    const ts = (v as Branded).__vsSelfWriteAt ?? 0;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    return now - ts < SELF_WRITE_GRACE_MS;
+  };
 
   const apply = (reason: string): void => {
     const target = pickInitialSpeed(ctx);
     if (Math.abs(v.playbackRate - target) < 0.005) return;
     isSelfWrite = true;
-    void setSpeed(ctx, target).finally(() => { isSelfWrite = false; });
+    // silent: this is an internal correction, user didn't initiate it.
+    void setSpeed(ctx, target, { silent: true }).finally(() => { isSelfWrite = false; });
     ctx.logger.debug(`attachToVideo: re-applying ${target}x (${reason})`);
   };
 
-  // Initial application + cascading retries to fight HLS init (.user.js:2455-2463).
+  // Initial application. The cascade-retry loop only runs on RuTube
+  // (its HLS player periodically resets rate during init). YouTube's
+  // adaptive delivery doesn't, so we'd be running 4 redundant
+  // setSpeed → 4 storage writes per video for nothing (audit C2.6).
   if (v.readyState >= 1) {
     apply('ready');
   } else {
     cleanup.addEventListener(v, 'loadedmetadata', () => apply('loadedmetadata'), { once: true });
   }
-  // Multi-shot reapply -- player clobbers the rate during HLS init.
-  for (const ms of [100, 300, 500, 1000]) {
-    cleanup.setTimeout(() => apply(`retry+${ms}ms`), ms);
+  if (!isSite('youtube')) {
+    for (const ms of [100, 300, 500, 1000]) {
+      cleanup.setTimeout(() => apply(`retry+${ms}ms`), ms);
+    }
   }
 
-  // ratechange revert protection: when the player snaps rate back to a
-  // value that doesn't match our intent, re-apply. We tolerate small
-  // float drift (<0.005) to avoid fighting our own writes -- isSelfWrite
-  // is also a belt for tight races. Original .user.js:2534-2557.
+  // Per-site ratechange branch (audit A2.4):
+  //   - YouTube: a rate change we didn't make is most often the user
+  //     picking a value in YT's own settings → speed menu. Accept it,
+  //     sync UI silently (no popup — they already saw YT's UI), persist
+  //     as current. Mirror .user.js:2553 syncUIWithVideoSpeed.
+  //   - RuTube/HDRezka: site is fighting our rate (HLS quality/manifest
+  //     reload). Re-apply with a 50ms setTimeout so we break out of the
+  //     ratechange callback's microtask. Mirror .user.js:2545-2551.
   let prev = v.playbackRate;
   cleanup.addEventListener(v, 'ratechange', () => {
     const next = v.playbackRate;
-    meter.tick(prev, next);
+    // Skip self-writes when feeding the meter so HealthChecker's "rate
+    // resets storm" detection isn't tripped by our own corrections
+    // (audit C2.2).
+    if (!isSelfWrite && !isFreshSelfWrite()) {
+      meter.tick(prev, next);
+    }
     prev = next;
-    if (isSelfWrite) return;
+    if (isSelfWrite || isFreshSelfWrite()) return;
     const target = pickInitialSpeed(ctx);
-    if (Math.abs(next - target) > 0.005) {
-      apply('ratechange-revert');
+    if (Math.abs(next - target) <= 0.005) return;
+
+    if (isSite('youtube')) {
+      // External user-driven change via YouTube's own UI → accept.
+      void ctx.speedStore.setCurrent(next);
+      ctx.ui.refreshButtons(next, { silent: true });
+      ctx.ui.refreshSlider(next);
+      ctx.logger.info(`ratechange-accept(yt-external): ${target} -> ${next}`);
+    } else {
+      // Site is reverting; counter-revert after a microtask.
+      setTimeout(() => apply('ratechange-revert'), 50);
     }
   });
 
   // playing-event revert: covers seek + quality switch + tab-resume
   // resets that don't always fire ratechange. .user.js:2477-2501.
   cleanup.addEventListener(v, 'playing', () => {
-    if (isSelfWrite) return;
+    if (isSelfWrite || isFreshSelfWrite()) return;
     const target = pickInitialSpeed(ctx);
     if (Math.abs(v.playbackRate - target) > 0.005) {
       apply('playing-revert');
@@ -573,10 +623,13 @@ function attachToVideo(
     if (nowSrc && nowSrc !== lastSrc) {
       lastSrc = nowSrc;
       void ctx.speedStore.setSmart(null);
-      // Re-apply at multiple delays for HLS players that initialise rate
-      // late on src change.
-      for (const ms of [100, 300, 500, 1000]) {
-        cleanup.setTimeout(() => apply(`src-change+${ms}ms`), ms);
+      if (isSite('youtube')) {
+        // YT just needs a single late re-apply once metadata is in.
+        cleanup.setTimeout(() => apply('src-change'), 100);
+      } else {
+        for (const ms of [100, 300, 500, 1000]) {
+          cleanup.setTimeout(() => apply(`src-change+${ms}ms`), ms);
+        }
       }
     }
   });

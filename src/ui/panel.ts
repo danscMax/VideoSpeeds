@@ -137,6 +137,16 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
         void setSpeed(ctx, value);
       }
     });
+    // Mobile: stop the page from scrolling while the user drags the slider
+    // thumb. Mirrors .user.js:4824-4829 — without this, dragging on a
+    // touch device scrolls the viewport instead of moving the thumb.
+    // `passive: false` is required for preventDefault on touch events.
+    ctx.cleanup.addEventListener(
+      sliderInput,
+      'touchmove',
+      (e) => { e.preventDefault(); },
+      { passive: false },
+    );
   }
 
   // ----- Menu-scoped cleanup registry. Disposed + replaced on every

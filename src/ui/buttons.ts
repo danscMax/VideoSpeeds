@@ -62,7 +62,10 @@ export const DEFAULT_PRESETS: Readonly<Record<string, readonly number[]>> = {
 };
 
 function isSameSpeed(a: number, b: number): boolean {
-  return Math.abs(a - b) < 0.001;
+  // Threshold 0.01 (parity with .user.js:2630 Math.abs < 0.01). Tighter
+  // 0.001 used to miss button highlight after float-drift accumulation
+  // (1.0 + 0.1 × 5 = 1.4999...x) — audit C2.3.
+  return Math.abs(a - b) < 0.01;
 }
 
 /**

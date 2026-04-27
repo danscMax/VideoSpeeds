@@ -18,7 +18,7 @@
 import { showNotification } from './notifications';
 import { showSpeedPopup } from './popup';
 import type { PanelHandle } from './panel';
-import type { NotificationKind, UiPort } from '../app/ports';
+import type { NotificationKind, RefreshOptions, UiPort } from '../app/ports';
 
 export interface CreateUiPortOptions {
   panel: PanelHandle;
@@ -29,9 +29,15 @@ export interface CreateUiPortOptions {
 export function createUiPort(opts: CreateUiPortOptions): UiPort {
   const { panel } = opts;
   return {
-    refreshButtons(speed: number): void {
+    refreshButtons(speed: number, refreshOpts?: RefreshOptions): void {
       panel.refreshButtons(speed);
-      showSpeedPopup(speed, opts.playerContainer?.() ?? null);
+      // Skip the centred speed-popup for non-user-initiated paths (HLS
+      // cascade, ratechange-revert, retry storms, YT external accept).
+      // Without this gate the popup flashed up to 4× per video on start
+      // (one per cascade-retry tick) — audit B2.6.
+      if (!refreshOpts?.silent) {
+        showSpeedPopup(speed, opts.playerContainer?.() ?? null);
+      }
     },
     refreshSlider(speed: number): void {
       panel.refreshSlider(speed);

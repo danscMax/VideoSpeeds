@@ -29,6 +29,16 @@ const CLICK_DEBOUNCE_MS = 400;
  *  initialised tabs (popup vs in-player) don't share counters. */
 const clickState = new WeakMap<AppContext, { count: number; timer: number | null }>();
 
+/**
+ * Window in ms during which a `ratechange` event is treated as our own
+ * write. The ratechange listener in src/index.ts consults the
+ * `__vsSelfWriteAt` timestamp we stamp on the video element here and
+ * skips its revert path when we just wrote. Without this guard a
+ * click-driven setTemporary fires ratechange in the same tick → listener
+ * reads stale state → reverts our brand-new write (audit C2.4).
+ */
+export const SELF_WRITE_GRACE_MS = 60;
+
 /** Internal: apply + currentSpeed sync, pure of side-effects beyond the video. */
 function applyToVideo(ctx: AppContext, speed: number): boolean {
   const el = ctx.discovery.resolve('video');
@@ -37,6 +47,10 @@ function applyToVideo(ctx: AppContext, speed: number): boolean {
     return false;
   }
   try {
+    // Mark the upcoming ratechange as ours. The watchdog in src/index.ts
+    // checks `__vsSelfWriteAt` and skips revert when within grace window.
+    (el as HTMLVideoElement & { __vsSelfWriteAt?: number }).__vsSelfWriteAt =
+      typeof performance !== 'undefined' ? performance.now() : Date.now();
     el.playbackRate = speed;
     return true;
   } catch (e) {
@@ -56,25 +70,40 @@ function clamp(ctx: AppContext, speed: number): number {
   return Math.min(bounds.max, Math.max(bounds.min, rounded));
 }
 
+export interface ApplyOptions {
+  /** Skip the centred speed popup. Used by internal correction paths
+   *  (HLS cascade retry, ratechange-revert) — audit B2.6. */
+  silent?: boolean;
+}
+
 /**
  * Apply a speed and persist it as the current value. Used by slider drag
  * and by external (programmatic) callers that want a "set this and remember
  * it" semantic without the toast/force-rememberSpeed of `setGlobal`.
  *
- * IMPORTANT: clears the smart (one-shot) speed before applying. Otherwise
- * a prior `setTemporary` leaves smart=X stuck, and the ratechange-revert
- * watchdog in attachToVideo (which pickInitialSpeed -> smart || current)
- * yanks playbackRate back to X immediately after our write -- audit-2026-04
- * caught a slider drag that visually moved but the rate snapped right
- * back. Mirrors .user.js:2369 (`temporarySpeed = null` inside setSpeed
- * when save=true).
+ * Persist-then-apply order (.user.js:2369-2399 parity): clear smart and
+ * write current to storage BEFORE setting `video.playbackRate`. Otherwise
+ * the ratechange watchdog reads pickInitialSpeed = smart || current and
+ * — between our `el.playbackRate = X` and `setSmart(null)` — sees stale
+ * smart and reverts our write.
+ *
+ * `current` is gated on `rememberSpeed` (audit B2.1): when the user has
+ * opted out of persistence, slider drag is a one-shot for this video.
+ * The smart store is still cleared so subsequent click-router temps
+ * don't bleed.
  */
-export async function setSpeed(ctx: AppContext, speed: number): Promise<void> {
+export async function setSpeed(
+  ctx: AppContext,
+  speed: number,
+  opts: ApplyOptions = {},
+): Promise<void> {
   const validSpeed = clamp(ctx, speed);
   await ctx.speedStore.setSmart(null);
-  await ctx.speedStore.setCurrent(validSpeed);
+  if (ctx.settingsStore.getKey('rememberSpeed') === true) {
+    await ctx.speedStore.setCurrent(validSpeed);
+  }
   applyToVideo(ctx, validSpeed);
-  ctx.ui.refreshButtons(validSpeed);
+  ctx.ui.refreshButtons(validSpeed, opts);
   ctx.ui.refreshSlider(validSpeed);
   ctx.logger.debug('controller.setSpeed', validSpeed);
 }
@@ -82,13 +111,22 @@ export async function setSpeed(ctx: AppContext, speed: number): Promise<void> {
 /**
  * One-shot speed for this video only -- single click on a speed button.
  * Doesn't touch `current`; instead stores as `smart`. Cleared automatically
- * when the next video loads (Wave 1.10 attachToVideo).
+ * when the next video loads or on SPA navigation.
+ *
+ * Persist-then-apply order (.user.js:2271-2280 parity): write smart BEFORE
+ * playbackRate to suppress the ratechange-revert watchdog. Without this
+ * the listener would read pickInitialSpeed = (old smart || current),
+ * detect a delta, and revert to the prior value (audit A2.1).
  */
-export async function setTemporary(ctx: AppContext, speed: number): Promise<void> {
+export async function setTemporary(
+  ctx: AppContext,
+  speed: number,
+  opts: ApplyOptions = {},
+): Promise<void> {
   const validSpeed = clamp(ctx, speed);
-  applyToVideo(ctx, validSpeed);
   await ctx.speedStore.setSmart(validSpeed);
-  ctx.ui.refreshButtons(validSpeed);
+  applyToVideo(ctx, validSpeed);
+  ctx.ui.refreshButtons(validSpeed, opts);
   ctx.ui.refreshSlider(validSpeed);
   ctx.logger.debug('controller.setTemporary', validSpeed);
 }
@@ -104,7 +142,11 @@ export async function setTemporary(ctx: AppContext, speed: number): Promise<void
  * between applyToVideo and setSmart(null), the old code path read stale
  * smart and re-applied the previous value.
  */
-export async function setGlobal(ctx: AppContext, speed: number): Promise<void> {
+export async function setGlobal(
+  ctx: AppContext,
+  speed: number,
+  opts: ApplyOptions = {},
+): Promise<void> {
   const validSpeed = clamp(ctx, speed);
 
   // Force-enable rememberSpeed if it was off. Userscript parity (.user.js:2300).
@@ -118,7 +160,7 @@ export async function setGlobal(ctx: AppContext, speed: number): Promise<void> {
   await ctx.speedStore.setSmart(null);
   await ctx.speedStore.setCurrent(validSpeed);
   applyToVideo(ctx, validSpeed);
-  ctx.ui.refreshButtons(validSpeed);
+  ctx.ui.refreshButtons(validSpeed, opts);
   ctx.ui.refreshSlider(validSpeed);
   ctx.ui.showNotification(
     ctx.i18n.t('toast.speed_global', { speed: validSpeed }),

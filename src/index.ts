@@ -591,6 +591,16 @@ function attachToVideo(
 
   let lastSrc = v.currentSrc || v.src || '';
   let isSelfWrite = false;
+  // Timestamp captured at attach. Used as a grace window for the YouTube
+  // ratechange-accept path: within ~1.5 s after attach, ANY external rate
+  // change is treated as YT's own internal reset (HLS quality change,
+  // post-navigation default, autoplay reset, ...) and ignored — not as
+  // a user picking a value from YT's speed menu. Without this gate the
+  // user's saved global speed gets overwritten with 1.0 every time the
+  // player normalises rate around a navigation (audit S18 / user
+  // bug 2026-04-27).
+  const attachedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const ATTACH_GRACE_MS = 1500;
 
   const isSite = (s: 'youtube' | 'rutube'): boolean => ctx.site === s;
 
@@ -651,11 +661,24 @@ function attachToVideo(
     if (Math.abs(next - target) <= 0.005) return;
 
     if (isSite('youtube')) {
-      // External user-driven change via YouTube's own UI → accept.
-      void ctx.speedStore.setCurrent(next);
-      ctx.ui.refreshButtons(next, { silent: true });
-      ctx.ui.refreshSlider(next);
-      ctx.logger.info(`ratechange-accept(yt-external): ${target} -> ${next}`);
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (now - attachedAt < ATTACH_GRACE_MS) {
+        // Inside the post-attach grace window: this is almost certainly
+        // YT's own normalisation pass (HLS quality switch, navigation
+        // default, autoplay reset), NOT the user picking a speed in YT's
+        // menu. Do NOT overwrite saved current; instead re-apply our
+        // target so playback continues at the chosen speed. Mirrors
+        // .user.js syncUIWithVideoSpeed which only honours external
+        // rate changes once the initial attachment phase has settled.
+        ctx.logger.info(`ratechange-ignored(yt-attach-grace ${Math.round(now - attachedAt)}ms): ${next}, restoring ${target}`);
+        setTimeout(() => apply('ratechange-grace-restore'), 50);
+      } else {
+        // External user-driven change via YouTube's own UI → accept.
+        void ctx.speedStore.setCurrent(next);
+        ctx.ui.refreshButtons(next, { silent: true });
+        ctx.ui.refreshSlider(next);
+        ctx.logger.info(`ratechange-accept(yt-external): ${target} -> ${next}`);
+      }
     } else {
       // Site is reverting; counter-revert after a microtask.
       setTimeout(() => apply('ratechange-revert'), 50);

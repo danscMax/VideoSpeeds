@@ -529,6 +529,13 @@ function installRemovalObserver(
 ): void {
   const parent = panelEl.parentElement;
   if (!parent) return; // shouldn't happen -- caller invoked us post-insert
+  // Track the last known previous-sibling so we only re-run insertPanel
+  // when the panel's position has ACTUALLY shifted. Without this guard
+  // YouTube's high-volume mutation traffic (comments hydrating, ads
+  // attaching, recommendations updating) ran insertPanel thousands of
+  // times per page load -- enough to block the main thread and stop the
+  // page from responding to clicks (user bug 2026-04-27).
+  let lastPrev: Element | null = panelEl.previousElementSibling;
   const observer = new MutationObserver(() => {
     if (panelEl.parentNode !== parent || !document.contains(panelEl)) {
       ctx.logger.info('panel removed from DOM by host framework; re-inserting');
@@ -536,14 +543,21 @@ function installRemovalObserver(
       reschedule(panelEl, ctx);
       return;
     }
-    // Panel is still in the same parent but a sibling changed. Re-run
-    // insertPanel — the idempotent guard inside `insertPanel` skips when
-    // we're already at the right spot, otherwise it repositions us.
-    // Loop-safety relies on `skipOwnPanel(...)` in chooseAnchor: after a
-    // successful re-position, the next observer tick computes the same
-    // `before` reference and the guard short-circuits without mutating.
+    // O(1) displacement check: only re-run insertPanel when our position
+    // among siblings actually changed. RuTube's title-section hydration
+    // (the case the re-run was added for) shifts our previous-sibling
+    // from null/player to the title-section; YT's comments/ad churn
+    // doesn't touch our immediate neighbours so this short-circuits.
+    const currentPrev = panelEl.previousElementSibling;
+    if (currentPrev === lastPrev) return;
+    lastPrev = currentPrev;
     try {
       insertPanel(panelEl, ctx);
+      // Update lastPrev AFTER insertPanel so the corrected position is
+      // the new baseline -- otherwise the very next mutation (caused by
+      // our own removeChild + insertBefore) would compare against the
+      // pre-correction prev and trigger a redundant insertPanel call.
+      lastPrev = panelEl.previousElementSibling;
     } catch (e) {
       ctx.logger.warn('insertPanel re-run after sibling change failed', e);
     }

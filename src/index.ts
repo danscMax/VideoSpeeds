@@ -369,7 +369,30 @@ export async function bootstrap(
     // .user.js:1990 (yt-navigate-finish) + 2241 (handleRutubeNavigation).
     // Audit A2.2 / A2.3 / B2.3.
     void ctx.speedStore.setSmart(null);
-    scheduleInsertWithRetry(panel.element, ctx);
+
+    // Force a clean slate — detach the panel from its (possibly stale)
+    // parent so the next insertPanel doesn't find itself in a detached
+    // subtree the host framework has since replaced. RuTube swaps the
+    // entire `.video-page-layout-module__left` column on each nav,
+    // leaving our panel orphaned in a torn-down branch where the
+    // idempotent guard mistakes "still in old parent" for "still
+    // visible". Mirrors .user.js:2253-2254 ("Удаляем старый UI, если
+    // он остался от предыдущей страницы").
+    panel.element.parentElement?.removeChild(panel.element);
+
+    // RuTube React re-renders the page column AFTER the
+    // history.pushState that triggers our reattach. Querying the DOM
+    // immediately catches a transient mid-render state where layoutLeft
+    // is partially mounted; chooseAnchor then anchors us into a
+    // doomed-to-be-replaced container. The userscript waits 800ms
+    // before its first insertion attempt for exactly this reason
+    // (.user.js:2256-2258). YouTube doesn't need the delay --
+    // ytd-watch-metadata is stable across yt-navigate-finish events.
+    if (ctx.site === 'rutube') {
+      ctx.cleanup.setTimeout(() => scheduleInsertWithRetry(panel.element, ctx), 800);
+    } else {
+      scheduleInsertWithRetry(panel.element, ctx);
+    }
     attachToVideo(ctx, meter, attachCleanup);
     // Re-detect theme: YouTube users sometimes toggle dark mode mid-session
     // and we already re-evaluate on attribute change, but a manual reapply

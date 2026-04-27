@@ -123,24 +123,32 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     }
   }
 
+  // 3. RuTube fast path — direct DOM query. RuTube's modern layout has
+  //    `.video-page-layout-module__left` as the LEFT column (block stack)
+  //    containing the player wrapper (`.video-page-layout-module__player`)
+  //    + the page-info wrapper as block siblings. Inserting our panel
+  //    BETWEEN those two siblings (i.e. after the player wrapper) gives
+  //    the panel its own row above the title block.
+  //
+  //    We bypass `discovery.resolve('playerContainer')` here because the
+  //    cache can stale-resolve to `section.video-player` (the inner
+  //    player), whose parent is an anonymous DIV inside the player
+  //    wrapper. Inserting there lands us INSIDE the player chrome (and
+  //    falling through to before-info would land us inside the
+  //    `pageHeaderRow` flex row — squeezing the title sideways).
+  if (ctx.site === 'rutube') {
+    const layoutPlayer = document.querySelector('[class*="video-page-layout-module__player"]');
+    if (layoutPlayer?.parentElement) {
+      return {
+        parent: layoutPlayer.parentElement,
+        anchor: 'after-player',
+        before: layoutPlayer.nextSibling,
+      };
+    }
+  }
+
   const info = ctx.discovery.resolve('infoElem');
   const player = ctx.discovery.resolve('playerContainer');
-
-  // 3. RuTube fast path -- mirror .user.js:4955-4974. RuTube's
-  //    videoTitleSection / pageInfoContainerWrapper sits inside a flex
-  //    row alongside the player on some layouts; inserting OUR panel
-  //    BEFORE it as a sibling makes the panel another flex item in
-  //    that row, which squeezes the title into a narrow vertical
-  //    column. Insert AFTER the player container instead -- that
-  //    sibling-after-player is a normal block element, full width,
-  //    on its own line. Original userscript does this exact same.
-  if (ctx.site === 'rutube' && player?.parentElement) {
-    return {
-      parent: player.parentElement,
-      anchor: 'after-player',
-      before: player.nextSibling,
-    };
-  }
 
   // 4. Preferred: insert before infoElem if it lives OUTSIDE the player.
   //    Some sites (RuTube live) render the title as a player-overlay --

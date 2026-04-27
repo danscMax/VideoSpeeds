@@ -40,6 +40,23 @@ function isContextInvalidated(err: unknown): boolean {
   return /extension context (?:was )?invalidated/i.test(err.message);
 }
 
+/**
+ * Returns false once the extension context has been invalidated (reload,
+ * disable, browser shutdown). chrome.runtime.id flips to undefined at that
+ * point, so we can short-circuit the storage call BEFORE it throws — saves
+ * one rejection per fire-and-forget caller. The try/catch around the
+ * runtime probe is defensive: some browsers can throw on attribute access
+ * inside a dying context.
+ */
+function isContextAlive(): boolean {
+  try {
+    const cr = (globalThis as { chrome?: { runtime?: { id?: string } } }).chrome?.runtime;
+    return cr?.id != null;
+  } catch {
+    return false;
+  }
+}
+
 export function createBrowserStorageAdapter(): StorageAdapter {
   // browser.storage.local works for both Chrome MV3 and Firefox MV3 via WXT's
   // unified `browser` shim. No callbacks-vs-promises ceremony needed.
@@ -47,6 +64,7 @@ export function createBrowserStorageAdapter(): StorageAdapter {
 
   return {
     async get<T>(key: string, defaultValue: T): Promise<T> {
+      if (!isContextAlive()) return defaultValue;
       try {
         const result = await store.get(key);
         const v = (result as Record<string, unknown>)[key];
@@ -57,6 +75,7 @@ export function createBrowserStorageAdapter(): StorageAdapter {
       }
     },
     async set(key: string, value: unknown): Promise<void> {
+      if (!isContextAlive()) return;
       try {
         await store.set({ [key]: value });
       } catch (e) {
@@ -65,6 +84,7 @@ export function createBrowserStorageAdapter(): StorageAdapter {
       }
     },
     async remove(key: string): Promise<void> {
+      if (!isContextAlive()) return;
       try {
         await store.remove(key);
       } catch (e) {

@@ -18,6 +18,21 @@ export default defineContentScript({
   allFrames: false,
   async main(ctx) {
     console.info('[VIDEO-SPEEDS] content script loaded on', location.hostname);
+    // Backstop: when the extension is reloaded/disabled, in-flight chrome.*
+    // calls in the OLD content-script instance reject with "Extension
+    // context invalidated" -- these surface in the chrome://extensions
+    // errors panel even though nothing is actually broken (the new content
+    // script is already running). The adapter swallows the storage path,
+    // but WXT internals (runtime.connect, sendMessage) and any future
+    // chrome.* calls can still trip the same rejection. Filter at the
+    // window level so unrelated rejections are still surfaced.
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason;
+      const msg = reason instanceof Error ? reason.message : String(reason ?? '');
+      if (/extension context (?:was )?invalidated/i.test(msg)) {
+        event.preventDefault();
+      }
+    });
     const { bootstrap } = await import('../index');
     await bootstrap(ctx);
   },

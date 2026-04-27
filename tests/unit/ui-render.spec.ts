@@ -58,14 +58,19 @@ describe('renderSlider / setSliderValue', () => {
     const input = c.querySelector<HTMLInputElement>('.speed-slider');
     const label = c.querySelector<HTMLElement>('.speed-slider-label');
     expect(input?.value).toBe('1.5');
-    expect(label?.textContent).toBe('1.50x');
+    // Label trims trailing zeros (parity with original userscript:
+    // 1 → "1x", 1.5 → "1.5x"; matches buttons.ts formatSpeedLabel).
+    expect(label?.textContent).toBe('1.5x');
+    // Floating tooltip mirrors the same text.
+    expect(c.querySelector<HTMLElement>('.speed-value')?.textContent).toBe('1.5x');
   });
 
   it('setSliderValue updates input + label + fill var', () => {
     const c = renderSlider({ current: 1, min: 1, max: 4 });
     setSliderValue(c, 2.5);
     expect(c.querySelector<HTMLInputElement>('.speed-slider')?.value).toBe('2.5');
-    expect(c.querySelector<HTMLElement>('.speed-slider-label')?.textContent).toBe('2.50x');
+    expect(c.querySelector<HTMLElement>('.speed-slider-label')?.textContent).toBe('2.5x');
+    expect(c.querySelector<HTMLElement>('.speed-value')?.textContent).toBe('2.5x');
   });
 });
 

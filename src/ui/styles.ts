@@ -186,6 +186,12 @@ export function installThemeWatcher(
 // attribute the panel itself carries (see panel.ts), so YouTube gets red
 // and RuTube its blue.
 const BASE_STYLES = `
+/* Mono fallback chain so .vs-menu-version / .vs-hotkey-input / .vs-row-hint
+   render in a monospace face matching the userscript's JetBrains Mono.
+   We deliberately do NOT @import a webfont (extension policy + privacy);
+   ui-monospace is an Apple/macOS alias for SF Mono, falling back to
+   distros' default. */
+
 /* Token sets per theme. Panel itself is transparent; buttons + gear get
    their own pills that ADAPT to the host page colour:
      light page  -> light pills + dark text
@@ -215,9 +221,11 @@ html[data-vs-theme="light"] {
   --vs-accent: #ff0000;
 }
 
-/* Per-site accent + accent-dark for the active-button gradient. */
-.vs-panel[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-rgb: 0,161,231; }
-.vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-rgb: 255,0,0; }
+/* Per-site accent + accent-dark + accent-darker for 3-step gradient on
+   .speed-button.active:hover (mirrors .user.js:2912 where hover went
+   from accent->accent-dark to accent-dark->accent-darker). */
+.vs-panel[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-darker: #005f8a; --vs-accent-rgb: 0,161,231; }
+.vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-darker: #990000; --vs-accent-rgb: 255,0,0; }
 
 /* The panel: TRANSPARENT flex row attached just below the player. No
    capsule background -- buttons and the gear handle their own visual
@@ -226,6 +234,26 @@ html[data-vs-theme="light"] {
 @keyframes vs-fade-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+/* Settings modal open animation. Mirrors .user.js:3061-3066 vs-menu-in. */
+@keyframes vs-menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Tab-panel cross-fade on tab switch. Mirrors .user.js:3199-3203 vs-panel-in. */
+@keyframes vs-panel-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Yellow status halo while diagnostics still inconclusive. */
+@keyframes vs-status-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,152,0,0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(255,152,0,0); }
+}
+/* Hotkey-input pulsing accent ring while waiting for the user's keypress. */
+@keyframes vs-capture-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--vs-accent-rgb), 0.5); }
+  50%      { box-shadow: 0 0 0 4px rgba(var(--vs-accent-rgb), 0); }
 }
 .vs-panel {
   display: flex;
@@ -291,42 +319,61 @@ html[data-vs-theme="light"] {
    no extra rules needed; flex naturally collapses the gap. */
 .speed-slider-container.vs-slider-in-chrome {
   flex: 0 0 auto;
-  width: 140px;
-  min-width: 100px;
-  height: 40px;            /* match .ytp-right-controls native height so
-                              we don't force a smaller box that YT then
-                              tries to vertically-center contents inside */
+  width: 200px;             /* match userscript .video-slider-container .speed-slider-container width=200 */
+  min-width: 140px;
+  height: 40px;
   padding: 0 4px;
   margin: 0 6px;
   align-self: center;
-  /* Inside YouTube chrome the surrounding text is white-on-translucent;
-     pick the dark-theme tokens unconditionally so the label + track
-     stay legible regardless of host page theme. */
+  order: -1;                 /* push to leftmost position inside .ytp-right-controls (parity .user.js:3761) */
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-bg-track: rgba(255, 255, 255, 0.22);
 }
-/* Hard reset against YouTube ytp-right-controls span rules (font-size 109%,
-   line-height) that otherwise stretched our label to ~56px tall, drifting
-   it out of vertical alignment with the track (audit screenshot
-   2026-04-26). !important is the only sustainable override of YT high-
-   specificity chrome rules. */
+/* Video-mode label sits to the LEFT of the slider, always visible
+   (mirror .user.js:.video-speed-label at 3794-3802). The static label
+   is hidden in panel layouts (right/bottom) where the floating
+   .speed-value tooltip plays the same role on hover. */
 .speed-slider-container.vs-slider-in-chrome .speed-slider-label {
   display: inline-flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   height: 100% !important;
   line-height: 1 !important;
   font-size: 12px !important;
+  font-weight: 400 !important;
   min-width: 36px !important;
-  margin: 0 !important;
+  margin: 0 4px 0 0 !important;
   padding: 0 !important;
   vertical-align: middle !important;
+  text-align: left !important;
+  color: rgba(255,255,255,0.8) !important;
 }
 .speed-slider-container.vs-slider-in-chrome .speed-slider {
   align-self: center;
   height: 3px;
   margin: 0 !important;
   padding: 0 !important;
+}
+/* Hide the floating tooltip in chrome layout — the static left label
+   is always-on, so a tooltip on top of it would be redundant. */
+.speed-slider-container.vs-slider-in-chrome .speed-value {
+  display: none !important;
+}
+
+/* YouTube ytp-autohide integration: chrome-mounted slider fades with the
+   rest of the player chrome (parity .user.js:3805-3820). Only applies
+   when the slider lives inside .ytp-chrome-bottom (i.e. .ytp-right-controls). */
+.ytp-chrome-bottom .speed-slider-container.vs-slider-in-chrome {
+  opacity: 1;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ytp-autohide .ytp-chrome-bottom .speed-slider-container.vs-slider-in-chrome {
+  opacity: 0;
+  pointer-events: none;
+}
+.ytp-autohide:not(.ytp-user-inactive) .ytp-chrome-bottom .speed-slider-container.vs-slider-in-chrome {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Speed-button row: pill buttons. min-width keeps every label centred
@@ -374,7 +421,11 @@ html[data-vs-theme="light"] {
   box-shadow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
 }
 .speed-button.active:hover {
-  background: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent) 100%);
+  /* 3-step gradient on hover: accent-dark -> accent-darker (mirrors
+     .user.js where hover deepens the gradient instead of just swapping
+     base/dark). Falls back gracefully when --vs-accent-darker is undefined
+     (uses --vs-accent-dark twice). */
+  background: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker, var(--vs-accent-dark)) 100%);
   box-shadow: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
 }
 
@@ -407,8 +458,14 @@ html[data-vs-theme="light"] {
   align-items: center;
   gap: 10px;
   padding: 0 4px;
-  flex: 1 1 220px;
-  min-width: 160px;
+  /* Preferred width 300px (parity with userscript). flex-grow: 0 stops
+     the slider from stretching into the recommendations column on wide
+     viewports; flex-shrink: 1 lets it collapse below 300px when the
+     buttons-row + gear + 300px slider would overflow a narrow parent
+     (player-width column). min-width 100px keeps the thumb usable. */
+  flex: 0 1 300px;
+  min-width: 100px;
+  max-width: 300px;
   height: 32px;
   position: relative;
 }
@@ -459,14 +516,65 @@ html[data-vs-theme="light"] {
 .speed-slider-container:hover .speed-slider::-moz-range-thumb {
   transform: scale(1.4);
 }
+/* Static left-of-slider label. Hidden by default; only shown when the
+   slider is mounted into player chrome (vs-slider-in-chrome). In panel
+   layouts the floating .speed-value tooltip below takes its place. */
 .speed-slider-label {
-  min-width: 50px;
+  display: none;
+  min-width: 36px;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   font-weight: 600;
   color: var(--vs-text-primary);
-  text-align: right;
+  text-align: left;
   flex-shrink: 0;
+}
+
+/* Floating tooltip above the slider thumb. Opacity 0 by default; reveals
+   on container :hover and while the thumb is :active. Slides
+   horizontally via inline style.left set by updateSliderFill (in
+   slider.ts). Mirrors .user.js:3713-3748 .speed-value. */
+.speed-value {
+  position: absolute;
+  bottom: 32px;
+  background: rgba(28, 28, 28, 0.92);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, left 0.1s ease, transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transform: translateX(-50%) scale(0.9);
+  font-variant-numeric: tabular-nums;
+}
+.speed-value::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(28, 28, 28, 0.92);
+}
+.speed-slider-container:hover .speed-value,
+.speed-slider:active ~ .speed-value {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+/* YouTube light-theme background for popup tooltip. */
+html[data-vs-theme="light"] .speed-value {
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(15, 15, 15, 0.92);
+}
+html[data-vs-theme="light"] .speed-value::after {
+  border-top-color: rgba(255, 255, 255, 0.96);
 }
 
 /* Gear -- circular icon button. Matches the original userscript
@@ -523,54 +631,80 @@ html[data-vs-theme="light"] {
   50%      { opacity: 0.45; }
 }
 
+/* In-player speed popup. Anchored to the upper-right of the player
+   container (parity .user.js:3888-3916) — looks like a native YouTube
+   volume / chapter indicator instead of covering the centre of the
+   video. Per-site sizing: YouTube renders bigger + softer drop-shadow,
+   RuTube smaller. Light theme inverts text to black (YouTube-only —
+   RuTube has no light mode). */
 #speed-popup.speed-popup {
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.8);
+  right: 20px;
+  left: auto;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
   color: #fff;
-  font-size: 28px;
-  font-weight: 600;
-  padding: 10px 20px;
-  border-radius: 12px;
+  font-size: 16px;
+  font-weight: normal;
+  padding: 10px 15px;
+  border-radius: 5px;
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
-  z-index: 100002;
+  z-index: 100000;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-variant-numeric: tabular-nums;
+}
+#speed-popup.speed-popup[data-vs-site="youtube"] {
+  font-size: 20px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
+  color: black;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 #speed-popup.speed-popup.show { opacity: 1; }
 
-/* Settings modal -- floating popover with its own dark surface, opaque
-   so it stays readable on any host theme without the cost of a real-time
-   backdrop-filter (cheap solid fill paints in one tile). Internal text +
-   tokens are scoped to this rule so descendants always render dark. The
-   z-index matches the original userscript (.user.js:3032) -- 999999 is
-   high enough to clear YouTube's masthead/comments header which use
-   z-indices up to ~100000 in newer layouts. */
+/* Settings modal -- glassmorphic floating popover (parity
+   .user.js:3019-3066). Dark translucent fill + backdrop-filter blur so
+   the modal feels lifted above the player chrome instead of pasted on.
+   Header / tabs / panels manage their own padding (matches the
+   original's padding:0 on the root). The z-index matches the
+   userscript -- 999999 is high enough to clear YouTube's masthead /
+   comments header which use z-indices up to ~100000. */
 .settings-menu {
   position: absolute;
   top: calc(100% + 6px);
-  /* Default anchor: right edge of menu = right edge of gear. Works
-     when gear is far enough from the left of the viewport. The opener
-     in panel.ts inspects the menu bounding box on display change and
-     sets data-vs-flip=left if the menu would overflow off the left
-     edge -- the rule below switches the anchor so the menu opens to
-     the RIGHT of the gear instead. */
   right: 0;
-  background: rgb(28, 28, 30);
+  background: rgba(20, 20, 22, 0.94);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   color: rgba(255, 255, 255, 0.95);
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-text-secondary: rgba(255, 255, 255, 0.65);
   --vs-border: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 12px;
-  min-width: 320px;
+  border-radius: 14px;
+  padding: 0;
+  width: 340px;
   max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 80px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+  box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.7),
+              0 8px 24px -6px rgba(0, 0, 0, 0.5);
   z-index: 999999;
+  display: none;
+  overflow: hidden;
+  font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.settings-menu.show {
+  display: flex;
+  flex-direction: column;
+  animation: vs-menu-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .settings-menu[data-vs-flip="left"] {
   right: auto;
@@ -578,95 +712,403 @@ html[data-vs-theme="light"] {
 }
 
 /* SVG protection: YouTube/RuTube ship global SVG rules (transform on
-   hover, fill/stroke overrides) that mangle our Lucide-style icons.
+   hover, fill/stroke overrides) that mangle our Lucide stroked icons.
    Reset them inside our scoped UI roots only. Ported from
-   .user.js:3071-3082. */
-.vs-panel svg,
-.settings-menu svg {
+   .user.js:3071-3082.
+
+   The [data-filled] exclusion lets vsFilledGearIcon (icons.ts) ship
+   a Material-style filled cog without the protection rule blanking it
+   out. */
+.vs-panel svg:not([data-filled]),
+.settings-menu svg:not([data-filled]) {
   transform: none !important;
   fill: none !important;
   stroke: currentColor !important;
   vertical-align: middle;
   flex-shrink: 0;
 }
-.vs-panel svg *,
-.settings-menu svg * {
+.vs-panel svg:not([data-filled]) *,
+.settings-menu svg:not([data-filled]) * {
   fill: none !important;
   stroke: currentColor !important;
   transform: none !important;
 }
-.vs-menu-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-.vs-menu-title  { display:flex; align-items:center; gap:6px; font-weight:600; }
-.vs-menu-version { font-size:11px; opacity:0.6; }
-.vs-tabs        { display:flex; gap:4px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:10px; }
-.vs-tab         { padding:6px 10px; background:transparent; border:none; color:inherit; cursor:pointer; opacity:0.6; }
-.vs-tab[aria-selected="true"] { opacity:1; border-bottom:2px solid var(--vs-accent,#ff0000); }
-.vs-tab-panel[aria-hidden="true"] { display:none; }
-.vs-section { margin-bottom:12px; }
-.vs-section-label { font-size:11px; opacity:0.7; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; }
-.vs-segmented { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:6px; padding:2px; }
-.vs-segmented-option {
-  flex:1; padding:6px 10px; background:transparent; border:none; color:inherit;
-  cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; gap:4px;
-  font-size:12px;
+/* Filled icons keep the explicit fill="currentColor" (set on the SVG
+   itself in icons.ts) and reset stroke. */
+.vs-panel svg[data-filled],
+.settings-menu svg[data-filled] {
+  fill: currentColor !important;
+  stroke: none !important;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
-.vs-segmented-option[aria-pressed="true"] { background:rgba(255,255,255,0.15); }
-.vs-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; cursor:pointer; }
-.vs-row-label { display:flex; align-items:center; gap:4px; font-size:13px; }
-.vs-row-hint  { display:inline-flex; align-items:center; justify-content:center;
-                width:14px; height:14px; border-radius:50%; background:rgba(255,255,255,0.15);
-                font-size:9px; opacity:0.8; cursor:help; }
-.vs-toggle    { position:relative; display:inline-block; width:32px; height:18px; }
-.vs-toggle input { opacity:0; width:0; height:0; }
-.vs-toggle-track { position:absolute; inset:0; background:rgba(255,255,255,0.2); border-radius:10px; transition:background 0.15s; }
-.vs-toggle-thumb { position:absolute; top:2px; left:2px; width:14px; height:14px;
-                   background:#fff; border-radius:50%; transition:left 0.15s; }
-.vs-toggle input:checked + .vs-toggle-track { background:var(--vs-accent,#ff0000); }
-.vs-toggle input:checked ~ .vs-toggle-thumb { left:16px; }
+.vs-panel svg[data-filled] *,
+.settings-menu svg[data-filled] * {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+/* Header bar: padded + bottom border separating it from the tabs
+   container (parity .user.js:3084-3114). */
+.vs-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+.vs-menu-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.95);
+}
+.vs-menu-title svg {
+  width: 14px;
+  height: 14px;
+  color: var(--vs-accent, #ff0000);
+  opacity: 0.9;
+}
+.vs-menu-version {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  letter-spacing: 0;
+}
 
-.vs-help-text { font-size:12px; opacity:0.7; margin:8px 0; }
-.vs-hotkey-block { padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
-.vs-hotkey-block-title { font-size:13px; font-weight:500; margin-bottom:6px; }
-.vs-hotkey-list { display:flex; flex-direction:column; gap:4px; }
-.vs-hotkey-row  { display:flex; gap:4px; }
+/* Tabs row — underline idiom (user-decided in audit hybrid choice).
+   Per-tab padding/transitions match userscript timing (160ms). */
+.vs-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 10px 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.vs-tab {
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 160ms ease, opacity 160ms ease, border-color 160ms ease;
+}
+.vs-tab:hover { opacity: 0.85; }
+.vs-tab[aria-selected="true"] {
+  opacity: 1;
+  border-bottom: 2px solid var(--vs-accent, #ff0000);
+}
+.vs-tab[aria-selected="true"] svg { color: var(--vs-accent, #ff0000); }
+
+/* Tab panel — fade-in on switch, scrollable when tall, custom scrollbar. */
+.vs-tab-panel {
+  padding: 10px 16px 14px;
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  animation: vs-panel-in 160ms ease-out;
+}
+.vs-tab-panel::-webkit-scrollbar { width: 6px; }
+.vs-tab-panel::-webkit-scrollbar-track { background: transparent; }
+.vs-tab-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.vs-tab-panel[aria-hidden="true"] { display: none; }
+
+.vs-section { margin-bottom: 18px; }
+.vs-section + .vs-section { margin-top: 18px; }
+.vs-section-label {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Segmented control: pill row inside a translucent track. Active option
+   gets accent-tinted background + inset accent ring + accent SVG. */
+.vs-segmented {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9px;
+  padding: 4px;
+}
+.vs-segmented-option {
+  flex: 1;
+  padding: 0 8px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 140ms ease, background 140ms ease;
+}
+.vs-segmented-option:hover { color: rgba(255, 255, 255, 0.85); }
+.vs-segmented-option[aria-pressed="true"] {
+  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.18);
+  color: rgba(255, 255, 255, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(var(--vs-accent-rgb, 255, 0, 0), 0.35);
+}
+.vs-segmented-option[aria-pressed="true"] svg { color: var(--vs-accent, #ff0000); }
+
+.vs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.vs-row-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.vs-row-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 9px;
+  cursor: help;
+  transition: background 140ms ease, color 140ms ease;
+}
+.vs-row-hint:hover {
+  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.25);
+  color: var(--vs-accent, #ff0000);
+}
+
+/* Toggle switch with spring transition on the thumb (parity
+   .user.js:.vs-toggle-thumb). */
+.vs-toggle { position: relative; display: inline-block; width: 32px; height: 18px; }
+.vs-toggle input { opacity: 0; width: 0; height: 0; }
+.vs-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  transition: background 180ms ease;
+}
+.vs-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: left 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.vs-toggle input:checked + .vs-toggle-track { background: var(--vs-accent, #ff0000); }
+.vs-toggle input:checked ~ .vs-toggle-thumb { left: 16px; }
+
+.vs-help-text { font-size: 12px; opacity: 0.7; margin: 8px 0; }
+
+.vs-hotkey-block {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.vs-hotkey-block:last-child { border-bottom: none; }
+.vs-hotkey-block-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.vs-hotkey-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vs-hotkey-row { display: flex; gap: 4px; }
 .vs-hotkey-input {
-  flex:1; padding:4px 8px; border-radius:4px; border:1px solid rgba(255,255,255,0.1);
-  background:rgba(255,255,255,0.05); color:inherit; font-size:12px; cursor:pointer;
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
-.vs-hotkey-input:focus { border-color: var(--vs-accent,#ff0000); outline:none; }
+.vs-hotkey-input:focus {
+  border-color: var(--vs-accent, #ff0000);
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+}
+.vs-hotkey-input.capturing,
+.vs-hotkey-input:focus.capturing {
+  border-color: var(--vs-accent, #ff0000);
+  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.08);
+  animation: vs-capture-pulse 1.4s ease-in-out infinite;
+}
+
 .vs-icon-button {
-  background:transparent; border:none; color:inherit; cursor:pointer; padding:4px;
-  border-radius:4px; display:inline-flex; align-items:center; justify-content:center;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 140ms ease, color 140ms ease;
 }
-.vs-icon-button.danger { color:#f44336; }
+.vs-icon-button:hover { background: rgba(255, 255, 255, 0.08); }
+.vs-icon-button.danger { color: #f44336; }
+.vs-icon-button.danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
 .vs-add-button {
-  margin-top:6px; padding:4px 8px; background:transparent;
-  border:1px dashed rgba(255,255,255,0.2); border-radius:4px;
-  color:inherit; cursor:pointer; font-size:12px;
-  display:inline-flex; align-items:center; gap:4px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: border-style 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.vs-add-button:hover {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.04);
 }
 .vs-reset-link {
-  display:inline-block; margin-top:4px; background:transparent; border:none;
-  color:inherit; opacity:0.6; cursor:pointer; font-size:11px; text-decoration:underline;
+  display: inline-block;
+  margin-top: 4px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 11px;
+  text-decoration: underline;
+  transition: opacity 140ms ease;
+}
+.vs-reset-link:hover { opacity: 0.95; }
+
+.vs-status {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  margin-bottom: 8px;
+}
+.vs-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #999;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.vs-status[data-state="ok"]      .vs-status-dot { background: #4CAF50; }
+.vs-status[data-state="warn"]    .vs-status-dot { background: #ff9800; animation: vs-status-pulse 2s ease-in-out infinite; }
+.vs-status[data-state="waiting"] .vs-status-dot { background: #2196F3; }
+.vs-status-headline { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.vs-status-detail   { font-size: 11px; opacity: 0.7; white-space: pre-line; }
+
+.vs-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.vs-action {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.vs-action:hover { background: rgba(255, 255, 255, 0.14); }
+.vs-action.danger { color: #f44336; }
+.vs-action.danger:hover {
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+.vs-action.danger:hover svg { color: #f87171; }
+
+.vs-privacy-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  opacity: 0.5;
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.vs-status { display:flex; gap:8px; padding:10px; border-radius:6px;
-             background:rgba(255,255,255,0.05); margin-bottom:8px; }
-.vs-status-dot { width:8px; height:8px; border-radius:50%; background:#999; margin-top:4px; flex-shrink:0; }
-.vs-status[data-state="ok"]      .vs-status-dot { background:#4CAF50; }
-.vs-status[data-state="warn"]    .vs-status-dot { background:#ff9800; }
-.vs-status[data-state="waiting"] .vs-status-dot { background:#2196F3; }
-.vs-status-headline { font-size:13px; font-weight:500; margin-bottom:2px; }
-.vs-status-detail   { font-size:11px; opacity:0.7; }
-.vs-action-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
-.vs-action {
-  padding:6px 10px; background:rgba(255,255,255,0.08); border:none; border-radius:6px;
-  color:inherit; cursor:pointer; font-size:12px;
-  display:inline-flex; align-items:center; justify-content:center; gap:4px;
-}
-.vs-action.danger { color:#f44336; }
-.vs-privacy-hint {
-  display:flex; align-items:center; gap:4px; font-size:10px; opacity:0.5;
-  padding-top:6px; border-top:1px solid rgba(255,255,255,0.05);
+/* Mobile / narrow desktop window adjustments. Mirror .user.js:2855-2860
+   and 3769-3792. The chrome-mounted slider shrinks to 100px so it
+   doesn't push the fullscreen / settings buttons out of the row. */
+@media (max-width: 767px) {
+  .vs-panel {
+    margin-top: 40px;
+    padding: 0 10px;
+  }
+  .speed-slider-container.vs-slider-in-chrome {
+    width: auto;
+    margin: 0 2px;
+    height: 40px;
+    flex: 0 1 auto;
+  }
+  .speed-slider-container.vs-slider-in-chrome .speed-slider {
+    width: 100px;
+  }
+  .speed-slider-container.vs-slider-in-chrome .speed-slider-label {
+    font-size: 10px !important;
+  }
+  .ytp-right-controls {
+    display: flex !important;
+    justify-content: flex-end;
+  }
+  .ytp-fullscreen-button,
+  .ytp-size-button {
+    display: block !important;
+  }
 }
 `;

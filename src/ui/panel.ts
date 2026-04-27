@@ -11,7 +11,7 @@
  */
 
 import { handleSpeedButtonClick, setSpeed } from '../speed/controller';
-import { vsIcon } from './icons';
+import { vsFilledGearIcon } from './icons';
 import {
   DEFAULT_PRESETS,
   refreshActiveButton,
@@ -93,11 +93,10 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   gearBtn.type = 'button';
   gearBtn.className = 'vs-gear-button';
   gearBtn.title = ctx.i18n.t('menu.title');
-  safeSetInnerHTML(gearBtn, vsIcon('settings', 16));
+  safeSetInnerHTML(gearBtn, vsFilledGearIcon(16));
 
   const settingsMenu = document.createElement('div');
   settingsMenu.className = 'settings-menu';
-  settingsMenu.style.display = 'none';
   settingsMenu.setAttribute('aria-hidden', 'true');
 
   gearWrapper.appendChild(gearBtn);
@@ -160,8 +159,12 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   // off the screen on narrow layouts where the gear sits near the
   // viewport's left edge -- happens in `bottom` layout when the panel
   // wraps and the gear lands on the second row).
+  function isMenuOpen(): boolean {
+    return settingsMenu.classList.contains('show');
+  }
+
   function adjustMenuPosition(): void {
-    if (settingsMenu.style.display === 'none') return;
+    if (!isMenuOpen()) return;
     // Reset flip first so the right-anchored measurement is honest.
     settingsMenu.removeAttribute('data-vs-flip');
     const rect = settingsMenu.getBoundingClientRect();
@@ -172,13 +175,12 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
 
   ctx.cleanup.addEventListener(gearBtn, 'click', (event) => {
     event.stopPropagation();
-    const isOpen = settingsMenu.style.display !== 'none';
-    if (isOpen) {
-      settingsMenu.style.display = 'none';
+    if (isMenuOpen()) {
+      settingsMenu.classList.remove('show');
       settingsMenu.setAttribute('aria-hidden', 'true');
     } else {
       rerenderSettings();
-      settingsMenu.style.display = '';
+      settingsMenu.classList.add('show');
       settingsMenu.setAttribute('aria-hidden', 'false');
       adjustMenuPosition();
     }
@@ -195,10 +197,10 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
 
   // Click outside the gear-wrapper closes the menu.
   ctx.cleanup.addEventListener(document, 'click', (event) => {
-    if (settingsMenu.style.display === 'none') return;
+    if (!isMenuOpen()) return;
     const target = event.target as Node | null;
     if (target && !gearWrapper.contains(target)) {
-      settingsMenu.style.display = 'none';
+      settingsMenu.classList.remove('show');
       settingsMenu.setAttribute('aria-hidden', 'true');
     }
   });
@@ -338,7 +340,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       lastPos = next.sliderPosition;
       applyLayoutImpl();
     }
-    if (settingsMenu.style.display !== 'none') {
+    if (isMenuOpen()) {
       rerenderSettings();
     }
   });
@@ -357,7 +359,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
      *  no-op when the menu is hidden so the modal's rerender chain does
      *  not run continuously in the background. */
     rerenderSettings: () => {
-      if (settingsMenu.style.display !== 'none') {
+      if (isMenuOpen()) {
         rerenderSettings();
       }
     },

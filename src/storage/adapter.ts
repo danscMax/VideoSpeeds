@@ -20,6 +20,26 @@ export interface StorageAdapter {
   remove(key: string): Promise<void>;
 }
 
+/**
+ * MV3 dev-reload safety: after the extension is reloaded (or the user
+ * disables/re-enables it) the OLD content-script lingers on the page until
+ * navigation or HMR rips it out. Any in-flight `browser.storage.*` call on
+ * that lingering instance rejects with "Extension context invalidated".
+ *
+ * Because many call sites fire-and-forget storage writes (e.g.
+ * `void ctx.speedStore.setCurrent(...)` from a ratechange listener), the
+ * rejection bubbles up as an unhandled promise rejection and lands in the
+ * Chrome extension errors panel — even though nothing is actually broken.
+ *
+ * We swallow ONLY this specific error here; anything else still throws so
+ * real storage failures (quota exceeded, Firefox storage migration
+ * glitches, etc.) remain visible.
+ */
+function isContextInvalidated(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /extension context (?:was )?invalidated/i.test(err.message);
+}
+
 export function createBrowserStorageAdapter(): StorageAdapter {
   // browser.storage.local works for both Chrome MV3 and Firefox MV3 via WXT's
   // unified `browser` shim. No callbacks-vs-promises ceremony needed.
@@ -27,15 +47,30 @@ export function createBrowserStorageAdapter(): StorageAdapter {
 
   return {
     async get<T>(key: string, defaultValue: T): Promise<T> {
-      const result = await store.get(key);
-      const v = (result as Record<string, unknown>)[key];
-      return v === undefined ? defaultValue : (v as T);
+      try {
+        const result = await store.get(key);
+        const v = (result as Record<string, unknown>)[key];
+        return v === undefined ? defaultValue : (v as T);
+      } catch (e) {
+        if (isContextInvalidated(e)) return defaultValue;
+        throw e;
+      }
     },
     async set(key: string, value: unknown): Promise<void> {
-      await store.set({ [key]: value });
+      try {
+        await store.set({ [key]: value });
+      } catch (e) {
+        if (isContextInvalidated(e)) return;
+        throw e;
+      }
     },
     async remove(key: string): Promise<void> {
-      await store.remove(key);
+      try {
+        await store.remove(key);
+      } catch (e) {
+        if (isContextInvalidated(e)) return;
+        throw e;
+      }
     },
   };
 }

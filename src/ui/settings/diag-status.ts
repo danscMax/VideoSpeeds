@@ -79,10 +79,18 @@ function projectReport(ctx: AppContext): DiagViewModel {
     };
   }
 
+  // Multi-issue: list them as bullets in the detail field. Mirror
+  // .user.js:4344-4365 — without this, users only see "N issues" and
+  // have to click "Copy report" to learn what specifically broke. CSS
+  // .vs-status-detail uses `white-space: pre-line` so \n renders as
+  // visible line break (audit B3.1).
+  const detail = issues.length > 0
+    ? issues.map((s) => '• ' + s).join('\n')
+    : t('diag.status.try_again');
   return {
     state: 'warn',
     headline: t('diag.status.issues_count', { count: issues.length }),
-    detail: t('diag.status.try_again'),
+    detail,
   };
 }
 

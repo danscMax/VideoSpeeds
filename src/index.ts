@@ -403,10 +403,13 @@ export async function bootstrap(
   healthChecker.start();
   // Wire the diagnostic-action buttons to real handlers (panel re-renders
   // settings; the modal handlers receive `onDiag` and we proxy to here).
+  // Also toggle the gear's red warning dot — without this the CSS rule
+  // (.vs-gear-button.has-warning::after) is dead code and users miss a
+  // visual cue that something broke (audit A3.1).
   cleanup.add(
     healthChecker.subscribe((report) => {
-      // Auto-rerender the diag tab when a fresh report lands.
       panel.rerenderSettings();
+      panel.setGearWarning(!report.healthy);
       logger.debug('health:', report.healthy ? 'ok' : 'warn');
     }),
   );

@@ -47,8 +47,12 @@ describe('normalizeHotkeys', () => {
     expect(normalizeHotkeys([null, { foo: 1 }, 'bad'], defaults)).toBe(defaults);
   });
 
-  it('rejects entries with empty key string', () => {
+  it('keeps entries with empty key string (placeholder slot for new hotkey)', () => {
+    // Empty-key slots represent a freshly-added placeholder the user
+    // hasn't filled in yet. They never match a real keypress (event.code
+    // is always non-empty), so they're safe to retain through migration.
+    // Audit C3.2 / new-slot empty placeholder.
     const empty = { ctrl: true, shift: false, alt: false, meta: false, key: '' };
-    expect(normalizeHotkeys([empty], defaults)).toBe(defaults);
+    expect(normalizeHotkeys([empty], defaults)).toEqual([empty]);
   });
 });

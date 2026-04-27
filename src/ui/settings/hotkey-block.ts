@@ -22,11 +22,17 @@ export function generateHotkeyBlock(
 ): string {
   const slots = hotkeys
     .map(
-      (h, i) => `
+      (h, i) => {
+        // Empty-key placeholder slots render with no value so the
+        // input's `placeholder` attribute shows the hint text. Mirror
+        // .user.js add-slot behaviour where the new row reads as a
+        // capture prompt until filled.
+        const value = h.key ? formatHotkey(h) : '';
+        return `
       <div class="vs-hotkey-row" data-hotkey-type="${action}" data-slot-index="${i}">
         <input type="text" class="vs-hotkey-input"
                placeholder="${escHtml(i18n.t('hotkeys.placeholder'))}"
-               value="${escHtml(formatHotkey(h))}"
+               value="${escHtml(value)}"
                tabindex="0" readonly
                title="${escHtml(i18n.t('hotkeys.input.tip'))}">
         <button type="button" class="vs-icon-button danger" data-vs-hotkey-remove
@@ -34,7 +40,8 @@ export function generateHotkeyBlock(
           ${vsIcon('x', 14)}
         </button>
       </div>
-    `,
+    `;
+      },
     )
     .join('');
 

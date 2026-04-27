@@ -17,6 +17,7 @@ import {
   exportSettingsToFile,
   openImportPicker,
 } from './export-import';
+import { refreshDiagnosticStatus } from './diag-status';
 import type { Lang } from '../../i18n/dict';
 import type { ActiveTab } from './modal';
 
@@ -41,9 +42,16 @@ export function attachSettingsHandlers(
   for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-tab]'))) {
     ctx.cleanup.addEventListener(btn, 'click', () => {
       const tab = btn.dataset.vsTab as ActiveTab | undefined;
-      if (tab) {
-        deps.setActiveTab(tab);
-        deps.rerender();
+      if (!tab) return;
+      deps.setActiveTab(tab);
+      deps.rerender();
+      // Auto-refresh diagnostics when user switches TO that tab so they
+      // see fresh status instead of "Not checked yet" stale text.
+      // Mirror .user.js:4385 (audit C3.1). The rerender above wipes
+      // the old DOM, so the refresh must run AFTER it: schedule into
+      // the next frame to land on the freshly-rendered nodes.
+      if (tab === 'diag') {
+        requestAnimationFrame(() => refreshDiagnosticStatus(menuRoot, ctx));
       }
     });
   }
@@ -115,9 +123,22 @@ export function attachSettingsHandlers(
     const slotIndex = Number(row.dataset.slotIndex);
     if (!action || Number.isNaN(slotIndex)) continue;
 
+    // Visual capture cue (audit B3.2): toggle .capturing on focus so
+    // the CSS pulse animation (vs-capture-pulse keyframe) fires while
+    // the input is listening. Mirror .user.js:4421-4427.
+    ctx.cleanup.addEventListener(input, 'focus', () => {
+      input.classList.add('capturing');
+    });
+    ctx.cleanup.addEventListener(input, 'blur', () => {
+      input.classList.remove('capturing');
+    });
+
     ctx.cleanup.addEventListener(input, 'keydown', async (event) => {
       const ev = event as KeyboardEvent;
-      if (ev.key === 'Escape' || ev.key === 'Tab') return;
+      if (ev.key === 'Escape' || ev.key === 'Tab') {
+        input.blur();
+        return;
+      }
       ev.preventDefault();
       ev.stopPropagation();
       const hk = captureHotkey(ev);
@@ -129,6 +150,7 @@ export function attachSettingsHandlers(
         hotkeys: { ...ctx.settingsStore.getKey('hotkeys'), [action]: arr },
       });
       input.value = formatHotkey(hk);
+      input.classList.remove('capturing');
       deps.rerender();
     });
   }
@@ -143,12 +165,27 @@ export function attachSettingsHandlers(
         ...live,
         [action]: [
           ...live[action],
-          // New empty slot; user clicks then presses keys to fill in.
-          { ctrl: false, shift: false, alt: false, meta: false, key: 'Insert' } as Hotkey,
+          // New empty slot — empty key string renders as a placeholder
+          // input ("Кликните и нажмите клавиши..."), and never matches
+          // a real keypress until the user fills it in. Auto-focus
+          // below puts the input in capture-state immediately so the
+          // user just presses keys.
+          { ctrl: false, shift: false, alt: false, meta: false, key: '' } as Hotkey,
         ],
       };
       await ctx.settingsStore.update({ hotkeys: next });
       deps.rerender();
+      // Auto-focus the newly added input so capture starts on first
+      // keypress, no extra click required (audit C3.2). Mirror
+      // .user.js:4485-4490 setTimeout(...newRow.click(), 50). We use
+      // requestAnimationFrame to wait for the rerender to finish.
+      requestAnimationFrame(() => {
+        const inputs = menuRoot.querySelectorAll<HTMLInputElement>(
+          `.vs-hotkey-row[data-hotkey-type="${action}"] .vs-hotkey-input`,
+        );
+        const last = inputs[inputs.length - 1];
+        last?.focus();
+      });
     });
   }
 

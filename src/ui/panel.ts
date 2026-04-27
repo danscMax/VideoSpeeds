@@ -54,6 +54,10 @@ export interface PanelHandle {
   rerenderSettings: () => void;
   /** Apply layout changes (slider position toggled). */
   applyLayout: () => void;
+  /** Toggle the red warning dot on the gear icon. Wired by the
+   *  orchestrator's HealthChecker subscription so the user sees a
+   *  visual cue that diagnostics found a problem (audit A3.1). */
+  setGearWarning: (on: boolean) => void;
   dispose: () => void;
 }
 
@@ -374,6 +378,9 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       }
     },
     applyLayout: applyLayoutImpl,
+    setGearWarning(on) {
+      gearBtn.classList.toggle('has-warning', on);
+    },
     dispose() {
       root.remove();
       sliderContainer.remove();

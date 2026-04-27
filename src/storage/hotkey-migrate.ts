@@ -13,13 +13,17 @@ import type { Hotkey } from './types';
 /**
  * Treat any non-Hotkey-shaped input as missing. The match is structural:
  * we accept anything with a string `key` and 4 booleans, ignoring extras.
+ *
+ * Empty `key` strings are accepted — they represent a placeholder slot
+ * the user just added but hasn't filled in yet (matchesSingleHotkey
+ * compares `event.code === hotkey.key`, so empty never matches a real
+ * keypress and is a safe inert state).
  */
 function isHotkey(value: unknown): value is Hotkey {
   if (!value || typeof value !== 'object') return false;
   const h = value as Record<string, unknown>;
   return (
     typeof h.key === 'string' &&
-    h.key.length > 0 &&
     typeof h.ctrl === 'boolean' &&
     typeof h.shift === 'boolean' &&
     typeof h.alt === 'boolean' &&

@@ -285,9 +285,13 @@ html[data-vs-theme="light"] {
 .vs-panel[data-vs-slider-position="bottom"] {
   display: grid;
   grid-template-columns: auto auto 1fr;
+  /* Slider spans only the first 2 columns (buttons + gear). The 3rd
+     1fr column soaks up trailing space and the slider intentionally
+     does NOT extend into it — keeps the second-row width visually
+     aligned with the buttons-and-gear group above it. */
   grid-template-areas:
-    "buttons gear  ."
-    "slider  slider slider";
+    "buttons gear   ."
+    "slider  slider .";
   align-items: center;
   gap: 12px 12px;
 }
@@ -298,17 +302,18 @@ html[data-vs-theme="light"] {
 /* gear sits flush against the buttons (column 2). Column 3 = 1fr soaks
    up the remaining horizontal space — without it, justify-self: end
    would push the gear to the far right edge of the panel and leave a
-   visual chasm between the buttons and the gear. Mirror userscript's
-   #more-speeds-wrapper which kept buttons + gear as a content-sized
-   flex row. */
+   visual chasm between the buttons and the gear. */
 .vs-panel[data-vs-slider-position="bottom"] .vs-gear-wrapper {
   grid-area: gear;
   justify-self: start;
 }
+/* In bottom layout the slider stretches across cols 1+2 (= buttons +
+   gear width), so override the default fixed width / max-width that
+   the right-layout slider needs (300px cap). */
 .vs-panel[data-vs-slider-position="bottom"] .speed-slider-container {
   grid-area: slider;
-  width: 100%;
-  max-width: 600px;
+  width: auto;
+  max-width: none;
   flex: 0 0 auto;
 }
 

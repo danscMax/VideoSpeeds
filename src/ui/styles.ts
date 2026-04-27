@@ -260,8 +260,18 @@ html[data-vs-theme="light"] {
   align-items: center;
   gap: 16px;
   padding: 0;
-  margin: 12px 0;
+  /* Auto horizontal margins center the panel within its parent column. On
+     YouTube's narrow-viewport layout (parent retains a desktop min-width
+     wider than the visual viewport) this lets the spare horizontal room
+     redistribute equally on both sides, so the buttons don't visually
+     hug the left edge while leaving an empty stripe on the right. */
+  margin: 12px auto;
   width: 100%;
+  /* Cap to viewport so the host page's primary column (e.g. YouTube's
+     #primary-inner) cannot push us past the screen edges on narrow
+     widths -- without this our buttons overflow ±26px on a 375px
+     viewport because the parent retains a desktop min-width. */
+  max-width: 100vw;
   box-sizing: border-box;
   background: transparent;
   border: none;
@@ -709,8 +719,21 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
               0 8px 24px -6px rgba(0, 0, 0, 0.5);
   z-index: 999999;
   display: none;
-  overflow: hidden;
+  /* Internal vertical scroll engages once panel.ts caps max-height for a
+     viewport that can't fit the natural modal height. Horizontal stays
+     clipped so a wide row never escapes the rounded corners. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
   font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.settings-menu::-webkit-scrollbar {
+  width: 6px;
+}
+.settings-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
 }
 .settings-menu.show {
   display: flex;
@@ -720,6 +743,14 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .settings-menu[data-vs-flip="left"] {
   right: auto;
   left: 0;
+}
+/* Vertical flip: when the gear sits in the lower half of the viewport and
+   the modal would overflow the bottom edge, panel.ts toggles this attr so
+   the modal opens UPWARD (anchored to the gear's TOP edge). Mirrors the
+   "popover smart-positioning" pattern. */
+.settings-menu[data-vs-flip-y="up"] {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 /* SVG protection: YouTube/RuTube ship global SVG rules (transform on

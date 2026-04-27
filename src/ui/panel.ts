@@ -179,11 +179,63 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
 
   function adjustMenuPosition(): void {
     if (!isMenuOpen()) return;
-    // Reset flip first so the right-anchored measurement is honest.
+    // Reset all positioning overrides so each measurement is honest.
     settingsMenu.removeAttribute('data-vs-flip');
+    settingsMenu.removeAttribute('data-vs-flip-y');
+    settingsMenu.style.removeProperty('max-height');
+    settingsMenu.style.removeProperty('left');
+    settingsMenu.style.removeProperty('right');
+
+    // ----- Horizontal -----
+    //
+    // Compute the absolute desired left coordinate so the menu fits
+    // within the viewport, then convert it back to a position relative
+    // to the gear-wrapper (the menu's offset parent). Trying flips one
+    // by one (right -> left -> overflow-clamp) was fragile: on narrow
+    // viewports both flips can overflow (gear at x=299 with menu width
+    // 341 in a 375px viewport overflowed left when right-anchored, then
+    // overflowed right by 266px when flipped left).
+    const wrapperRect = gearWrapper.getBoundingClientRect();
+    const viewportW = window.innerWidth;
+    const menuW = settingsMenu.offsetWidth || settingsMenu.getBoundingClientRect().width;
+    const PAD = 8;
+    // Default: right-anchored under the gear (matches the userscript).
+    let absLeft = wrapperRect.right - menuW;
+    if (absLeft < PAD) {
+      // Try left-anchored — menu opens to the right of the gear.
+      const leftAnchored = wrapperRect.left;
+      if (leftAnchored + menuW <= viewportW - PAD) {
+        absLeft = leftAnchored;
+      } else {
+        // Neither flip fits — clamp into the viewport. Prefer keeping the
+        // menu's right edge within the viewport so the "menu opens from
+        // the gear" affordance is preserved as much as possible.
+        absLeft = Math.max(PAD, viewportW - menuW - PAD);
+      }
+    }
+    settingsMenu.style.left = `${absLeft - wrapperRect.left}px`;
+    settingsMenu.style.right = 'auto';
+
+    // ----- Vertical -----
+    //
+    // When the modal spills below the viewport AND there is more
+    // headroom above the gear than below, flip the modal so it opens
+    // upward (anchored to the gear's top edge). If neither direction can
+    // fit the modal's natural height, cap with an inline max-height so
+    // the internal scroll engages.
     const rect = settingsMenu.getBoundingClientRect();
-    if (rect.left < 4) {
-      settingsMenu.setAttribute('data-vs-flip', 'left');
+    const gearRect = gearBtn.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+    const spaceBelow = Math.max(0, viewportH - gearRect.bottom - PAD);
+    const spaceAbove = Math.max(0, gearRect.top - PAD);
+    if (rect.bottom > viewportH - 4 && spaceAbove > spaceBelow) {
+      settingsMenu.setAttribute('data-vs-flip-y', 'up');
+    }
+    const flipUp = settingsMenu.getAttribute('data-vs-flip-y') === 'up';
+    const room = flipUp ? spaceAbove : spaceBelow;
+    const naturalH = settingsMenu.scrollHeight;
+    if (naturalH > room && room > 0) {
+      settingsMenu.style.maxHeight = `${room}px`;
     }
   }
 

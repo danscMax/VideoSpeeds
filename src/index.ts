@@ -496,10 +496,18 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
 }
 
 /**
- * Watch for our panel being removed from the document. When a SPA
- * framework (YouTube's ytd-watch-flexy is the canonical case) re-renders
- * its child list, our panel goes with it; this observer notices and
- * re-runs scheduleInsertWithRetry to pick a fresh anchor.
+ * Watch for our panel being removed OR displaced by host-framework re-renders.
+ *
+ * Two failure modes this guards against:
+ *   1. Removal — SPA framework (YouTube's ytd-watch-flexy is the canonical
+ *      case) re-renders its child list and our panel goes with it. We
+ *      disconnect and call `reschedule` to re-run the full retry loop.
+ *   2. Displacement — RuTube's React renders the title-section AFTER our
+ *      initial insertion runs, calling `insertBefore(title, panel)` and
+ *      pushing our panel from "right after the player" to "after the
+ *      title block". Panel stays in the same parent so removal-detection
+ *      misses it. Re-run insertPanel; the idempotent guard skips when
+ *      we're already at the right spot, otherwise moves the panel back.
  *
  * Narrow-scope: observe ONLY the panel's direct parent with
  * `childList:true`. The previous implementation watched
@@ -522,10 +530,23 @@ function installRemovalObserver(
   const parent = panelEl.parentElement;
   if (!parent) return; // shouldn't happen -- caller invoked us post-insert
   const observer = new MutationObserver(() => {
-    if (panelEl.parentNode === parent && document.contains(panelEl)) return;
-    ctx.logger.info('panel removed from DOM by host framework; re-inserting');
-    observer.disconnect();
-    reschedule(panelEl, ctx);
+    if (panelEl.parentNode !== parent || !document.contains(panelEl)) {
+      ctx.logger.info('panel removed from DOM by host framework; re-inserting');
+      observer.disconnect();
+      reschedule(panelEl, ctx);
+      return;
+    }
+    // Panel is still in the same parent but a sibling changed. Re-run
+    // insertPanel — the idempotent guard inside `insertPanel` skips when
+    // we're already at the right spot, otherwise it repositions us.
+    // Loop-safety relies on `skipOwnPanel(...)` in chooseAnchor: after a
+    // successful re-position, the next observer tick computes the same
+    // `before` reference and the guard short-circuits without mutating.
+    try {
+      insertPanel(panelEl, ctx);
+    } catch (e) {
+      ctx.logger.warn('insertPanel re-run after sibling change failed', e);
+    }
   });
   observer.observe(parent, { childList: true });
   ctx.cleanup.addObserver(observer);

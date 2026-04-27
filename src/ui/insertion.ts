@@ -142,7 +142,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
       return {
         parent: layoutPlayer.parentElement,
         anchor: 'after-player',
-        before: layoutPlayer.nextSibling,
+        before: skipOwnPanel(layoutPlayer.nextSibling),
       };
     }
   }
@@ -167,7 +167,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     return {
       parent: player.parentElement,
       anchor: 'after-player',
-      before: player.nextSibling,
+      before: skipOwnPanel(player.nextSibling),
     };
   }
 
@@ -199,6 +199,22 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
 function isInsidePlayer(el: Element | null, player: Element | null): boolean {
   if (!el || !player) return false;
   return player === el || player.contains(el);
+}
+
+/**
+ * Walk past our own panel(s) when computing a `before`-reference. After the
+ * first successful insert, our panel BECOMES `playerContainer.nextSibling`,
+ * so a naive `before: layoutPlayer.nextSibling` would self-reference us in
+ * the idempotent guard (and trigger a needless re-insert tug-of-war with
+ * the removal observer). Skip past `.vs-panel` elements so the reference
+ * always points at a non-self sibling (or null at the end of the list).
+ */
+function skipOwnPanel(node: Node | null): Node | null {
+  let cur = node;
+  while (cur && cur instanceof Element && cur.classList.contains('vs-panel')) {
+    cur = cur.nextSibling;
+  }
+  return cur;
 }
 
 /**

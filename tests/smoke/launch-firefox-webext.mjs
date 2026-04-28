@@ -45,14 +45,30 @@ const URL =
   process.env.VS_URL ??
   'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1';
 
-// `npx web-ext run` arguments. Notable:
-//   --no-reload  — disables source watching (we don't want hot-restart noise)
-//   --start-url  — opens the URL on launch
-//   --firefox    — points web-ext at the Playwright-bundled binary
+// Invoke `web-ext`'s JS entry point with `node` directly. We avoid both
+// `npx` and shell:true here because:
+//   1. shell:true on Windows runs through cmd.exe, which reinterprets the
+//      `&` characters in the YT URL as command separators (`list` /
+//      `start_radio` "is not a command" — bug found 2026-04-28).
+//   2. Node 22+ rejects spawning `.cmd`/`.bat` with shell:false (EINVAL),
+//      so the Windows-friendly `npx.cmd` workaround doesn't survive.
+// Resolving the JS entry point of web-ext sidesteps both — we just
+// execute a normal Node module.
+const webExtJs = join(
+  process.cwd(),
+  'node_modules',
+  'web-ext',
+  'bin',
+  'web-ext.js',
+);
+if (!existsSync(webExtJs)) {
+  console.error(`web-ext entry not found at ${webExtJs}; run "npm ci"`);
+  process.exit(1);
+}
 const child = spawn(
-  'npx',
+  process.execPath, // node
   [
-    'web-ext',
+    webExtJs,
     'run',
     `--source-dir=${EXT_DIR}`,
     `--firefox=${firefoxBin}`,
@@ -60,7 +76,7 @@ const child = spawn(
     '--no-reload',
     '--no-input',
   ],
-  { stdio: 'inherit', shell: true },
+  { stdio: 'inherit', shell: false },
 );
 
 child.on('exit', (code) => {

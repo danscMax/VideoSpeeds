@@ -15,9 +15,28 @@ html, body {
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Canonical WXT-template pattern for popup sizing.
+ *
+ * Chrome measures the toolbar popup window once shortly after the HTML
+ * loads. If our async bootstrap (browser.tabs.query + storage init) has
+ * not finished by then, the body is just the "Loading..." placeholder
+ * (~30 px tall) and the popup window stays that size — clipping the
+ * settings-menu we render later.
+ *
+ * Two layered defences:
+ *   1. html { min-height: 480px }  — pins the popup window's initial
+ *      size to ~the natural settings-menu height.
+ *   2. body { min-height: 100vh }  — body fills the html container so
+ *      our centred loading state still looks balanced. Matches the WXT
+ *      React/Vue starter templates verbatim.
+ */
+html {
+  min-height: 480px;
+}
 body {
   min-width: 360px;
   max-width: 480px;
+  min-height: 100vh;
 }
 
 .vs-popup-shell {
@@ -51,6 +70,66 @@ body {
   box-shadow: none;
   padding: 0;
   min-width: 0;
+}
+
+/* Skeleton placeholder — rendered synchronously by main.ts before async
+   bootstrap finishes. Matches the natural shape of the real settings
+   menu (header bar, 4 tab pills, body sections) so the popup window
+   opens at the right size on first paint. Replaced in-place by the
+   real menu within ~50-200ms; the soft pulse animation makes the swap
+   feel intentional rather than glitchy. */
+.vs-popup-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.vs-skel-header {
+  display: flex;
+}
+.vs-skel-tabs {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.vs-skel-pill {
+  height: 14px;
+  width: 22%;
+  border-radius: 4px;
+}
+.vs-skel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vs-skel-line {
+  height: 10px;
+  width: 100%;
+  border-radius: 4px;
+}
+.vs-skel-line.vs-skel-w-40 { width: 40%; }
+.vs-skel-line.vs-skel-w-60 { width: 60%; }
+.vs-skel-block {
+  height: 36px;
+  width: 100%;
+  border-radius: 8px;
+}
+.vs-skel-row {
+  height: 28px;
+  width: 100%;
+  border-radius: 8px;
+}
+.vs-skel-pill,
+.vs-skel-line,
+.vs-skel-block,
+.vs-skel-row {
+  background: rgba(255, 255, 255, 0.06);
+  animation: vs-skel-pulse 1.2s ease-in-out infinite;
+}
+@keyframes vs-skel-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
 }
 
 /* Diag tab "open in player" hint */

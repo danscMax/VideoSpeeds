@@ -50,6 +50,14 @@ console.info('[VIDEO-SPEEDS] popup loaded');
 
 const root = document.getElementById('app');
 if (root) {
+  // Synchronous initial render before any await — matches the WXT React/
+  // Vue template pattern. Chrome's toolbar popup samples body height
+  // ONCE shortly after the HTML loads; if our async bootstrap has not
+  // finished by then, the popup window is sized to whatever is in the
+  // DOM at that moment. Putting a properly-sized shell up front means
+  // the popup window opens at the natural menu height regardless of
+  // how long detectActiveTabSite + storage init take.
+  renderInitialShell(root);
   void bootstrapPopup(root).catch((e) => {
     console.error('[VIDEO-SPEEDS] popup bootstrap failed', e);
     root.replaceChildren(
@@ -62,6 +70,45 @@ if (root) {
       ),
     );
   });
+}
+
+/**
+ * Synchronous skeleton — same outer shape as the final settings menu so
+ * the popup window size is correct before any async work completes.
+ * Translator hasn't loaded yet, so labels are language-neutral
+ * placeholders that get replaced by the real menu in milliseconds.
+ */
+function renderInitialShell(host: HTMLElement): void {
+  host.replaceChildren(
+    h(
+      'div',
+      { class: 'settings-menu vs-popup-skeleton' },
+      h(
+        'div',
+        { class: 'vs-skel-header' },
+        h('div', { class: 'vs-skel-line vs-skel-w-60' }),
+      ),
+      h(
+        'div',
+        { class: 'vs-skel-tabs' },
+        h('div', { class: 'vs-skel-pill' }),
+        h('div', { class: 'vs-skel-pill' }),
+        h('div', { class: 'vs-skel-pill' }),
+        h('div', { class: 'vs-skel-pill' }),
+      ),
+      h(
+        'div',
+        { class: 'vs-skel-body' },
+        h('div', { class: 'vs-skel-line vs-skel-w-40' }),
+        h('div', { class: 'vs-skel-block' }),
+        h('div', { class: 'vs-skel-line vs-skel-w-40' }),
+        h('div', { class: 'vs-skel-block' }),
+        h('div', { class: 'vs-skel-line vs-skel-w-40' }),
+        h('div', { class: 'vs-skel-row' }),
+        h('div', { class: 'vs-skel-row' }),
+      ),
+    ),
+  );
 }
 
 async function bootstrapPopup(host: HTMLElement): Promise<void> {

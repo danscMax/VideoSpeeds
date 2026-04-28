@@ -35,6 +35,9 @@ export const I18N_DICT = {
     'tabs.diag.tip': 'Script status, copy report, clear cache',
 
     // general.*
+    'general.speed_presets': 'Speed buttons',
+    'general.speed_presets.hint': 'Pick which speeds appear on the in-player panel.',
+    'general.speed_presets.reset': 'Reset to defaults',
     'general.slider_pos': 'Slider position',
     'general.pos.right': 'Right',
     'general.pos.right.tip': 'Slider on the right of the speed buttons',
@@ -186,6 +189,9 @@ export const I18N_DICT = {
     'tabs.diag.tip': 'Статус скрипта, копирование отчёта, очистка кеша',
 
     // general.*
+    'general.speed_presets': 'Кнопки скорости',
+    'general.speed_presets.hint': 'Выберите какие скорости показывать на панели плеера.',
+    'general.speed_presets.reset': 'Вернуть по умолчанию',
     'general.slider_pos': 'Положение ползунка',
     'general.pos.right': 'Справа',
     'general.pos.right.tip': 'Ползунок справа от кнопок скорости',

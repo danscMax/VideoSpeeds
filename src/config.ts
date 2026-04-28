@@ -37,6 +37,35 @@ export function speedBoundsFor(site: Site): SpeedBounds {
 }
 
 /**
+ * The full pool of speeds the user can pick from in the Settings →
+ * "Speed buttons" customisation grid. Filtered to each site's
+ * `[min, max]` bounds at render time so the user never sees a value
+ * the player would refuse.
+ */
+export const SPEED_POOL: readonly number[] = [
+  0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4,
+] as const;
+
+/**
+ * Default visible speed buttons per site. Used as the initial value of
+ * `Settings.speedPresets` for fresh installs.
+ *
+ * Tuned identically to the previous DEFAULT_PRESETS in buttons.ts:
+ *   - YouTube: 1.5–3.5 / 0.25 step (no 1× by design — fast-forward focus,
+ *     userscript .user.js:4007 parity).
+ *   - RuTube: 1–3 / 0.25 step (full range, RuTube's own player has no
+ *     fine-grained speed control).
+ */
+const DEFAULT_PRESETS: Record<Site, readonly number[]> = {
+  youtube: [1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5],
+  rutube:  [1,   1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+};
+
+export function defaultPresetsFor(site: Site): readonly number[] {
+  return DEFAULT_PRESETS[site];
+}
+
+/**
  * Storage keys per site. Match the legacy userscript keys verbatim so the
  * Wave 1.4 page-localStorage migration finds them at first run.
  */

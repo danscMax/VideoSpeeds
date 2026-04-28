@@ -17,6 +17,7 @@ import { vsIcon } from '../icons';
 import { h, fragment, type HChild } from '../dom-h';
 import { generateHotkeyBlock } from './hotkey-block';
 import { renderDonateSection } from './donate-section';
+import { SPEED_POOL, speedBoundsFor } from '../../config';
 import type { Settings } from '../../storage/types';
 import type { Site, Translator } from '../../app/ports';
 
@@ -120,6 +121,38 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
     ),
   );
 
+  const presetSet = new Set<number>(settings.speedPresets ?? []);
+  const bounds = speedBoundsFor(site);
+  const presetSection = vsSection(
+    t('general.speed_presets'),
+    h('p', { class: 'vs-help-text' }, t('general.speed_presets.hint')),
+    h(
+      'div',
+      { class: 'vs-preset-grid' },
+      ...SPEED_POOL.filter((s) => s >= bounds.min && s <= bounds.max).map((s) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class: presetSet.has(s) ? 'vs-preset-pill active' : 'vs-preset-pill',
+            'data-vs-preset': s,
+            'aria-pressed': presetSet.has(s) ? 'true' : 'false',
+          },
+          formatPresetLabel(s),
+        ),
+      ),
+    ),
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'vs-reset-link',
+        'data-vs-preset-reset': '',
+      },
+      t('general.speed_presets.reset'),
+    ),
+  );
+
   const langSection = vsSection(
     t('lang.section_label'),
     h(
@@ -197,10 +230,19 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
       'aria-hidden': hidden ? 'true' : 'false',
     },
     sliderPosSection,
+    presetSection,
     langSection,
     behaviorSection,
     advancedSection,
   );
+}
+
+/** Mirror of the in-panel speed-button label rule: integers compact,
+ *  fractions trim trailing zeros. Kept inline (1 line) — extracting
+ *  to a shared helper would cross the storage/ui boundary needlessly. */
+function formatPresetLabel(s: number): string {
+  if (Number.isInteger(s)) return `${s}x`;
+  return s.toFixed(2).replace(/0+$/, '').replace(/\.$/, '') + 'x';
 }
 
 function hotkeysTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {

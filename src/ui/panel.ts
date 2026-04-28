@@ -13,10 +13,10 @@
 import { handleSpeedButtonClick, setSpeed } from '../speed/controller';
 import { vsFilledGearIcon } from './icons';
 import {
-  DEFAULT_PRESETS,
   refreshActiveButton,
   renderButtonsRow,
 } from './buttons';
+import { defaultPresetsFor } from '../config';
 import { renderSlider, setSliderValue, updateSliderFill } from './slider';
 import { renderSettingsMenu, type ActiveTab } from './settings/modal';
 import { attachSettingsHandlers } from './settings/handlers';
@@ -74,16 +74,29 @@ export interface CreatePanelOptions {
 
 export function createPanel(opts: CreatePanelOptions): PanelHandle {
   const { ctx, scriptVersion } = opts;
-  const presets = opts.presets ?? DEFAULT_PRESETS[ctx.site] ?? [1, 1.5, 2];
   const bounds = speedBoundsFor(ctx.site);
   const killSwitch = opts.killSwitch;
   const diagActions = opts.diagActions;
+
+  /**
+   * Resolve the current preset list. User can customise via Settings →
+   * General → "Speed buttons", which writes to `Settings.speedPresets`.
+   * Falls back to the per-site default if the explicit `opts.presets`
+   * override is absent AND the user's settings list is empty (which can
+   * happen after a botched import or a "remove all" click).
+   */
+  const resolvePresets = (): readonly number[] => {
+    if (opts.presets && opts.presets.length > 0) return opts.presets;
+    const stored = ctx.settingsStore.getKey('speedPresets');
+    if (Array.isArray(stored) && stored.length > 0) return stored;
+    return defaultPresetsFor(ctx.site);
+  };
 
   const root = document.createElement('div');
   root.className = 'vs-panel';
   root.dataset.vsSite = ctx.site;
 
-  const buttonsRow = renderButtonsRow({ speeds: presets, current: ctx.speedStore.current() });
+  const buttonsRow = renderButtonsRow({ speeds: resolvePresets(), current: ctx.speedStore.current() });
   const sliderContainer = renderSlider({
     current: ctx.speedStore.current(),
     min: bounds.min,
@@ -429,10 +442,25 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   // against `lastPos` avoids re-running applyLayout on every unrelated
   // setting toggle (rememberSpeed, language, hotkeys, ...).
   let lastPos = ctx.settingsStore.getKey('sliderPosition');
+  let lastPresetsKey = JSON.stringify(ctx.settingsStore.getKey('speedPresets') ?? []);
   const offSubscribe = ctx.settingsStore.subscribe((next) => {
     if (next.sliderPosition !== lastPos) {
       lastPos = next.sliderPosition;
       applyLayoutImpl();
+    }
+    // Speed-buttons row is reactive on speedPresets — when the user
+    // toggles a speed in Settings → General we need to rebuild the row's
+    // contents in place. Click handlers live on the outer `buttonsRow`
+    // via event delegation, so swapping its CHILDREN doesn't lose the
+    // handlers (audit M12).
+    const nextPresetsKey = JSON.stringify(next.speedPresets ?? []);
+    if (nextPresetsKey !== lastPresetsKey) {
+      lastPresetsKey = nextPresetsKey;
+      const fresh = renderButtonsRow({
+        speeds: resolvePresets(),
+        current: ctx.speedStore.current(),
+      });
+      buttonsRow.replaceChildren(...Array.from(fresh.childNodes));
     }
     if (isMenuOpen()) {
       rerenderSettings();

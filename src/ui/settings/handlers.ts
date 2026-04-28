@@ -13,6 +13,7 @@
 import type { AppContext } from '../../app/context';
 import { captureHotkey, formatHotkey } from '../../speed/hotkeys';
 import { defaultSettings, type Hotkey, type SliderPosition } from '../../storage/types';
+import { defaultPresetsFor } from '../../config';
 import {
   exportSettingsToFile,
   openImportPicker,
@@ -73,6 +74,48 @@ export function attachSettingsHandlers(
         ctx.ui.applyLayout();
         deps.rerender();
       }
+    });
+  }
+
+  // ----- Speed preset toggles -----
+  //
+  // Click a pill to add / remove that speed from the visible button row.
+  // We refuse to leave the user with zero presets — clicking the last
+  // active pill is a no-op (visual nudge only). The reset button below
+  // restores the per-site defaults via defaultPresetsFor().
+  for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-preset]'))) {
+    ctx.cleanup.addEventListener(btn, 'click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const raw = btn.dataset.vsPreset;
+      const value = raw ? parseFloat(raw) : NaN;
+      if (!Number.isFinite(value)) return;
+      const current = ctx.settingsStore.getKey('speedPresets') ?? [];
+      const has = current.some((v) => Math.abs(v - value) < 0.005);
+      let next: number[];
+      if (has) {
+        if (current.length <= 1) {
+          // Block "remove all" — keep at least one preset on the panel.
+          ctx.ui.showNotification(ctx.i18n.t('toast.shortcut_min'), 'warn');
+          return;
+        }
+        next = current.filter((v) => Math.abs(v - value) >= 0.005);
+      } else {
+        next = [...current, value].sort((a, b) => a - b);
+      }
+      await ctx.settingsStore.update({ speedPresets: next });
+      deps.rerender();
+    });
+  }
+  const presetReset = menuRoot.querySelector<HTMLButtonElement>('[data-vs-preset-reset]');
+  if (presetReset) {
+    ctx.cleanup.addEventListener(presetReset, 'click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await ctx.settingsStore.update({
+        speedPresets: [...defaultPresetsFor(ctx.site)],
+      });
+      deps.rerender();
     });
   }
 

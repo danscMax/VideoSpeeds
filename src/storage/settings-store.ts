@@ -30,6 +30,7 @@ export interface SettingsStoreImpl {
 export function createSettingsStore(adapter: StorageAdapter): SettingsStoreImpl {
   let state: Settings | null = null;
   let storageKey: string | null = null;
+  let initSite: Site | null = null;
   const subscribers = new Set<(next: Settings) => void>();
 
   function requireInit(): Settings {
@@ -50,7 +51,8 @@ export function createSettingsStore(adapter: StorageAdapter): SettingsStoreImpl 
   return {
     async init(site: Site): Promise<void> {
       storageKey = storageKeysFor(site).settings;
-      const fallback = defaultSettings(detectBrowserLang());
+      initSite = site;
+      const fallback = defaultSettings(detectBrowserLang(), site);
       const raw = await adapter.get<Partial<Settings> | null>(storageKey, null);
 
       // Build the live state by merging defaults with whatever made it through.
@@ -96,7 +98,7 @@ export function createSettingsStore(adapter: StorageAdapter): SettingsStoreImpl 
       if (storageKey) {
         await adapter.remove(storageKey);
       }
-      state = defaultSettings(detectBrowserLang());
+      state = defaultSettings(detectBrowserLang(), initSite ?? undefined);
       notify();
     },
   };
@@ -163,6 +165,17 @@ function sanitizePatch(
       speedDown: normalizeHotkeys(hk.speedDown, defaults.hotkeys.speedDown),
     };
   }
+  // speedPresets — array of finite numbers in (0, 8] (8x is well above any
+  // realistic playback rate). Filter out NaN, negatives, oversize values
+  // so a corrupt disk write can't paint the panel with garbage rows.
+  if (Array.isArray(safe.speedPresets)) {
+    const cleaned = (safe.speedPresets as unknown[])
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 8)
+      // Round to 2 decimals so 1.0000001-style float drift collapses to
+      // a single entry, then de-dupe.
+      .map((v) => Math.round(v * 100) / 100);
+    out.speedPresets = Array.from(new Set(cleaned));
+  }
   if (safe.__migrated_from_tm === true) out.__migrated_from_tm = true;
 
   return out;
@@ -182,4 +195,5 @@ const ARRAY_FALLBACK_DEFAULTS: Settings = {
     speedUp:   [{ ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' }],
     speedDown: [{ ctrl: true, shift: false, alt: false, meta: false, key: 'KeyV' }],
   },
+  speedPresets: [1, 1.5, 2],
 };

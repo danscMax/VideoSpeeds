@@ -15,27 +15,32 @@ html, body {
   color: rgba(255, 255, 255, 0.9);
 }
 
-/* Canonical WXT-template pattern for popup sizing.
+/* Popup sizing — pin width + height so the window does not shift when
+ * the user switches tabs (audit feedback 2026-04-28).
  *
- * Chrome measures the toolbar popup window once shortly after the HTML
- * loads. If our async bootstrap (browser.tabs.query + storage init) has
- * not finished by then, the body is just the "Loading..." placeholder
- * (~30 px tall) and the popup window stays that size — clipping the
- * settings-menu we render later.
+ * Background:
+ *   - Chrome's toolbar popup samples body dimensions once shortly after
+ *     the HTML loads. The settings-menu's intrinsic width can shift by
+ *     a few px between tabs (different scrollbar visibility, different
+ *     content widths), and the popup window picked up the new value on
+ *     each render.
  *
- * Two layered defences:
- *   1. html { min-height: 480px }  — pins the popup window's initial
- *      size to ~the natural settings-menu height.
- *   2. body { min-height: 100vh }  — body fills the html container so
- *      our centred loading state still looks balanced. Matches the WXT
- *      React/Vue starter templates verbatim.
+ * Strategy (CSS-Tricks / MDN best practice 2026):
+ *   1. html { width: 380px }       — hard-pin the popup window width.
+ *   2. html { min-height: 500px }  — open at ~natural menu height.
+ *   3. body { min-height: 100vh }  — body fills the html container
+ *      (matches the WXT React/Vue starter templates verbatim).
+ *
+ * The matching `.vs-popup-shell .settings-menu` override below removes
+ * the in-player max-height + overflow:auto so the popup body can grow
+ * naturally without spawning an internal scrollbar (which used to
+ * appear on the General tab and pull the content sideways).
  */
 html {
-  min-height: 480px;
+  width: 380px;
+  min-height: 500px;
 }
 body {
-  min-width: 360px;
-  max-width: 480px;
   min-height: 100vh;
 }
 
@@ -70,6 +75,15 @@ body {
   box-shadow: none;
   padding: 0;
   min-width: 0;
+  /* In the popup the body itself is the scroll container — Chrome popup
+     window grows to fit body up to its 600px ceiling. Drop the in-player
+     max-height + overflow:auto so we never get a nested scrollbar
+     fighting for the same vertical space. scrollbar-gutter:stable kicks
+     in only if the popup window genuinely overflows (huge font scale,
+     translation lengths) — keeps the layout stable in that edge case. */
+  max-height: none;
+  overflow: visible;
+  scrollbar-gutter: stable;
 }
 
 /* Skeleton placeholder — rendered synchronously by main.ts before async

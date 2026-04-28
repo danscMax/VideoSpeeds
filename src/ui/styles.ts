@@ -921,6 +921,38 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 .vs-segmented-option[aria-pressed="true"] svg { color: var(--vs-accent, #ff0000); }
 
+/* Speed-preset toggle grid in the General tab. Each pill represents one
+   value from SPEED_POOL filtered to the site's bounds. Active pills
+   have the same accent treatment as segmented options. */
+.vs-preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.vs-preset-pill {
+  flex: 0 0 auto;
+  min-width: 52px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.vs-preset-pill:hover {
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.vs-preset-pill.active {
+  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.18);
+  border-color: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.45);
+  color: #fff;
+}
+
 .vs-row {
   display: flex;
   justify-content: space-between;

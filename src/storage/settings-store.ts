@@ -165,12 +165,13 @@ function sanitizePatch(
       speedDown: normalizeHotkeys(hk.speedDown, defaults.hotkeys.speedDown),
     };
   }
-  // speedPresets — array of finite numbers in (0, 8] (8x is well above any
-  // realistic playback rate). Filter out NaN, negatives, oversize values
-  // so a corrupt disk write can't paint the panel with garbage rows.
+  // speedPresets — array of finite numbers in (0, 10] (10x is the soft
+  // ceiling of the manual-input UI). Filter out NaN, negatives, oversize
+  // values so a corrupt disk write can't paint the panel with garbage
+  // rows.
   if (Array.isArray(safe.speedPresets)) {
     const cleaned = (safe.speedPresets as unknown[])
-      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 8)
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 10)
       // Round to 2 decimals so 1.0000001-style float drift collapses to
       // a single entry, then de-dupe.
       .map((v) => Math.round(v * 100) / 100);

@@ -123,13 +123,19 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
 
   const presetSet = new Set<number>(settings.speedPresets ?? []);
   const bounds = speedBoundsFor(site);
+  // The pool is the 14 conventional values; user-added custom speeds
+  // (any 2-decimal number ≤10x) merge in via Settings.speedPresets.
+  // Show every saved preset PLUS the pool entries within bounds, sorted.
+  const visiblePool = SPEED_POOL.filter((s) => s >= bounds.min && s <= bounds.max);
+  const visibleSet = new Set<number>([...visiblePool, ...presetSet]);
+  const visibleSorted = Array.from(visibleSet).sort((a, b) => a - b);
   const presetSection = vsSection(
     t('general.speed_presets'),
     h('p', { class: 'vs-help-text' }, t('general.speed_presets.hint')),
     h(
       'div',
       { class: 'vs-preset-grid' },
-      ...SPEED_POOL.filter((s) => s >= bounds.min && s <= bounds.max).map((s) =>
+      ...visibleSorted.map((s) =>
         h(
           'button',
           {
@@ -140,6 +146,31 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
           },
           formatPresetLabel(s),
         ),
+      ),
+    ),
+    h(
+      'div',
+      { class: 'vs-preset-custom-row' },
+      h('input', {
+        type: 'number',
+        class: 'vs-preset-custom-input',
+        'data-vs-preset-input': '',
+        min: 0.5,
+        max: 10,
+        step: 0.05,
+        placeholder: t('general.speed_presets.custom_placeholder'),
+        'aria-label': t('general.speed_presets.custom_add.tip'),
+      }),
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'vs-preset-custom-add',
+          'data-vs-preset-add': '',
+          title: t('general.speed_presets.custom_add.tip'),
+        },
+        '+ ',
+        t('general.speed_presets.custom_add'),
       ),
     ),
     h(

@@ -27,9 +27,14 @@ export interface SpeedBounds {
   readonly defaultSpeed: number;
 }
 
+// Upper bound raised to 10x on both sites to accommodate the manual
+// custom-speed input (Settings → General → "Speed buttons"). Browsers
+// happily play HTML5 video at rates well above 4x, but slider drag past
+// the default range gets coarser — power users wanting 5x-10x usually
+// type the value rather than scrub for it.
 const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
-  youtube: { min: 0.75, max: 4.0, defaultSpeed: 2.75 },
-  rutube:  { min: 1.0,  max: 3.0, defaultSpeed: 1.5  },
+  youtube: { min: 0.75, max: 10.0, defaultSpeed: 2.75 },
+  rutube:  { min: 1.0,  max: 10.0, defaultSpeed: 1.5  },
 };
 
 export function speedBoundsFor(site: Site): SpeedBounds {

@@ -953,6 +953,57 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   color: #fff;
 }
 
+/* Custom speed input row — sits under the pool grid + above the
+   "Reset to defaults" link. Lets a power user type any 0.5x-10x value
+   that is not in the conventional pool. Enter or click "+ Add". */
+.vs-preset-custom-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.vs-preset-custom-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+.vs-preset-custom-input:focus {
+  outline: none;
+  border-color: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.55);
+  background: rgba(255, 255, 255, 0.08);
+}
+/* Hide the native number-input spinner — distracting alongside our
+   accent-tinted Add button. Users still get the keyboard up/down arrows
+   for nudging the value. */
+.vs-preset-custom-input::-webkit-inner-spin-button,
+.vs-preset-custom-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.vs-preset-custom-input { -moz-appearance: textfield; }
+.vs-preset-custom-add {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.18);
+  border: 1px solid rgba(var(--vs-accent-rgb, 255, 0, 0), 0.45);
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.vs-preset-custom-add:hover {
+  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.28);
+}
+
 .vs-row {
   display: flex;
   justify-content: space-between;

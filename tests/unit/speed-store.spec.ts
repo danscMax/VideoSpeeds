@@ -98,7 +98,9 @@ describe('SpeedStore', () => {
       const store = createSpeedStore(createMemoryStorageAdapter());
       await store.init('rutube');
 
-      await store.setCurrent(5);
+      // Use a value above the 10x ceiling so the clamp upper-bound
+      // kicks in regardless of any future bumps to `max`.
+      await store.setCurrent(15);
       expect(store.current()).toBe(speedBoundsFor('rutube').max);
 
       await store.setCurrent(0.1);

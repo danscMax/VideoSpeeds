@@ -119,6 +119,65 @@ export function attachSettingsHandlers(
     });
   }
 
+  // ----- Custom speed input (manual entry) -----
+  //
+  // The pool covers conventional values (0.5..4 in 0.25 steps); a power
+  // user wanting 5x / 7x / 10x types it here. Validation gates:
+  //   - finite, positive number (rejects '', NaN, negatives)
+  //   - within the absolute soft cap [0.5, 10] regardless of site bounds
+  //   - rounded to 2 decimals
+  //   - not a duplicate of an existing preset (within 0.005)
+  // On any failure we toast a localised reason and keep the input as-is
+  // so the user can edit and retry.
+  const presetInput = menuRoot.querySelector<HTMLInputElement>('[data-vs-preset-input]');
+  const presetAdd = menuRoot.querySelector<HTMLButtonElement>('[data-vs-preset-add]');
+  const ABSOLUTE_MIN = 0.5;
+  const ABSOLUTE_MAX = 10;
+  async function trySubmitCustom(): Promise<void> {
+    if (!presetInput) return;
+    const raw = presetInput.value.trim();
+    if (!raw) return; // empty submit — silent no-op
+    const parsed = parseFloat(raw.replace(',', '.'));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      ctx.ui.showNotification(ctx.i18n.t('toast.preset_invalid'), 'error');
+      return;
+    }
+    if (parsed < ABSOLUTE_MIN || parsed > ABSOLUTE_MAX) {
+      ctx.ui.showNotification(
+        ctx.i18n.t('toast.preset_out_of_range', { min: ABSOLUTE_MIN, max: ABSOLUTE_MAX }),
+        'error',
+      );
+      return;
+    }
+    const value = Math.round(parsed * 100) / 100;
+    const current = ctx.settingsStore.getKey('speedPresets') ?? [];
+    if (current.some((v) => Math.abs(v - value) < 0.005)) {
+      ctx.ui.showNotification(ctx.i18n.t('toast.preset_duplicate'), 'warn');
+      return;
+    }
+    const next = [...current, value].sort((a, b) => a - b);
+    await ctx.settingsStore.update({ speedPresets: next });
+    presetInput.value = '';
+    deps.rerender();
+  }
+  if (presetAdd) {
+    ctx.cleanup.addEventListener(presetAdd, 'click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await trySubmitCustom();
+    });
+  }
+  if (presetInput) {
+    ctx.cleanup.addEventListener(presetInput, 'keydown', async (event) => {
+      const ev = event as KeyboardEvent;
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        await trySubmitCustom();
+      }
+    });
+  }
+
   // ----- Language switcher -----
   for (const btn of Array.from(menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-lang]'))) {
     ctx.cleanup.addEventListener(btn, 'click', async () => {

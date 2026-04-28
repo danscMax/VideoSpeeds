@@ -855,11 +855,16 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 .vs-tab[aria-selected="true"] svg { color: var(--vs-accent, #ff0000); }
 
-/* Tab panel — fade-in on switch, scrollable when tall, custom scrollbar. */
+/* Tab panel — fade-in on switch, scrollable when tall, custom scrollbar.
+   overflow-x: hidden defends against any child whose intrinsic width
+   pushes past the menu fixed 340px frame (e.g. a long crypto address
+   that the wrapping logic has not applied yet). Without it, the menu
+   would grow a horizontal scrollbar mid-tab-switch. */
 .vs-tab-panel {
   padding: 10px 16px 14px;
   max-height: 60vh;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   animation: vs-panel-in 160ms ease-out;
@@ -1147,15 +1152,21 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 
 /* Two-line iOS-Settings-like row used by CloudTips link AND by each
    crypto toggle. Title bold on top, descriptor smaller/dimmer below.
-   Chevron / external-link arrow on the right. Stack column has
-   min-width:0 so long descriptors can ellipsize instead of pushing
-   the chevron off-screen on narrow popups. */
+   External-link icon (CloudTips) or chevron (crypto) on the right.
+   Stack column has min-width:0 so long descriptors can ellipsize
+   instead of pushing the icon off-screen.
+
+   box-sizing border-box is essential here — without it, button and
+   anchor elements compute their 100% width DIFFERENTLY (button defaults
+   to content-box in Chromium), so the CloudTips link visually rendered
+   wider than the crypto toggles. */
 .vs-donate-cloudtips,
 .vs-donate-toggle {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
+  box-sizing: border-box;
   margin-top: 6px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.05);
@@ -1196,12 +1207,11 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 .vs-donate-chevron,
 .vs-donate-external {
-  transition: transform 0.18s ease;
   opacity: 0.55;
   flex-shrink: 0;
 }
-.vs-donate-external {
-  transform: rotate(-90deg);
+.vs-donate-chevron {
+  transition: transform 0.18s ease;
 }
 .vs-donate-toggle[aria-expanded="true"] .vs-donate-chevron {
   transform: rotate(180deg);
@@ -1214,8 +1224,9 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 /* Expanded panel — sits flush under its toggle, visually attached. */
 .vs-donate-detail {
   display: none;
-  margin: 0 0 0 0;
-  padding: 10px 12px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-top: none;
@@ -1229,25 +1240,40 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   border-bottom-color: transparent;
 }
 
-.vs-donate-wallet-row {
-  margin: 0 0 8px;
+/* Numbered "what to do" steps inside the expanded crypto block. Each
+   step renders on its own line; the wallet link sits right under
+   step 1, the address+copy row right under step 2, and step 3 is the
+   final paragraph explaining how to send from the wallet. */
+.vs-donate-step {
+  font-weight: 500;
+  margin-top: 10px;
+  opacity: 0.85;
 }
-.vs-donate-wallet-label {
+.vs-donate-step:first-child { margin-top: 0; }
+.vs-donate-step-final {
+  font-weight: 400;
   opacity: 0.65;
-  margin-right: 4px;
 }
 .vs-donate-wallet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
   font-weight: 500;
 }
 .vs-donate-wallet-link:hover { opacity: 0.85; }
+.vs-donate-wallet-link svg {
+  opacity: 0.7;
+}
 
 .vs-donate-address-row {
   display: flex;
   align-items: stretch;
   gap: 6px;
+  margin-top: 4px;
 }
 .vs-donate-address {
   flex: 1;

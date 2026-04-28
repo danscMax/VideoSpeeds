@@ -111,22 +111,22 @@ function buildCryptoMethod(method: CryptoMethod, i18n: Translator): HTMLElement 
   const detail = h(
     'div',
     { class: 'vs-donate-detail', 'aria-hidden': 'true' },
+    // Step 1: install a wallet (with link).
+    h('div', { class: 'vs-donate-step' }, t('donate.crypto.step1')),
     h(
-      'div',
-      { class: 'vs-donate-wallet-row' },
-      h('span', { class: 'vs-donate-wallet-label' }, t('donate.crypto.wallet')),
+      'a',
+      {
+        href: method.walletUrl,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        class: 'vs-donate-wallet-link',
+      },
+      t(method.walletNameKey),
       ' ',
-      h(
-        'a',
-        {
-          href: method.walletUrl,
-          target: '_blank',
-          rel: 'noopener noreferrer',
-          class: 'vs-donate-wallet-link',
-        },
-        t(method.walletNameKey),
-      ),
+      vsIcon('external-link', 11),
     ),
+    // Step 2: copy the address (with monospace + Copy button).
+    h('div', { class: 'vs-donate-step' }, t('donate.crypto.step2')),
     h(
       'div',
       { class: 'vs-donate-address-row' },
@@ -140,6 +140,8 @@ function buildCryptoMethod(method: CryptoMethod, i18n: Translator): HTMLElement 
       ),
       copyBtn,
     ),
+    // Step 3: send from the wallet (plain instructions).
+    h('div', { class: 'vs-donate-step vs-donate-step-final' }, t('donate.crypto.step3')),
   );
 
   toggleBtn.addEventListener('click', () => {
@@ -159,7 +161,7 @@ function buildCryptoMethod(method: CryptoMethod, i18n: Translator): HTMLElement 
 export function renderDonateSection(i18n: Translator): HTMLElement {
   const t = i18n.t;
 
-  const externalArrow = vsIcon('chevron-down', 12);
+  const externalArrow = vsIcon('external-link', 12);
   externalArrow.classList.add('vs-donate-external');
 
   const cloudtipsBtn = h(

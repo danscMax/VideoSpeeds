@@ -21,6 +21,19 @@ import { SPEED_POOL, speedBoundsFor } from '../../config';
 import type { Settings } from '../../storage/types';
 import type { Site, Translator } from '../../app/ports';
 
+/**
+ * Resolve a URL inside the extension package. Prefers chrome.runtime
+ * (Chromium MV3) but falls back to a sentinel string in test envs
+ * where neither chrome nor browser globals exist.
+ */
+function extensionUrl(path: string): string {
+  const c = (globalThis as unknown as { chrome?: { runtime?: { getURL?: (p: string) => string } } }).chrome;
+  if (c?.runtime?.getURL) return c.runtime.getURL(path);
+  const b = (globalThis as unknown as { browser?: { runtime?: { getURL?: (p: string) => string } } }).browser;
+  if (b?.runtime?.getURL) return b.runtime.getURL(path);
+  return path;
+}
+
 export type ActiveTab = 'general' | 'hotkeys' | 'diag' | 'donate';
 
 export interface ModalRenderOptions {
@@ -417,6 +430,21 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
   const { i18n, activeTab, scriptVersion } = opts;
   const t = i18n.t;
 
+  const helpIcon = vsIcon('help-circle', 14);
+  helpIcon.classList.add('vs-menu-help-icon');
+  const helpLink = h(
+    'a',
+    {
+      class: 'vs-menu-help',
+      href: extensionUrl('/welcome.html'),
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      title: t('menu.help.tip'),
+      'aria-label': t('menu.help.tip'),
+    },
+    helpIcon,
+  );
+
   const header = h(
     'div',
     { class: 'vs-menu-header' },
@@ -427,6 +455,7 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
       ' ',
       t('menu.title'),
     ),
+    helpLink,
     h(
       'span',
       { class: 'vs-menu-version', title: t('menu.version_tip') },

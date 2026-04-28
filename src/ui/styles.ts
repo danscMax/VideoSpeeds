@@ -814,6 +814,22 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   color: var(--vs-accent, #ff0000);
   opacity: 0.9;
 }
+/* Help icon in the modal header — opens welcome.html in a new tab. */
+.vs-menu-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 4px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  transition: color 140ms ease, background 140ms ease;
+}
+.vs-menu-help:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
+}
 .vs-menu-version {
   font-size: 10px;
   font-weight: 500;

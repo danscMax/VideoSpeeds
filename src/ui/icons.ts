@@ -39,7 +39,8 @@ export type IconName =
   | 'eye-off'
   | 'globe'
   | 'heart'
-  | 'external-link';
+  | 'external-link'
+  | 'help-circle';
 
 /**
  * Icon spec — array of [tag, attrs] tuples. Each tuple becomes an SVG
@@ -152,6 +153,11 @@ const VS_ICONS: Record<IconName, readonly SvgPart[]> = {
     ['path', { d: 'M15 3h6v6' }],
     ['path', { d: 'M10 14L21 3' }],
     ['path', { d: 'M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5' }],
+  ],
+  'help-circle': [
+    ['circle', { cx: 12, cy: 12, r: 10 }],
+    ['path', { d: 'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3' }],
+    ['line', { x1: 12, y1: 17, x2: 12.01, y2: 17 }],
   ],
 };
 

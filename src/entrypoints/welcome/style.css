@@ -1,0 +1,280 @@
+/* Welcome page — opened in a new tab on first install (background.ts ->
+ * chrome.runtime.onInstalled with reason='install').
+ *
+ * Layout: centred column, ~720px wide. Cards are flat / borderless,
+ * matching the popup look — one continuous brand experience from store
+ * listing through install to in-player UI. */
+
+:root {
+  color-scheme: dark;
+  --vs-bg: #0f0f10;
+  --vs-card: rgba(255, 255, 255, 0.04);
+  --vs-card-border: rgba(255, 255, 255, 0.08);
+  --vs-fg: rgba(255, 255, 255, 0.92);
+  --vs-fg-soft: rgba(255, 255, 255, 0.65);
+  --vs-fg-dim: rgba(255, 255, 255, 0.45);
+  --vs-accent: #ff4870;
+  --vs-accent-rgb: 255, 72, 112;
+  --vs-yt: #ff0000;
+  --vs-rt: #00a1e7;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--vs-bg);
+  color: var(--vs-fg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#welcome-app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 32px 80px;
+}
+
+.welcome-hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.welcome-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 22%;
+  margin: 0 auto 18px;
+  background: linear-gradient(135deg, #ff7a00, #ff0033);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 40px rgba(255, 60, 80, 0.35);
+}
+.welcome-icon svg {
+  width: 56px;
+  height: 56px;
+  color: #fff;
+}
+.welcome-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+.welcome-subtitle {
+  font-size: 15px;
+  color: var(--vs-fg-soft);
+  margin: 0;
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Sites pill row — quick visual reassurance that the extension is
+   wired up to the right hosts. */
+.welcome-sites {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.welcome-site-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--vs-fg-soft);
+  font-weight: 500;
+}
+.welcome-site-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34c759;
+}
+.welcome-site-pill[data-site="youtube"] strong { color: var(--vs-yt); }
+.welcome-site-pill[data-site="rutube"] strong { color: var(--vs-rt); }
+
+/* Card grid: 2 columns on desktop, 1 on narrow. */
+.welcome-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 32px 0;
+}
+@media (max-width: 640px) {
+  .welcome-cards { grid-template-columns: 1fr; }
+}
+.welcome-card {
+  background: var(--vs-card);
+  border: 1px solid var(--vs-card-border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.welcome-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.welcome-card-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(var(--vs-accent-rgb), 0.18);
+  border: 1px solid rgba(var(--vs-accent-rgb), 0.4);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.welcome-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.welcome-card-body {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--vs-fg-soft);
+  line-height: 1.55;
+}
+.welcome-card-body code,
+.welcome-key {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--vs-fg);
+  margin: 0 2px;
+}
+
+/* Pin guide — illustrates the puzzle-icon -> pin flow. */
+.welcome-pin-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--vs-fg-soft);
+  flex-wrap: wrap;
+}
+.welcome-pin-steps .pin-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.welcome-pin-steps .pin-arrow {
+  color: var(--vs-fg-dim);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Donate footer — soft, no pressure. Two outline-style links to the
+   external pay endpoints; "More options in Settings" hint underneath. */
+.welcome-donate {
+  margin-top: 40px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(255, 110, 135, 0.08), rgba(255, 110, 135, 0.02));
+  border: 1px solid rgba(255, 110, 135, 0.18);
+  border-radius: 14px;
+  text-align: center;
+}
+.welcome-donate-heart {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 8px;
+  color: var(--vs-accent);
+}
+.welcome-donate h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.welcome-donate p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--vs-fg-soft);
+}
+.welcome-donate-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.welcome-donate-link {
+  padding: 8px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: var(--vs-fg);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.welcome-donate-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Primary CTA row — open YouTube or close. */
+.welcome-cta-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 36px;
+  flex-wrap: wrap;
+}
+.welcome-cta {
+  padding: 12px 28px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 140ms ease, border-color 140ms ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.welcome-cta-primary {
+  background: var(--vs-accent);
+  color: #fff;
+}
+.welcome-cta-primary:hover {
+  background: #ff5a80;
+}
+.welcome-cta-secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--vs-fg);
+}
+.welcome-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.welcome-version {
+  text-align: center;
+  margin-top: 32px;
+  font-size: 11px;
+  color: var(--vs-fg-dim);
+}

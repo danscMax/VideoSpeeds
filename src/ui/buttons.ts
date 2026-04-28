@@ -14,6 +14,15 @@ export interface ButtonsRowOptions {
   speeds: readonly number[];
   /** Currently applied speed -- gets the `.speed-button.active` class. */
   current: number;
+  /**
+   * Optional `title` attribute applied to every speed button. Surfaces
+   * the click semantics ("Click — temporary, double-click — save as
+   * default") on hover so a user who didn't read the welcome page can
+   * still discover the behaviour. Translated string is passed in by
+   * the panel layer; we don't import the i18n module here to keep
+   * buttons.ts framework-agnostic.
+   */
+  buttonTitle?: string;
 }
 
 const ROW_CLASS = 'speed-buttons-row';
@@ -31,6 +40,7 @@ export function renderButtonsRow(opts: ButtonsRowOptions): HTMLElement {
           type: 'button',
           class: isSameSpeed(s, opts.current) ? `${BTN_CLASS} ${ACTIVE_CLASS}` : BTN_CLASS,
           'data-vs-speed': s,
+          title: opts.buttonTitle,
         },
         formatSpeedLabel(s),
       ),

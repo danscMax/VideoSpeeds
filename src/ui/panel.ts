@@ -96,7 +96,11 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   root.className = 'vs-panel';
   root.dataset.vsSite = ctx.site;
 
-  const buttonsRow = renderButtonsRow({ speeds: resolvePresets(), current: ctx.speedStore.current() });
+  const buttonsRow = renderButtonsRow({
+    speeds: resolvePresets(),
+    current: ctx.speedStore.current(),
+    buttonTitle: ctx.i18n.t('panel.button.tooltip'),
+  });
   const sliderContainer = renderSlider({
     current: ctx.speedStore.current(),
     min: bounds.min,
@@ -459,6 +463,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       const fresh = renderButtonsRow({
         speeds: resolvePresets(),
         current: ctx.speedStore.current(),
+        buttonTitle: ctx.i18n.t('panel.button.tooltip'),
       });
       buttonsRow.replaceChildren(...Array.from(fresh.childNodes));
     }

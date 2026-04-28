@@ -103,16 +103,42 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
   // future-proofing (e.g. a "popup-window" position would need it).
   void pos;
 
-  // 2. YouTube fast path -- mirror the original userscript exactly
-  //    (.user.js:4900-4933). ytd-watch-metadata is the metadata web-
-  //    component below the player; its parentNode is #primary-inner
-  //    (the column the player + metadata + comments live in). Inserting
-  //    OUR panel there as a sibling-before-metadata gives the reliable
-  //    "between the player and the title" placement we want, no matter
-  //    what's happening inside the metadata's shadow tree. We bypass
-  //    Discovery here so a stale SelectorCache entry can't pin us back
-  //    onto #top-row inside Polymer.
+  // 1. RuTube non-video bail-out (user bug 2026-04-28). Channel / feed /
+  //    search / profile pages don't host a playable video the user wants
+  //    to control. The userscript reference relies on RT class selectors
+  //    (`video-page-layout-module__player`) that simply don't exist on
+  //    those pages, so its `waitForAnyElement` never fires. Our
+  //    DiscoveryEngine, however, has heuristic + cache fallback and will
+  //    happily promote a channel-banner preview <video> (muted, 470x264,
+  //    autoplaying) to playerContainer -- dropping our panel into the
+  //    channel header. Allow-list the paths we explicitly support; it's
+  //    easier to audit than a deny-list and matches the userscript's
+  //    effective behavior on RT.
+  if (ctx.site === 'rutube' && !isRutubeVideoPath(location.pathname)) {
+    return { parent: null, anchor: 'no-anchor' };
+  }
+
+  // 2. YouTube fast path. `#primary-inner` has exactly two children on
+  //    /watch pages: `#player` (the play surface) and `#below` (everything
+  //    underneath -- metadata, comments, and on narrow viewports with a
+  //    playlist video the in-flow `ytd-playlist-panel-renderer` that YT
+  //    relocates here from `#secondary`). Inserting BEFORE `#below` puts
+  //    our panel directly between the player and everything below it,
+  //    immune to the narrow-viewport playlist case (user bug 2026-04-28
+  //    where anchoring before `ytd-watch-metadata` landed us under the
+  //    playlist). We bypass Discovery here so a stale SelectorCache entry
+  //    can't pin us back onto #top-row inside Polymer.
   if (ctx.site === 'youtube') {
+    const below = document.querySelector('#primary-inner > #below');
+    if (below?.parentElement) {
+      return {
+        parent: below.parentElement,
+        anchor: 'before-info',
+        before: below,
+      };
+    }
+    // Fallback for older YT layouts that haven't migrated to the
+    // #primary-inner > #below structure (mirrors userscript behavior).
     const metadata = document.querySelector('ytd-watch-metadata');
     if (metadata?.parentNode && metadata.parentElement) {
       return {
@@ -199,6 +225,28 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
 function isInsidePlayer(el: Element | null, player: Element | null): boolean {
   if (!el || !player) return false;
   return player === el || player.contains(el);
+}
+
+/**
+ * Allow-list of RuTube paths where the panel should be inserted.
+ *
+ *   /video/<id>/...        — main video page (the typical case)
+ *   /shorts/<id>/...       — shorts player
+ *   /play/embed/<id>/...   — embedded player (panel still useful for
+ *                            hotkey users embedding in another site)
+ *
+ * Everything else (channels at `/channel/<id>/` and `/u/<name>/`, feed,
+ * search, browse, profile, my, notifications, category, tags, trends,
+ * auth) returns false — the userscript reference relies on RT class
+ * selectors that don't exist on those pages so it implicitly bails;
+ * our heuristic-driven DiscoveryEngine needs an explicit filter.
+ */
+export function isRutubeVideoPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/video/') ||
+    pathname.startsWith('/shorts/') ||
+    pathname.startsWith('/play/embed/')
+  );
 }
 
 /**

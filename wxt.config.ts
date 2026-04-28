@@ -27,6 +27,26 @@ import pkg from './package.json' with { type: 'json' };
 //   pre-commit to either side until Wave 4 has hard data.
 export default defineConfig({
   srcDir: 'src',
+  // AMO submission: keep the source archive small and focused so the
+  // reviewer doesn't need to wade through ~13 MB of test screenshots and
+  // unrelated build artefacts. Mozilla policy requires the source zip to
+  // contain only what's needed to reproduce the submitted bundle — store
+  // listing PNGs and Playwright debug shots are not.
+  zip: {
+    excludeSources: [
+      // Test/debug screenshots — large, not needed to reproduce the build.
+      'tests/smoke/**/*.png',
+      'tests/smoke/audit-shots/**',
+      // Store-listing PNGs are uploaded separately to AMO/CWS as listing
+      // assets; they are not source code.
+      'dist-store-assets/screenshots/**',
+      // The userscript artifact is a build OUTPUT (Tampermonkey distribution
+      // path), not source. The .gitignore already excludes the build output
+      // dir, but the file ships in dist-userscript/ explicitly so power
+      // users can grab it from the repo.
+      'dist-userscript/**',
+    ],
+  },
   // Mirror pkg.version into the bundle so SCRIPT_VERSION (which keys the
   // SelectorCache via script_version) is bumped automatically when
   // package.json is bumped. Without this, version was hardcoded twice

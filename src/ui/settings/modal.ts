@@ -16,6 +16,7 @@
 import { vsIcon } from '../icons';
 import { h, fragment, type HChild } from '../dom-h';
 import { generateHotkeyBlock } from './hotkey-block';
+import { renderDonateSection } from './donate-section';
 import type { Settings } from '../../storage/types';
 import type { Site, Translator } from '../../app/ports';
 
@@ -320,6 +321,7 @@ function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
       vsIcon('lock', 11),
       h('span', {}, t('diag.privacy')),
     ),
+    renderDonateSection(i18n),
   );
 }
 

@@ -1124,6 +1124,27 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Donate section — sits at the bottom of the Diagnostics tab. Three
+   buttons: CloudTips link (RU cards) + TON / USDT TRC20 copy-to-clipboard
+   for international donors. Visually de-emphasized vs. core diag actions
+   so it doesn't compete with the user's primary task. */
+.vs-donate-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.vs-donate-section .vs-help-text {
+  margin: 4px 0 10px;
+  opacity: 0.75;
+}
+.vs-donate-action {
+  text-decoration: none;
+  font-weight: 500;
+}
+.vs-donate-action:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 /* Mobile / narrow desktop window adjustments. Mirror .user.js:2855-2860
    and 3769-3792. The chrome-mounted slider shrinks to 100px so it
    doesn't push the fullscreen / settings buttons out of the row. */

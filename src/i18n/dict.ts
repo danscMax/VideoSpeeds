@@ -147,6 +147,19 @@ export const I18N_DICT = {
     'settings.import.tip': 'Load settings from a JSON file previously exported by the userscript or extension.',
     'settings.import.success': 'Settings imported successfully',
     'settings.import.failure': 'Import failed: {message}',
+
+    // donate.* -- support the developer (audit Wave VI). Three options:
+    // CloudTips for Russian cards, TON / USDT TRC20 for international.
+    'donate.section': 'Support the developer',
+    'donate.thanks': 'Thanks for using the extension. If it helps you, consider sending a tip — any amount helps and is appreciated.',
+    'donate.cloudtips': 'Russian card',
+    'donate.cloudtips.tip': 'Pay by Russian card via CloudTips. Opens in a new tab.',
+    'donate.ton': 'Toncoin (TON)',
+    'donate.ton.tip': 'Copy TON wallet address to the clipboard.',
+    'donate.usdt': 'USDT (TRC20)',
+    'donate.usdt.tip': 'Copy USDT TRC20 wallet address to the clipboard.',
+    'toast.address_copied': 'Wallet address copied to clipboard',
+    'toast.copy_failed': 'Failed to copy — please copy the address manually',
   },
   ru: {
     // menu.*
@@ -273,6 +286,18 @@ export const I18N_DICT = {
     'settings.import.tip': 'Загрузить настройки из JSON-файла, ранее экспортированного из скрипта или расширения.',
     'settings.import.success': 'Настройки успешно импортированы',
     'settings.import.failure': 'Ошибка импорта: {message}',
+
+    // donate.*
+    'donate.section': 'Поддержать разработчика',
+    'donate.thanks': 'Спасибо, что используете расширение. Если оно вам помогает — поддержите автора любой суммой. Это очень мотивирует.',
+    'donate.cloudtips': 'Картой РФ',
+    'donate.cloudtips.tip': 'Оплата картой РФ через CloudTips. Откроется в новой вкладке.',
+    'donate.ton': 'Toncoin (TON)',
+    'donate.ton.tip': 'Скопировать адрес TON-кошелька в буфер обмена.',
+    'donate.usdt': 'USDT (TRC20)',
+    'donate.usdt.tip': 'Скопировать адрес USDT TRC20 в буфер обмена.',
+    'toast.address_copied': 'Адрес кошелька скопирован',
+    'toast.copy_failed': 'Не удалось скопировать — скопируйте адрес вручную',
   },
 } as const;
 

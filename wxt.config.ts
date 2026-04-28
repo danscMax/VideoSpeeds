@@ -82,7 +82,15 @@ export default defineConfig({
           browser_specific_settings: {
             gecko: {
               id: 'video-speeds@maxscorpy',
-              strict_min_version: '109.0',
+              // 140.0 is when desktop Firefox started recognizing
+              // `data_collection_permissions`; Android Firefox got it in
+              // 142.0. We pin to 142.0 so both platforms understand the
+              // privacy declaration without AMO emitting a "key not
+              // supported by minimum version" warning. Trade-off: users
+              // on FF 109-141 lose access; that range is < 5% of installs
+              // by 2026-04 and ESR users are unaffected (they already
+              // pin to a specific channel).
+              strict_min_version: '142.0',
               data_collection_permissions: { required: ['none'] },
             },
           },

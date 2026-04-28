@@ -486,6 +486,7 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
   const BACKOFF = 1.5;
   let attempts = 0;
   let delay = BASE_DELAY;
+  let observerInstalled = false;
 
   function tryOnce(): void {
     attempts += 1;
@@ -497,19 +498,48 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
       result = { parent: null, anchor: 'no-anchor' as const };
     }
     const inDoc = document.contains(panelEl);
+    const placed = result.anchor !== 'no-anchor' && inDoc;
 
-    if (result.anchor !== 'no-anchor' && inDoc) {
+    if (placed && !result.tentative) {
+      // Final placement -- preferred anchor. Stop the retry loop, install
+      // the displacement observer, and we're done.
       ctx.logger.info(`panel inserted via ${result.anchor} on attempt ${attempts}`);
-      // Watch the parent: SPA frameworks (YouTube ytd-watch-flexy is the
-      // worst offender) periodically re-render their children and yank our
-      // panel out of the DOM. The observer runs once per removal and
-      // re-fires the retry loop -- if the parent itself is gone, the
-      // outer observer triggers fresh anchor resolution.
-      installRemovalObserver(panelEl, ctx, scheduleInsertWithRetry);
+      if (!observerInstalled) {
+        installRemovalObserver(panelEl, ctx, scheduleInsertWithRetry);
+        observerInstalled = true;
+      }
       return;
     }
+
+    if (placed && result.tentative) {
+      // Tentative placement -- panel is visible, but the preferred anchor
+      // (e.g. `#primary-inner > #below` on YT) hasn't appeared yet. Keep
+      // retrying so we migrate to the proper home as soon as it does. We
+      // intentionally DON'T install the displacement observer yet -- once
+      // we move the panel to the preferred parent the observer's captured
+      // `parent` reference would be stale and force a needless reschedule
+      // (audit follow-up to S17).
+      ctx.logger.debug(
+        `panel tentatively at ${result.anchor} on attempt ${attempts}; continuing retry for preferred anchor`,
+      );
+    }
+
     if (attempts >= MAX_ATTEMPTS) {
-      ctx.logger.warn(`panel insertion failed after ${attempts} attempts; giving up until next SPA nav`);
+      if (placed) {
+        // Tentative is "good enough" after the budget runs out -- the user
+        // sees the panel, just not in the absolutely-best spot. Promote to
+        // final and install the observer so SPA churn still triggers
+        // reattach on subsequent navigations.
+        ctx.logger.info(
+          `panel finalized via tentative anchor ${result.anchor} after ${attempts} attempts`,
+        );
+        if (!observerInstalled) {
+          installRemovalObserver(panelEl, ctx, scheduleInsertWithRetry);
+          observerInstalled = true;
+        }
+      } else {
+        ctx.logger.warn(`panel insertion failed after ${attempts} attempts; giving up until next SPA nav`);
+      }
       return;
     }
     ctx.cleanup.setTimeout(tryOnce, delay);

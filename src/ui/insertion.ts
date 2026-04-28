@@ -41,6 +41,23 @@ export type InsertionAnchor =
 export interface InsertionResult {
   parent: Element | null;
   anchor: InsertionAnchor;
+  /**
+   * True when the anchor we picked is a *fallback* and a more-preferred
+   * anchor may still appear once YT/RT finishes hydrating. The orchestrator
+   * (`tryOnce` in src/index.ts) keeps the retry loop alive on tentative
+   * results so we move the panel to its proper home as soon as the
+   * preferred anchor is available.
+   *
+   * Concrete case (user bug 2026-04-28, follow-up to 0.1.31): on YouTube
+   * watch pages the very first insertion attempt sometimes fires before
+   * `#primary-inner > #below` has been built but after `ytd-watch-metadata`
+   * is in the document. The fallback inserts the panel into `#below` —
+   * which on narrow viewports with a playlist sits BELOW
+   * `ytd-playlist-panel-renderer` and any in-flow ad slots. Marking that
+   * fallback as tentative lets the retry loop migrate the panel up to
+   * `#primary-inner` on a subsequent attempt.
+   */
+  tentative?: boolean;
 }
 
 export function insertPanel(panel: HTMLElement, ctx: AppContext): InsertionResult {
@@ -82,7 +99,7 @@ export function insertPanel(panel: HTMLElement, ctx: AppContext): InsertionResul
     try { panel.parentElement?.removeChild(panel); } catch { /* swallow */ }
   }
 
-  return { parent: choice.parent, anchor: choice.anchor };
+  return { parent: choice.parent, anchor: choice.anchor, tentative: choice.tentative };
 }
 
 interface AnchorChoice {
@@ -90,6 +107,8 @@ interface AnchorChoice {
   anchor: InsertionAnchor;
   /** When set, panel is inserted before this node (sibling of `before`). */
   before?: Node | null;
+  /** Tentative — see InsertionResult.tentative. */
+  tentative?: boolean;
 }
 
 function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
@@ -137,14 +156,19 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
         before: below,
       };
     }
-    // Fallback for older YT layouts that haven't migrated to the
-    // #primary-inner > #below structure (mirrors userscript behavior).
+    // Tentative fallback for the bootstrap window where
+    // `#primary-inner > #below` hasn't been built yet. `ytd-watch-metadata`
+    // appears earlier on cold YT loads (its parent is whatever container
+    // YT has built so far — often `#below` directly). We insert here so
+    // the panel is at least visible, but flag the result as tentative so
+    // the retry loop migrates us to `#primary-inner` once it's ready.
     const metadata = document.querySelector('ytd-watch-metadata');
     if (metadata?.parentNode && metadata.parentElement) {
       return {
         parent: metadata.parentElement,
         anchor: 'before-info',
         before: metadata,
+        tentative: true,
       };
     }
   }
@@ -200,8 +224,8 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
   // 6. RuTube last-resort: anchor before the page <h1>. Fires only when
   //    every modular layout selector failed (post-RuTube-redesign cold
   //    start, or the page-info module has been swapped out under us).
-  //    Mirror .user.js:4967-4974 final fallback. Without it the panel
-  //    has nowhere to land and gets discarded after the retry budget.
+  //    Mirror .user.js:4967-4974 final fallback. Tentative — we'd much
+  //    rather land in the modular layout than next to a stray h1.
   if (ctx.site === 'rutube') {
     const h1 = document.querySelector('h1');
     if (h1?.parentElement) {
@@ -209,6 +233,7 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
         parent: h1.parentElement,
         anchor: 'before-info',
         before: h1,
+        tentative: true,
       };
     }
   }

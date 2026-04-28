@@ -1,29 +1,52 @@
 /**
- * Donate section — three options at the bottom of the Diagnostics tab:
+ * Donate tab content — three options:
  *   - CloudTips link (Russian cards, opens in a new tab)
- *   - Toncoin TON address (copy to clipboard)
- *   - USDT TRC20 address (copy to clipboard)
+ *   - Toncoin TON: expand inline panel with wallet link + address + Copy
+ *   - USDT TRC20: same shape as TON
  *
- * Why these three:
- *   - CloudTips: cheapest, simplest path for users with Russian cards
- *     (5-7% commission, no registration needed by donor).
- *   - TON / USDT TRC20: universal, work for foreign donors regardless of
- *     sanctions or PayPal availability. Crypto in 2026 is the only
- *     reliable way for international users to support a Russian author.
+ * UX deliberately compact (audit feedback 2026-04-28):
+ *   The first iteration crammed numbered steps + a "Это всё, спасибо!"
+ *   footer into the Diagnostics tab. That was wrong on two counts: nobody
+ *   looks for monetisation under "Diagnostics", and the verbose
+ *   instructional copy felt aggressive. The redesign moves the section
+ *   into its own dedicated tab and trims each crypto entry to:
+ *     - a one-line latency/fee descriptor under the toggle,
+ *     - a single line "Wallet: Tonkeeper" link,
+ *     - the address in a monospace box with an icon-only Copy button.
  *
- * Click handlers are attached at element-creation time. The settings modal
- * `replaceChildren`s the rendered DOM on every rerender, so the previous
- * buttons + their listeners are removed atomically — no leak, no need for
- * a CleanupRegistry hookup.
+ * Click handlers attach at element-creation time. The settings modal
+ * `replaceChildren`s the rendered DOM on every rerender, so old buttons
+ * + listeners are dropped atomically — no leak, no CleanupRegistry hookup.
  */
 
 import { h } from '../dom-h';
+import { vsIcon } from '../icons';
 import { showNotification } from '../notifications';
 import type { Translator } from '../../app/ports';
 
 const CLOUDTIPS_URL = 'https://pay.cloudtips.ru/p/9b14d4f1';
-const TON_ADDRESS = 'UQBMEMUpZZmrnnZoFseXuewWD1RkyVYw5EuBqTAOIl-AuOgM';
-const USDT_TRC20_ADDRESS = 'TLuHigjqe8gjwfidfi2F7SZ4z27e4uShS6';
+
+interface CryptoMethod {
+  /** i18n key suffix — `donate.<key>` and `donate.<key>.description`. */
+  key: 'ton' | 'usdt';
+  walletNameKey: string;
+  walletUrl: string;
+  address: string;
+}
+
+const TON: CryptoMethod = {
+  key: 'ton',
+  walletNameKey: 'donate.ton.wallet_name',
+  walletUrl: 'https://tonkeeper.com/',
+  address: 'UQBMEMUpZZmrnnZoFseXuewWD1RkyVYw5EuBqTAOIl-AuOgM',
+};
+
+const USDT_TRC20: CryptoMethod = {
+  key: 'usdt',
+  walletNameKey: 'donate.usdt.wallet_name',
+  walletUrl: 'https://trustwallet.com/',
+  address: 'TLuHigjqe8gjwfidfi2F7SZ4z27e4uShS6',
+};
 
 async function copyToClipboard(text: string, i18n: Translator): Promise<void> {
   try {
@@ -40,52 +63,129 @@ async function copyToClipboard(text: string, i18n: Translator): Promise<void> {
   }
 }
 
+/**
+ * Build a crypto method block: toggle row (label · short description ·
+ * chevron) + an initially-collapsed detail panel underneath with the
+ * recommended-wallet link, the address, and a Copy button.
+ */
+function buildCryptoMethod(method: CryptoMethod, i18n: Translator): HTMLElement {
+  const t = i18n.t;
+  const labelKey = `donate.${method.key}`;
+  const descKey = `donate.${method.key}.description`;
+  const tipKey = `donate.${method.key}.tip`;
+
+  const chevron = vsIcon('chevron-down', 12);
+  chevron.classList.add('vs-donate-chevron');
+
+  const toggleBtn = h(
+    'button',
+    {
+      type: 'button',
+      class: 'vs-donate-toggle',
+      'aria-expanded': 'false',
+      title: t(tipKey),
+    },
+    h(
+      'span',
+      { class: 'vs-donate-stack' },
+      h('span', { class: 'vs-donate-label' }, t(labelKey)),
+      h('span', { class: 'vs-donate-desc' }, t(descKey)),
+    ),
+    chevron,
+  );
+
+  const copyBtn = h(
+    'button',
+    {
+      type: 'button',
+      class: 'vs-donate-copy-btn',
+      title: t('donate.crypto.copy'),
+      'aria-label': t('donate.crypto.copy'),
+    },
+    vsIcon('clipboard', 14),
+  );
+  copyBtn.addEventListener('click', () => {
+    void copyToClipboard(method.address, i18n);
+  });
+
+  const detail = h(
+    'div',
+    { class: 'vs-donate-detail', 'aria-hidden': 'true' },
+    h(
+      'div',
+      { class: 'vs-donate-wallet-row' },
+      h('span', { class: 'vs-donate-wallet-label' }, t('donate.crypto.wallet')),
+      ' ',
+      h(
+        'a',
+        {
+          href: method.walletUrl,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: 'vs-donate-wallet-link',
+        },
+        t(method.walletNameKey),
+      ),
+    ),
+    h(
+      'div',
+      { class: 'vs-donate-address-row' },
+      h(
+        'code',
+        {
+          class: 'vs-donate-address',
+          'aria-label': t('donate.crypto.address_label'),
+        },
+        method.address,
+      ),
+      copyBtn,
+    ),
+  );
+
+  toggleBtn.addEventListener('click', () => {
+    const isOpen = detail.classList.toggle('show');
+    toggleBtn.setAttribute('aria-expanded', String(isOpen));
+    detail.setAttribute('aria-hidden', String(!isOpen));
+  });
+
+  return h('div', { class: 'vs-donate-method' }, toggleBtn, detail);
+}
+
+/**
+ * Render the contents of the Support tab — intro line + CloudTips link +
+ * the two crypto methods. Caller wraps this in the standard tab-panel
+ * shell with `data-vs-panel="donate"`.
+ */
 export function renderDonateSection(i18n: Translator): HTMLElement {
   const t = i18n.t;
+
+  const externalArrow = vsIcon('chevron-down', 12);
+  externalArrow.classList.add('vs-donate-external');
 
   const cloudtipsBtn = h(
     'a',
     {
-      class: 'vs-action vs-donate-action',
+      class: 'vs-donate-cloudtips',
       href: CLOUDTIPS_URL,
       target: '_blank',
       rel: 'noopener noreferrer',
       title: t('donate.cloudtips.tip'),
     },
-    t('donate.cloudtips'),
+    h(
+      'span',
+      { class: 'vs-donate-stack' },
+      h('span', { class: 'vs-donate-label' }, t('donate.cloudtips')),
+      h('span', { class: 'vs-donate-desc' }, 'CloudTips'),
+    ),
+    externalArrow,
   );
-
-  const tonBtn = h(
-    'button',
-    {
-      type: 'button',
-      class: 'vs-action vs-donate-action',
-      title: t('donate.ton.tip'),
-    },
-    t('donate.ton'),
-  );
-  tonBtn.addEventListener('click', () => {
-    void copyToClipboard(TON_ADDRESS, i18n);
-  });
-
-  const usdtBtn = h(
-    'button',
-    {
-      type: 'button',
-      class: 'vs-action vs-donate-action',
-      title: t('donate.usdt.tip'),
-    },
-    t('donate.usdt'),
-  );
-  usdtBtn.addEventListener('click', () => {
-    void copyToClipboard(USDT_TRC20_ADDRESS, i18n);
-  });
 
   return h(
     'div',
-    { class: 'vs-section vs-donate-section' },
-    h('div', { class: 'vs-section-label' }, t('donate.section')),
-    h('p', { class: 'vs-help-text' }, t('donate.thanks')),
-    h('div', { class: 'vs-action-grid' }, cloudtipsBtn, tonBtn, usdtBtn),
+    { class: 'vs-donate-content' },
+    h('p', { class: 'vs-donate-intro' }, t('donate.thanks')),
+    cloudtipsBtn,
+    buildCryptoMethod(TON, i18n),
+    buildCryptoMethod(USDT_TRC20, i18n),
   );
 }

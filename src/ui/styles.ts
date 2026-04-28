@@ -832,7 +832,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   flex-shrink: 0;
 }
 .vs-tab {
-  padding: 6px 10px;
+  padding: 6px 8px;
   background: transparent;
   border: none;
   color: inherit;
@@ -843,6 +843,9 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
   transition: color 160ms ease, opacity 160ms ease, border-color 160ms ease;
 }
 .vs-tab:hover { opacity: 0.85; }
@@ -1124,25 +1127,157 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Donate section — sits at the bottom of the Diagnostics tab. Three
-   buttons: CloudTips link (RU cards) + TON / USDT TRC20 copy-to-clipboard
-   for international donors. Visually de-emphasized vs. core diag actions
-   so it doesn't compete with the user's primary task. */
-.vs-donate-section {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+/* Donate tab — its own dedicated 4th tab so users actually find it.
+   Compact two-line rows: title on the left, descriptor on the right
+   (similar to iOS Settings). Crypto rows expand inline to reveal the
+   wallet link + address + icon-only copy button. */
+.vs-tab.vs-tab-donate svg { color: #ff6e87; }
+.vs-tab.vs-tab-donate[aria-selected="true"] svg {
+  color: #ff4870;
+  fill: rgba(255, 72, 112, 0.18);
 }
-.vs-donate-section .vs-help-text {
-  margin: 4px 0 10px;
-  opacity: 0.75;
+
+.vs-donate-content { padding: 4px 0; }
+.vs-donate-intro {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.78;
 }
-.vs-donate-action {
+
+/* Two-line iOS-Settings-like row used by CloudTips link AND by each
+   crypto toggle. Title bold on top, descriptor smaller/dimmer below.
+   Chevron / external-link arrow on the right. Stack column has
+   min-width:0 so long descriptors can ellipsize instead of pushing
+   the chevron off-screen on narrow popups. */
+.vs-donate-cloudtips,
+.vs-donate-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+}
+.vs-donate-cloudtips:hover,
+.vs-donate-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.vs-donate-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.vs-donate-label {
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vs-donate-desc {
+  font-size: 11px;
+  opacity: 0.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vs-donate-chevron,
+.vs-donate-external {
+  transition: transform 0.18s ease;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.vs-donate-external {
+  transform: rotate(-90deg);
+}
+.vs-donate-toggle[aria-expanded="true"] .vs-donate-chevron {
+  transform: rotate(180deg);
+  opacity: 0.85;
+}
+
+.vs-donate-method { margin-top: 6px; }
+.vs-donate-method .vs-donate-toggle { margin-top: 0; }
+
+/* Expanded panel — sits flush under its toggle, visually attached. */
+.vs-donate-detail {
+  display: none;
+  margin: 0 0 0 0;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.vs-donate-detail.show { display: block; }
+.vs-donate-method:has(.vs-donate-detail.show) .vs-donate-toggle {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+
+.vs-donate-wallet-row {
+  margin: 0 0 8px;
+}
+.vs-donate-wallet-label {
+  opacity: 0.65;
+  margin-right: 4px;
+}
+.vs-donate-wallet-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   font-weight: 500;
 }
-.vs-donate-action:hover {
+.vs-donate-wallet-link:hover { opacity: 0.85; }
+
+.vs-donate-address-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.vs-donate-address {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  word-break: break-all;
+  background: rgba(0, 0, 0, 0.32);
+  padding: 6px 8px;
+  border-radius: 6px;
+  user-select: all;
+  display: flex;
+  align-items: center;
+  line-height: 1.3;
+}
+.vs-donate-copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.vs-donate-copy-btn:hover {
   background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Mobile / narrow desktop window adjustments. Mirror .user.js:2855-2860

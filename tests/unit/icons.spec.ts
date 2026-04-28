@@ -27,12 +27,13 @@ describe('vsIcon()', () => {
     expect(out.children.length).toBe(0);
   });
 
-  it('exposes ICON_NAMES with the full set ported from the userscript', () => {
-    // 23 icons: 22 from the original userscript + globe added for the
-    // language switcher (Wave 1.8a will use it in the General tab).
-    expect(ICON_NAMES.length).toBe(23);
+  it('exposes ICON_NAMES with the full set', () => {
+    // 24 icons: 22 from the original userscript + globe (language
+    // switcher) + heart (donate tab).
+    expect(ICON_NAMES.length).toBe(24);
     expect(ICON_NAMES).toContain('globe');
     expect(ICON_NAMES).toContain('settings');
+    expect(ICON_NAMES).toContain('heart');
   });
 
   it('every icon name renders without throwing and yields an SVGElement', () => {

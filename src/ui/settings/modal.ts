@@ -20,7 +20,7 @@ import { renderDonateSection } from './donate-section';
 import type { Settings } from '../../storage/types';
 import type { Site, Translator } from '../../app/ports';
 
-export type ActiveTab = 'general' | 'hotkeys' | 'diag';
+export type ActiveTab = 'general' | 'hotkeys' | 'diag' | 'donate';
 
 export interface ModalRenderOptions {
   settings: Settings;
@@ -321,7 +321,18 @@ function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
       vsIcon('lock', 11),
       h('span', {}, t('diag.privacy')),
     ),
-    renderDonateSection(i18n),
+  );
+}
+
+function donateTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
+  return h(
+    'div',
+    {
+      class: 'vs-tab-panel vs-tab-panel-donate',
+      'data-vs-panel': 'donate',
+      'aria-hidden': hidden ? 'true' : 'false',
+    },
+    renderDonateSection(opts.i18n),
   );
 }
 
@@ -392,6 +403,19 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
       ' ',
       t('tabs.diag'),
     ),
+    h(
+      'button',
+      {
+        class: 'vs-tab vs-tab-donate',
+        role: 'tab',
+        'data-vs-tab': 'donate',
+        'aria-selected': activeTab === 'donate' ? 'true' : 'false',
+        title: t('tabs.donate.tip'),
+      },
+      vsIcon('heart', 13),
+      ' ',
+      t('tabs.donate'),
+    ),
   );
 
   return fragment(
@@ -400,5 +424,6 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
     generalTab(opts, activeTab !== 'general'),
     hotkeysTab(opts, activeTab !== 'hotkeys'),
     diagTab(opts, activeTab !== 'diag'),
+    donateTab(opts, activeTab !== 'donate'),
   );
 }

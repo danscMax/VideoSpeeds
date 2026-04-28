@@ -29,7 +29,7 @@ export const I18N_DICT = {
     // tabs.*
     'tabs.general': 'General',
     'tabs.general.tip': 'Slider position, behavior and advanced options',
-    'tabs.shortcuts': 'Shortcuts',
+    'tabs.shortcuts': 'Keys',
     'tabs.shortcuts.tip': 'Keyboard shortcuts for changing playback speed',
     'tabs.diag': 'Diagnostics',
     'tabs.diag.tip': 'Script status, copy report, clear cache',
@@ -150,16 +150,25 @@ export const I18N_DICT = {
 
     // donate.* -- support the developer (audit Wave VI). Three options:
     // CloudTips for Russian cards, TON / USDT TRC20 for international.
-    'donate.section': 'Support the developer',
-    'donate.thanks': 'Thanks for using the extension. If it helps you, consider sending a tip — any amount helps and is appreciated.',
+    'tabs.donate': 'Support',
+    'tabs.donate.tip': 'Support the developer',
+    'donate.thanks': 'If the extension is useful to you — any tip is welcome and very motivating.',
     'donate.cloudtips': 'Russian card',
     'donate.cloudtips.tip': 'Pay by Russian card via CloudTips. Opens in a new tab.',
     'donate.ton': 'Toncoin (TON)',
-    'donate.ton.tip': 'Copy TON wallet address to the clipboard.',
+    'donate.ton.tip': 'Show TON address',
+    'donate.ton.description': 'Free · ~5 sec',
     'donate.usdt': 'USDT (TRC20)',
-    'donate.usdt.tip': 'Copy USDT TRC20 wallet address to the clipboard.',
-    'toast.address_copied': 'Wallet address copied to clipboard',
-    'toast.copy_failed': 'Failed to copy — please copy the address manually',
+    'donate.usdt.tip': 'Show USDT TRC20 address',
+    'donate.usdt.description': '~$1-3 fee · ~3 sec',
+    'donate.crypto.wallet': 'Wallet:',
+    'donate.crypto.copy': 'Copy',
+    'donate.crypto.copied': 'Copied',
+    'donate.crypto.address_label': 'Wallet address',
+    'donate.ton.wallet_name': 'Tonkeeper',
+    'donate.usdt.wallet_name': 'Trust Wallet',
+    'toast.address_copied': 'Wallet address copied',
+    'toast.copy_failed': 'Could not copy — please copy the address manually',
   },
   ru: {
     // menu.*
@@ -169,8 +178,8 @@ export const I18N_DICT = {
     // tabs.*
     'tabs.general': 'Общие',
     'tabs.general.tip': 'Положение ползунка, поведение и расширенные опции',
-    'tabs.shortcuts': 'Горячие клавиши',
-    'tabs.shortcuts.tip': 'Сочетания клавиш для управления скоростью',
+    'tabs.shortcuts': 'Клавиши',
+    'tabs.shortcuts.tip': 'Горячие клавиши для управления скоростью',
     'tabs.diag': 'Диагностика',
     'tabs.diag.tip': 'Статус скрипта, копирование отчёта, очистка кеша',
 
@@ -288,16 +297,25 @@ export const I18N_DICT = {
     'settings.import.failure': 'Ошибка импорта: {message}',
 
     // donate.*
-    'donate.section': 'Поддержать разработчика',
-    'donate.thanks': 'Спасибо, что используете расширение. Если оно вам помогает — поддержите автора любой суммой. Это очень мотивирует.',
+    'tabs.donate': 'Поддержать',
+    'tabs.donate.tip': 'Поддержать разработчика',
+    'donate.thanks': 'Если расширение вам полезно — любая поддержка приветствуется и очень мотивирует.',
     'donate.cloudtips': 'Картой РФ',
     'donate.cloudtips.tip': 'Оплата картой РФ через CloudTips. Откроется в новой вкладке.',
     'donate.ton': 'Toncoin (TON)',
-    'donate.ton.tip': 'Скопировать адрес TON-кошелька в буфер обмена.',
+    'donate.ton.tip': 'Показать адрес TON',
+    'donate.ton.description': 'Бесплатно · ~5 сек',
     'donate.usdt': 'USDT (TRC20)',
-    'donate.usdt.tip': 'Скопировать адрес USDT TRC20 в буфер обмена.',
-    'toast.address_copied': 'Адрес кошелька скопирован',
-    'toast.copy_failed': 'Не удалось скопировать — скопируйте адрес вручную',
+    'donate.usdt.tip': 'Показать адрес USDT TRC20',
+    'donate.usdt.description': '~$1-3 комиссия · ~3 сек',
+    'donate.crypto.wallet': 'Кошелёк:',
+    'donate.crypto.copy': 'Скопировать',
+    'donate.crypto.copied': 'Скопировано',
+    'donate.crypto.address_label': 'Адрес кошелька',
+    'donate.ton.wallet_name': 'Tonkeeper',
+    'donate.usdt.wallet_name': 'Trust Wallet',
+    'toast.address_copied': 'Адрес скопирован',
+    'toast.copy_failed': 'Не удалось скопировать — скопируйте вручную',
   },
 } as const;
 

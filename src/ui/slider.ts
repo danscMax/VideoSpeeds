@@ -8,7 +8,7 @@
  * userscript does the same in .user.js:2630-2645.
  */
 
-import { safeSetInnerHTML } from './safe-html';
+import { h } from './dom-h';
 
 const CONTAINER_CLASS = 'speed-slider-container';
 const INPUT_CLASS = 'speed-slider';
@@ -37,14 +37,20 @@ export interface SliderOptions {
  */
 export function renderSlider(opts: SliderOptions): HTMLElement {
   const step = opts.step ?? 0.05;
-  const container = document.createElement('div');
-  container.className = CONTAINER_CLASS;
   const speedText = formatSliderLabel(opts.current);
-  safeSetInnerHTML(
-    container,
-    `<span class="${LABEL_CLASS}">${speedText}</span>` +
-      `<input type="range" class="${INPUT_CLASS}" min="${opts.min}" max="${opts.max}" step="${step}" value="${opts.current}">` +
-      `<span class="${VALUE_CLASS}">${speedText}</span>`,
+  const container = h(
+    'div',
+    { class: CONTAINER_CLASS },
+    h('span', { class: LABEL_CLASS }, speedText),
+    h('input', {
+      type: 'range',
+      class: INPUT_CLASS,
+      min: opts.min,
+      max: opts.max,
+      step,
+      value: opts.current,
+    }),
+    h('span', { class: VALUE_CLASS }, speedText),
   );
   // Initial paint of the gradient fill + floating tooltip position.
   const input = container.querySelector<HTMLInputElement>(`.${INPUT_CLASS}`);

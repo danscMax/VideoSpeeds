@@ -122,73 +122,84 @@ describe('showNotification', () => {
   });
 });
 
+/**
+ * Helper: mount the rendered DocumentFragment / Element on a host so
+ * queries hit the real DOM. Returns the host so callers can use
+ * querySelector / hasAttribute / matches against the real shape.
+ */
+function mountModal(opts: Parameters<typeof renderSettingsMenu>[0]): HTMLElement {
+  const host = document.createElement('div');
+  host.appendChild(renderSettingsMenu(opts));
+  return host;
+}
+
 describe('renderSettingsMenu', () => {
   it('contains all three tab buttons', () => {
-    const html = renderSettingsMenu({
+    const host = mountModal({
       settings: defaultSettings('en'),
       site: 'youtube',
       i18n: createTranslator('en'),
       activeTab: 'general',
       scriptVersion: '0.1.0',
     });
-    expect(html).toContain('data-vs-tab="general"');
-    expect(html).toContain('data-vs-tab="hotkeys"');
-    expect(html).toContain('data-vs-tab="diag"');
+    expect(host.querySelector('[data-vs-tab="general"]')).toBeTruthy();
+    expect(host.querySelector('[data-vs-tab="hotkeys"]')).toBeTruthy();
+    expect(host.querySelector('[data-vs-tab="diag"]')).toBeTruthy();
   });
 
   it('shows the YouTube-only "in player" slider position option', () => {
-    const html = renderSettingsMenu({
+    const host = mountModal({
       settings: defaultSettings('en'),
       site: 'youtube',
       i18n: createTranslator('en'),
       activeTab: 'general',
       scriptVersion: '0.1.0',
     });
-    expect(html).toContain('data-vs-pos="video"');
+    expect(host.querySelector('[data-vs-pos="video"]')).toBeTruthy();
   });
 
   it('omits the in-player option for RuTube and shows hide-title/hide-premium toggles', () => {
-    const html = renderSettingsMenu({
+    const host = mountModal({
       settings: defaultSettings('en'),
       site: 'rutube',
       i18n: createTranslator('en'),
       activeTab: 'general',
       scriptVersion: '0.1.0',
     });
-    expect(html).not.toContain('data-vs-pos="video"');
-    expect(html).toContain('name="hide-player-title"');
-    expect(html).toContain('name="hide-premium"');
+    expect(host.querySelector('[data-vs-pos="video"]')).toBe(null);
+    expect(host.querySelector('input[name="hide-player-title"]')).toBeTruthy();
+    expect(host.querySelector('input[name="hide-premium"]')).toBeTruthy();
   });
 
   it('marks the active tab via aria-selected', () => {
-    const html = renderSettingsMenu({
+    const host = mountModal({
       settings: defaultSettings('en'),
       site: 'youtube',
       i18n: createTranslator('en'),
       activeTab: 'diag',
       scriptVersion: '0.1.0',
     });
-    expect(html).toMatch(/data-vs-tab="diag"[^>]*aria-selected="true"/);
-    expect(html).toMatch(/data-vs-tab="general"[^>]*aria-selected="false"/);
+    expect(host.querySelector('[data-vs-tab="diag"]')?.getAttribute('aria-selected')).toBe('true');
+    expect(host.querySelector('[data-vs-tab="general"]')?.getAttribute('aria-selected')).toBe('false');
   });
 
   it('renders the language switcher with both English and Russian options', () => {
-    const html = renderSettingsMenu({
+    const host = mountModal({
       settings: { ...defaultSettings('ru'), language: 'ru' },
       site: 'youtube',
       i18n: createTranslator('ru'),
       activeTab: 'general',
       scriptVersion: '0.1.0',
     });
-    expect(html).toContain('data-vs-lang="en"');
-    expect(html).toContain('data-vs-lang="ru"');
-    expect(html).toMatch(/data-vs-lang="ru"[^>]*aria-pressed="true"/);
+    expect(host.querySelector('[data-vs-lang="en"]')).toBeTruthy();
+    expect(host.querySelector('[data-vs-lang="ru"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('[data-vs-lang="en"]')?.getAttribute('aria-pressed')).toBe('false');
   });
 });
 
 describe('generateHotkeyBlock', () => {
   it('emits one row per hotkey + add button + reset link', () => {
-    const html = generateHotkeyBlock(
+    const block = generateHotkeyBlock(
       'speedUp',
       [
         { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' },
@@ -198,9 +209,9 @@ describe('generateHotkeyBlock', () => {
       'chevron-up',
       createTranslator('en'),
     );
-    expect((html.match(/vs-hotkey-row/g) ?? []).length).toBe(2);
-    expect(html).toContain('data-vs-hotkey-add="speedUp"');
-    expect(html).toContain('data-vs-hotkey-reset="speedUp"');
+    expect(block.querySelectorAll('.vs-hotkey-row').length).toBe(2);
+    expect(block.querySelector('[data-vs-hotkey-add="speedUp"]')).toBeTruthy();
+    expect(block.querySelector('[data-vs-hotkey-reset="speedUp"]')).toBeTruthy();
   });
 });
 

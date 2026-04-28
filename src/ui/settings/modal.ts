@@ -1,16 +1,20 @@
 /**
- * Settings modal template -- pure function from (settings, i18n, options)
- * to an HTML string. The outer element is created by the caller; this
- * module only emits inner markup that gets handed to safeSetInnerHTML.
+ * Settings modal builder — pure function from (settings, i18n, options) to a
+ * `DocumentFragment` ready to be passed to `Element.replaceChildren()`.
  *
  * Three tabs: General, Shortcuts, Diagnostics. The active tab is preserved
  * across re-renders by passing `activeTab` from the parent state.
+ *
+ * Originally emitted an HTML string; rewritten 2026-04-28 to programmatic
+ * DOM construction (audit follow-up to 0.1.34) so the bundled JS contains
+ * no HTML-parsing API calls — that's what AMO's static analyzer flags
+ * as "Unsafe call to ...".
  *
  * Ported from .user.js:4134-4311.
  */
 
 import { vsIcon } from '../icons';
-import { escHtml } from '../../i18n/translator';
+import { h, fragment, type HChild } from '../dom-h';
 import { generateHotkeyBlock } from './hotkey-block';
 import type { Settings } from '../../storage/types';
 import type { Site, Translator } from '../../app/ports';
@@ -29,186 +33,370 @@ export interface ModalRenderOptions {
   healthCheckEnabled?: boolean;
 }
 
-export function renderSettingsMenu(opts: ModalRenderOptions): string {
-  const { settings, site, i18n, activeTab, scriptVersion } = opts;
+/* -------------------------------------------------------------------------- */
+/* Reusable section / row / toggle helpers                                    */
+/* -------------------------------------------------------------------------- */
+
+function vsSection(label: string, ...children: HChild[]): HTMLElement {
+  return h(
+    'div',
+    { class: 'vs-section' },
+    h('div', { class: 'vs-section-label' }, label),
+    ...children,
+  );
+}
+
+/** Standard label-on-left + control-on-right row (used for toggles). */
+function vsRow(
+  labelChildren: HChild | HChild[],
+  control: HChild,
+  rowAttrs: Record<string, string | number | boolean | undefined> = {},
+): HTMLElement {
+  const labelArr = Array.isArray(labelChildren) ? labelChildren : [labelChildren];
+  return h(
+    'label',
+    { class: 'vs-row', ...rowAttrs },
+    h('span', { class: 'vs-row-label' }, ...labelArr),
+    control,
+  );
+}
+
+/** iOS-style toggle: hidden checkbox + track + thumb. */
+function vsToggle(name: string, checked: boolean): HTMLElement {
+  return h(
+    'span',
+    { class: 'vs-toggle' },
+    h('input', { type: 'checkbox', name, checked }),
+    h('span', { class: 'vs-toggle-track' }),
+    h('span', { class: 'vs-toggle-thumb' }),
+  );
+}
+
+/** Segmented-control radio option. */
+function vsSegmentedOption(
+  attrs: Record<string, string | number | boolean | undefined>,
+  ...children: HChild[]
+): HTMLElement {
+  return h('button', { class: 'vs-segmented-option', role: 'radio', ...attrs }, ...children);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tab panels                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
+  const { settings, site, i18n } = opts;
   const t = i18n.t;
-  const e = escHtml;
-
   const isYouTube = site === 'youtube';
-  const isRutube  = site === 'rutube';
-
+  const isRutube = site === 'rutube';
   const sel = (v: string): string => (v === settings.sliderPosition ? 'true' : 'false');
-  const tabHidden = (panel: ActiveTab): string => (panel === activeTab ? 'false' : 'true');
-  const tabSelected = (tab: ActiveTab): string => (tab === activeTab ? 'true' : 'false');
 
-  const discoveryEnabled = opts.discoveryEnabled ?? true;
-  const healthCheckEnabled = opts.healthCheckEnabled ?? true;
+  const sliderPosSection = vsSection(
+    t('general.slider_pos'),
+    h(
+      'div',
+      { class: 'vs-segmented', role: 'radiogroup', 'aria-label': t('general.slider_pos') },
+      vsSegmentedOption(
+        { 'data-vs-pos': 'right', 'aria-pressed': sel('right'), title: t('general.pos.right.tip') },
+        vsIcon('panel-right', 13),
+        ' ',
+        t('general.pos.right'),
+      ),
+      vsSegmentedOption(
+        { 'data-vs-pos': 'bottom', 'aria-pressed': sel('bottom'), title: t('general.pos.bottom.tip') },
+        vsIcon('panel-bottom', 13),
+        ' ',
+        t('general.pos.bottom'),
+      ),
+      isYouTube
+        ? vsSegmentedOption(
+            { 'data-vs-pos': 'video', 'aria-pressed': sel('video'), title: t('general.pos.video.tip') },
+            vsIcon('tv', 13),
+            ' ',
+            t('general.pos.video'),
+          )
+        : null,
+    ),
+  );
 
-  return `
-    <div class="vs-menu-header">
-      <div class="vs-menu-title">
-        ${vsIcon('settings', 14)} ${e(t('menu.title'))}
-      </div>
-      <span class="vs-menu-version" title="${e(t('menu.version_tip'))}">v${e(scriptVersion)}</span>
-    </div>
+  const langSection = vsSection(
+    t('lang.section_label'),
+    h(
+      'div',
+      { class: 'vs-segmented', role: 'radiogroup', 'aria-label': t('lang.section_label') },
+      vsSegmentedOption(
+        {
+          'data-vs-lang': 'en',
+          'aria-pressed': settings.language === 'en' ? 'true' : 'false',
+          title: t('lang.tooltip_en'),
+        },
+        vsIcon('globe', 13),
+        ' English',
+      ),
+      vsSegmentedOption(
+        {
+          'data-vs-lang': 'ru',
+          'aria-pressed': settings.language === 'ru' ? 'true' : 'false',
+          title: t('lang.tooltip_ru'),
+        },
+        vsIcon('globe', 13),
+        ' Русский',
+      ),
+    ),
+  );
 
-    <div class="vs-tabs" role="tablist">
-      <button class="vs-tab" role="tab" data-vs-tab="general" aria-selected="${tabSelected('general')}"
-              title="${e(t('tabs.general.tip'))}">
-        ${vsIcon('sliders', 13)} ${e(t('tabs.general'))}
-      </button>
-      <button class="vs-tab" role="tab" data-vs-tab="hotkeys" aria-selected="${tabSelected('hotkeys')}"
-              title="${e(t('tabs.shortcuts.tip'))}">
-        ${vsIcon('keyboard', 13)} ${e(t('tabs.shortcuts'))}
-      </button>
-      <button class="vs-tab" role="tab" data-vs-tab="diag" aria-selected="${tabSelected('diag')}"
-              title="${e(t('tabs.diag.tip'))}">
-        ${vsIcon('wrench', 13)} ${e(t('tabs.diag'))}
-      </button>
-    </div>
+  const behaviorSection = vsSection(
+    t('behavior.section'),
+    vsRow(
+      t('behavior.remember'),
+      vsToggle('remember-speed', !!settings.rememberSpeed),
+      { title: t('behavior.remember.tip') },
+    ),
+    isRutube
+      ? vsRow(
+          t('behavior.hide_title'),
+          vsToggle('hide-player-title', !!settings.hidePlayerTitle),
+          { title: t('behavior.hide_title.tip') },
+        )
+      : null,
+    isRutube
+      ? vsRow(
+          t('behavior.hide_premium'),
+          vsToggle('hide-premium', !!settings.hidePremium),
+          { title: t('behavior.hide_premium.tip') },
+        )
+      : null,
+  );
 
-    <div class="vs-tab-panel" data-vs-panel="general" aria-hidden="${tabHidden('general')}">
-      <div class="vs-section">
-        <div class="vs-section-label">${e(t('general.slider_pos'))}</div>
-        <div class="vs-segmented" role="radiogroup" aria-label="${e(t('general.slider_pos'))}">
-          <button class="vs-segmented-option" role="radio" data-vs-pos="right" aria-pressed="${sel('right')}"
-                  title="${e(t('general.pos.right.tip'))}">
-            ${vsIcon('panel-right', 13)} ${e(t('general.pos.right'))}
-          </button>
-          <button class="vs-segmented-option" role="radio" data-vs-pos="bottom" aria-pressed="${sel('bottom')}"
-                  title="${e(t('general.pos.bottom.tip'))}">
-            ${vsIcon('panel-bottom', 13)} ${e(t('general.pos.bottom'))}
-          </button>
-          ${isYouTube
-            ? `<button class="vs-segmented-option" role="radio" data-vs-pos="video" aria-pressed="${sel('video')}"
-                       title="${e(t('general.pos.video.tip'))}">
-                 ${vsIcon('tv', 13)} ${e(t('general.pos.video'))}
-               </button>`
-            : ''}
-        </div>
-      </div>
+  const advancedSection = vsSection(
+    t('advanced.section'),
+    vsRow(
+      [
+        t('advanced.discovery'),
+        ' ',
+        h('span', { class: 'vs-row-hint', title: t('advanced.discovery.hint') }, '?'),
+      ],
+      vsToggle('discovery-enabled', !!opts.discoveryEnabled),
+    ),
+    vsRow(
+      [
+        t('advanced.healthcheck'),
+        ' ',
+        h('span', { class: 'vs-row-hint', title: t('advanced.healthcheck.hint') }, '?'),
+      ],
+      vsToggle('healthcheck-enabled', !!opts.healthCheckEnabled),
+    ),
+  );
 
-      <div class="vs-section">
-        <div class="vs-section-label">${e(t('lang.section_label'))}</div>
-        <div class="vs-segmented" role="radiogroup" aria-label="${e(t('lang.section_label'))}">
-          <button class="vs-segmented-option" role="radio" data-vs-lang="en"
-                  aria-pressed="${settings.language === 'en' ? 'true' : 'false'}"
-                  title="${e(t('lang.tooltip_en'))}">
-            ${vsIcon('globe', 13)} English
-          </button>
-          <button class="vs-segmented-option" role="radio" data-vs-lang="ru"
-                  aria-pressed="${settings.language === 'ru' ? 'true' : 'false'}"
-                  title="${e(t('lang.tooltip_ru'))}">
-            ${vsIcon('globe', 13)} Русский
-          </button>
-        </div>
-      </div>
+  return h(
+    'div',
+    {
+      class: 'vs-tab-panel',
+      'data-vs-panel': 'general',
+      'aria-hidden': hidden ? 'true' : 'false',
+    },
+    sliderPosSection,
+    langSection,
+    behaviorSection,
+    advancedSection,
+  );
+}
 
-      <div class="vs-section">
-        <div class="vs-section-label">${e(t('behavior.section'))}</div>
-        <label class="vs-row" title="${e(t('behavior.remember.tip'))}">
-          <span class="vs-row-label">${e(t('behavior.remember'))}</span>
-          <span class="vs-toggle">
-            <input type="checkbox" name="remember-speed" ${settings.rememberSpeed ? 'checked' : ''}>
-            <span class="vs-toggle-track"></span>
-            <span class="vs-toggle-thumb"></span>
-          </span>
-        </label>
-        ${isRutube
-          ? `<label class="vs-row" title="${e(t('behavior.hide_title.tip'))}">
-              <span class="vs-row-label">${e(t('behavior.hide_title'))}</span>
-              <span class="vs-toggle">
-                <input type="checkbox" name="hide-player-title" ${settings.hidePlayerTitle ? 'checked' : ''}>
-                <span class="vs-toggle-track"></span>
-                <span class="vs-toggle-thumb"></span>
-              </span>
-            </label>
-            <label class="vs-row" title="${e(t('behavior.hide_premium.tip'))}">
-              <span class="vs-row-label">${e(t('behavior.hide_premium'))}</span>
-              <span class="vs-toggle">
-                <input type="checkbox" name="hide-premium" ${settings.hidePremium ? 'checked' : ''}>
-                <span class="vs-toggle-track"></span>
-                <span class="vs-toggle-thumb"></span>
-              </span>
-            </label>`
-          : ''}
-      </div>
+function hotkeysTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
+  const { settings, i18n } = opts;
+  const t = i18n.t;
+  return h(
+    'div',
+    {
+      class: 'vs-tab-panel',
+      'data-vs-panel': 'hotkeys',
+      'aria-hidden': hidden ? 'true' : 'false',
+    },
+    h('p', { class: 'vs-help-text' }, t('hotkeys.help')),
+    generateHotkeyBlock('speedUp', settings.hotkeys.speedUp, t('hotkeys.speedup_label'), 'chevron-up', i18n),
+    generateHotkeyBlock(
+      'speedDown',
+      settings.hotkeys.speedDown,
+      t('hotkeys.speeddown_label'),
+      'chevron-down',
+      i18n,
+    ),
+  );
+}
 
-      <div class="vs-section">
-        <div class="vs-section-label">${e(t('advanced.section'))}</div>
-        <label class="vs-row">
-          <span class="vs-row-label">
-            ${e(t('advanced.discovery'))}
-            <span class="vs-row-hint" title="${e(t('advanced.discovery.hint'))}">?</span>
-          </span>
-          <span class="vs-toggle">
-            <input type="checkbox" name="discovery-enabled" ${discoveryEnabled ? 'checked' : ''}>
-            <span class="vs-toggle-track"></span>
-            <span class="vs-toggle-thumb"></span>
-          </span>
-        </label>
-        <label class="vs-row">
-          <span class="vs-row-label">
-            ${e(t('advanced.healthcheck'))}
-            <span class="vs-row-hint" title="${e(t('advanced.healthcheck.hint'))}">?</span>
-          </span>
-          <span class="vs-toggle">
-            <input type="checkbox" name="healthcheck-enabled" ${healthCheckEnabled ? 'checked' : ''}>
-            <span class="vs-toggle-track"></span>
-            <span class="vs-toggle-thumb"></span>
-          </span>
-        </label>
-      </div>
-    </div>
+function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
+  const { i18n } = opts;
+  const t = i18n.t;
+  return h(
+    'div',
+    {
+      class: 'vs-tab-panel',
+      'data-vs-panel': 'diag',
+      'aria-hidden': hidden ? 'true' : 'false',
+    },
+    h(
+      'div',
+      { class: 'vs-status', 'data-state': 'idle', 'data-vs-diag-status': '' },
+      h('div', { class: 'vs-status-dot' }),
+      h(
+        'div',
+        { class: 'vs-status-body' },
+        h(
+          'div',
+          { class: 'vs-status-headline', 'data-vs-diag-headline': '' },
+          t('diag.status.not_checked'),
+        ),
+        h(
+          'div',
+          { class: 'vs-status-detail', 'data-vs-diag-detail': '' },
+          t('diag.status.click_to_check'),
+        ),
+      ),
+    ),
+    h(
+      'div',
+      { class: 'vs-action-grid' },
+      h(
+        'button',
+        { class: 'vs-action', 'data-vs-diag': 'recheck', title: t('diag.btn.recheck.tip') },
+        vsIcon('refresh-cw', 14),
+        ' ',
+        t('diag.btn.recheck'),
+      ),
+      h(
+        'button',
+        { class: 'vs-action', 'data-vs-diag': 'copy', title: t('diag.btn.copy.tip') },
+        vsIcon('clipboard', 14),
+        ' ',
+        t('diag.btn.copy'),
+      ),
+      h(
+        'button',
+        {
+          class: 'vs-action danger',
+          'data-vs-diag': 'purge-cache',
+          title: t('diag.btn.purge.tip'),
+        },
+        vsIcon('trash', 14),
+        ' ',
+        t('diag.btn.purge'),
+      ),
+      h(
+        'button',
+        {
+          class: 'vs-action danger',
+          'data-vs-diag': 'full-reset',
+          title: t('diag.btn.full_reset.tip'),
+        },
+        vsIcon('alert', 14),
+        ' ',
+        t('diag.btn.full_reset'),
+      ),
+    ),
+    vsSection(
+      t('settings.export'),
+      h(
+        'div',
+        { class: 'vs-action-grid' },
+        h(
+          'button',
+          { class: 'vs-action', 'data-vs-action': 'export', title: t('settings.export.tip') },
+          vsIcon('clipboard', 14),
+          ' ',
+          t('settings.export'),
+        ),
+        h(
+          'button',
+          { class: 'vs-action', 'data-vs-action': 'import', title: t('settings.import.tip') },
+          vsIcon('rotate-ccw', 14),
+          ' ',
+          t('settings.import'),
+        ),
+      ),
+    ),
+    h(
+      'div',
+      { class: 'vs-privacy-hint' },
+      vsIcon('lock', 11),
+      h('span', {}, t('diag.privacy')),
+    ),
+  );
+}
 
-    <div class="vs-tab-panel" data-vs-panel="hotkeys" aria-hidden="${tabHidden('hotkeys')}">
-      <p class="vs-help-text">${e(t('hotkeys.help'))}</p>
-      ${generateHotkeyBlock('speedUp',   settings.hotkeys.speedUp,   t('hotkeys.speedup_label'),   'chevron-up',   i18n)}
-      ${generateHotkeyBlock('speedDown', settings.hotkeys.speedDown, t('hotkeys.speeddown_label'), 'chevron-down', i18n)}
-    </div>
+/* -------------------------------------------------------------------------- */
+/* Top-level                                                                  */
+/* -------------------------------------------------------------------------- */
 
-    <div class="vs-tab-panel" data-vs-panel="diag" aria-hidden="${tabHidden('diag')}">
-      <div class="vs-status" data-state="idle" data-vs-diag-status>
-        <div class="vs-status-dot"></div>
-        <div class="vs-status-body">
-          <div class="vs-status-headline" data-vs-diag-headline>${e(t('diag.status.not_checked'))}</div>
-          <div class="vs-status-detail"   data-vs-diag-detail>${e(t('diag.status.click_to_check'))}</div>
-        </div>
-      </div>
+export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
+  const { i18n, activeTab, scriptVersion } = opts;
+  const t = i18n.t;
 
-      <div class="vs-action-grid">
-        <button class="vs-action" data-vs-diag="recheck"     title="${e(t('diag.btn.recheck.tip'))}">
-          ${vsIcon('refresh-cw', 14)} ${e(t('diag.btn.recheck'))}
-        </button>
-        <button class="vs-action" data-vs-diag="copy"        title="${e(t('diag.btn.copy.tip'))}">
-          ${vsIcon('clipboard', 14)} ${e(t('diag.btn.copy'))}
-        </button>
-        <button class="vs-action danger" data-vs-diag="purge-cache" title="${e(t('diag.btn.purge.tip'))}">
-          ${vsIcon('trash', 14)} ${e(t('diag.btn.purge'))}
-        </button>
-        <button class="vs-action danger" data-vs-diag="full-reset"  title="${e(t('diag.btn.full_reset.tip'))}">
-          ${vsIcon('alert', 14)} ${e(t('diag.btn.full_reset'))}
-        </button>
-      </div>
+  const header = h(
+    'div',
+    { class: 'vs-menu-header' },
+    h(
+      'div',
+      { class: 'vs-menu-title' },
+      vsIcon('settings', 14),
+      ' ',
+      t('menu.title'),
+    ),
+    h(
+      'span',
+      { class: 'vs-menu-version', title: t('menu.version_tip') },
+      `v${scriptVersion}`,
+    ),
+  );
 
-      <div class="vs-section">
-        <div class="vs-section-label">${e(t('settings.export'))}</div>
-        <div class="vs-action-grid">
-          <button class="vs-action" data-vs-action="export"
-                  title="${e(t('settings.export.tip'))}">
-            ${vsIcon('clipboard', 14)} ${e(t('settings.export'))}
-          </button>
-          <button class="vs-action" data-vs-action="import"
-                  title="${e(t('settings.import.tip'))}">
-            ${vsIcon('rotate-ccw', 14)} ${e(t('settings.import'))}
-          </button>
-        </div>
-      </div>
+  const tabs = h(
+    'div',
+    { class: 'vs-tabs', role: 'tablist' },
+    h(
+      'button',
+      {
+        class: 'vs-tab',
+        role: 'tab',
+        'data-vs-tab': 'general',
+        'aria-selected': activeTab === 'general' ? 'true' : 'false',
+        title: t('tabs.general.tip'),
+      },
+      vsIcon('sliders', 13),
+      ' ',
+      t('tabs.general'),
+    ),
+    h(
+      'button',
+      {
+        class: 'vs-tab',
+        role: 'tab',
+        'data-vs-tab': 'hotkeys',
+        'aria-selected': activeTab === 'hotkeys' ? 'true' : 'false',
+        title: t('tabs.shortcuts.tip'),
+      },
+      vsIcon('keyboard', 13),
+      ' ',
+      t('tabs.shortcuts'),
+    ),
+    h(
+      'button',
+      {
+        class: 'vs-tab',
+        role: 'tab',
+        'data-vs-tab': 'diag',
+        'aria-selected': activeTab === 'diag' ? 'true' : 'false',
+        title: t('tabs.diag.tip'),
+      },
+      vsIcon('wrench', 13),
+      ' ',
+      t('tabs.diag'),
+    ),
+  );
 
-      <div class="vs-privacy-hint">
-        ${vsIcon('lock', 11)}
-        <span>${e(t('diag.privacy'))}</span>
-      </div>
-    </div>
-  `;
+  return fragment(
+    header,
+    tabs,
+    generalTab(opts, activeTab !== 'general'),
+    hotkeysTab(opts, activeTab !== 'hotkeys'),
+    diagTab(opts, activeTab !== 'diag'),
+  );
 }

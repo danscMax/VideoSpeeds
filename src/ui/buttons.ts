@@ -7,7 +7,7 @@
  * only emits structural markup + class toggles.
  */
 
-import { safeSetInnerHTML } from './safe-html';
+import { h } from './dom-h';
 
 export interface ButtonsRowOptions {
   /** Speeds to render as buttons; usually derived from per-site bounds. */
@@ -21,22 +21,21 @@ const BTN_CLASS = 'speed-button';
 const ACTIVE_CLASS = 'active';
 
 export function renderButtonsRow(opts: ButtonsRowOptions): HTMLElement {
-  const row = document.createElement('div');
-  row.className = ROW_CLASS;
-
-  const html = opts.speeds
-    .map((s) => {
-      const active = isSameSpeed(s, opts.current) ? ` ${ACTIVE_CLASS}` : '';
-      return (
-        `<button type="button" class="${BTN_CLASS}${active}" data-vs-speed="${s}">` +
-        formatSpeedLabel(s) +
-        '</button>'
-      );
-    })
-    .join('');
-
-  safeSetInnerHTML(row, html);
-  return row;
+  return h(
+    'div',
+    { class: ROW_CLASS },
+    ...opts.speeds.map((s) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: isSameSpeed(s, opts.current) ? `${BTN_CLASS} ${ACTIVE_CLASS}` : BTN_CLASS,
+          'data-vs-speed': s,
+        },
+        formatSpeedLabel(s),
+      ),
+    ),
+  );
 }
 
 /**

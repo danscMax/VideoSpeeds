@@ -1,4 +1,4 @@
-export { safeSetInnerHTML } from './safe-html';
+export { h, svgEl, fragment, type HAttrs, type HChild } from './dom-h';
 export { vsIcon, ICON_NAMES, type IconName } from './icons';
 export { showNotification, type NotificationOptions } from './notifications';
 export { showSpeedPopup } from './popup';

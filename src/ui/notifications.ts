@@ -13,7 +13,7 @@
  * Pointer-events:none on the stack so clicks pass through to the player.
  */
 
-import { safeSetInnerHTML } from './safe-html';
+import { h } from './dom-h';
 import type { NotificationKind } from '../app/ports';
 
 const STACK_ID = 'speed-notifications';
@@ -66,12 +66,21 @@ export function showNotification(text: string, opts: NotificationOptions = {}): 
     transition: opacity 0.25s ease, transform 0.25s ease !important;
   `;
 
-  // Text comes from i18n -- already plain text by the M3 contract. The dot
-  // span uses a safe inline style the user agreed to.
-  safeSetInnerHTML(
-    toast,
-    `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${dotColor}; flex-shrink:0; box-shadow: 0 0 0 3px ${dotColor}26;"></span>` +
-      `<span style="line-height:1.3; overflow:hidden; text-overflow:ellipsis;">${escapeForSpan(text)}</span>`,
+  // Text comes from i18n -- already plain text by the M3 contract.
+  // textContent is XSS-safe by construction; no escaping needed when we
+  // build the DOM programmatically (replaces the previous escapeForSpan
+  // helper, which was only there to guard the innerHTML path).
+  toast.appendChild(
+    h('span', {
+      style: `display:inline-block; width:6px; height:6px; border-radius:50%; background:${dotColor}; flex-shrink:0; box-shadow: 0 0 0 3px ${dotColor}26;`,
+    }),
+  );
+  toast.appendChild(
+    h(
+      'span',
+      { style: 'line-height:1.3; overflow:hidden; text-overflow:ellipsis;' },
+      String(text ?? ''),
+    ),
   );
 
   stack.appendChild(toast);
@@ -139,15 +148,3 @@ function ensureStack(playerContainer: Element | null): HTMLElement {
   return stack;
 }
 
-/**
- * The text shows up inside a span via innerHTML; HTML escape it here so an
- * unfortunate translation glyph (`<`, `>`, `&`) doesn't break markup.
- * Translations are plain-text by M3 contract, but defence-in-depth.
- */
-function escapeForSpan(s: string): string {
-  return String(s ?? '').replace(/[&<>]/g, (c) => {
-    if (c === '&') return '&amp;';
-    if (c === '<') return '&lt;';
-    return '&gt;';
-  });
-}

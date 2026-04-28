@@ -1,27 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { ICON_NAMES, vsIcon } from '../../src/ui/icons';
+import { ICON_NAMES, vsIcon, vsFilledGearIcon } from '../../src/ui/icons';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 describe('vsIcon()', () => {
-  it('emits a well-formed SVG with the requested size', () => {
+  it('returns a real SVGElement with the requested size', () => {
     const out = vsIcon('settings', 16);
-    expect(out).toMatch(/^<svg /);
-    expect(out).toMatch(/<\/svg>$/);
-    expect(out).toContain('width="16"');
-    expect(out).toContain('height="16"');
-    expect(out).toContain('viewBox="0 0 24 24"');
-    expect(out).toContain('stroke="currentColor"');
+    expect(out).toBeInstanceOf(SVGElement);
+    expect(out.tagName.toLowerCase()).toBe('svg');
+    expect(out.namespaceURI).toBe(SVG_NS);
+    expect(out.getAttribute('width')).toBe('16');
+    expect(out.getAttribute('height')).toBe('16');
+    expect(out.getAttribute('viewBox')).toBe('0 0 24 24');
+    expect(out.getAttribute('stroke')).toBe('currentColor');
   });
 
   it('defaults size to 14', () => {
-    expect(vsIcon('plus')).toContain('width="14"');
-    expect(vsIcon('plus')).toContain('height="14"');
+    const out = vsIcon('plus');
+    expect(out.getAttribute('width')).toBe('14');
+    expect(out.getAttribute('height')).toBe('14');
   });
 
-  it('returns empty SVG (just attributes) for unknown name', () => {
-    // Cast bypasses the union to simulate a runtime typo.
+  it('returns empty SVG (no children) for unknown name', () => {
     const out = vsIcon('not-a-real-icon' as unknown as 'plus');
-    expect(out).toContain('<svg');
-    expect(out).toContain('></svg>');
+    expect(out.tagName.toLowerCase()).toBe('svg');
+    expect(out.children.length).toBe(0);
   });
 
   it('exposes ICON_NAMES with the full set ported from the userscript', () => {
@@ -32,10 +35,28 @@ describe('vsIcon()', () => {
     expect(ICON_NAMES).toContain('settings');
   });
 
-  it('every icon name renders without throwing', () => {
+  it('every icon name renders without throwing and yields an SVGElement', () => {
     for (const name of ICON_NAMES) {
       expect(() => vsIcon(name)).not.toThrow();
-      expect(vsIcon(name)).toMatch(/^<svg /);
+      const out = vsIcon(name);
+      expect(out).toBeInstanceOf(SVGElement);
+      expect(out.tagName.toLowerCase()).toBe('svg');
+      // Each icon has at least one primitive child (path / circle / line / rect / polyline).
+      expect(out.children.length).toBeGreaterThan(0);
+      // Children must inherit the SVG namespace, not XHTML.
+      for (const child of Array.from(out.children)) {
+        expect(child.namespaceURI).toBe(SVG_NS);
+      }
     }
+  });
+
+  it('vsFilledGearIcon returns a filled SVG with data-filled marker', () => {
+    const out = vsFilledGearIcon(20);
+    expect(out).toBeInstanceOf(SVGElement);
+    expect(out.getAttribute('width')).toBe('20');
+    expect(out.getAttribute('fill')).toBe('currentColor');
+    expect(out.hasAttribute('data-filled')).toBe(true);
+    expect(out.children.length).toBe(1);
+    expect(out.firstElementChild?.tagName.toLowerCase()).toBe('path');
   });
 });

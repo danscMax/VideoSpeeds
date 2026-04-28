@@ -27,10 +27,10 @@ import {
   attachSettingsHandlers,
   injectStyles,
   renderSettingsMenu,
-  safeSetInnerHTML,
   showNotification,
   type ActiveTab,
 } from '../../ui';
+import { h } from '../../ui/dom-h';
 import { createTranslator } from '../../i18n/translator';
 import { detectBrowserLang } from '../../i18n/detect';
 import { createLogger } from '../../utils/logger';
@@ -52,12 +52,14 @@ const root = document.getElementById('app');
 if (root) {
   void bootstrapPopup(root).catch((e) => {
     console.error('[VIDEO-SPEEDS] popup bootstrap failed', e);
-    safeSetInnerHTML(
-      root,
-      `<div class="vs-popup-empty">
-        <span class="vs-popup-empty-title">Failed to load</span>
-        ${escapeText(String(e?.message ?? e))}
-      </div>`,
+    root.replaceChildren(
+      h(
+        'div',
+        { class: 'vs-popup-empty' },
+        h('span', { class: 'vs-popup-empty-title' }, 'Failed to load'),
+        ' ',
+        String(e?.message ?? e),
+      ),
     );
   });
 }
@@ -125,9 +127,10 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
   // 4. Render. activeTab persists across re-renders.
   let activeTab: ActiveTab = 'general';
   function rerender(): void {
-    safeSetInnerHTML(
-      host,
-      `<div class="settings-menu">${renderSettingsMenu({
+    const menu = h(
+      'div',
+      { class: 'settings-menu' },
+      renderSettingsMenu({
         settings: settingsStore.get(),
         site,
         i18n: ctx.i18n,
@@ -136,25 +139,27 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
         // KillSwitch flags are content-script-side; popup just shows them.
         discoveryEnabled: true,
         healthCheckEnabled: true,
-      })}</div>
-      <div class="vs-popup-diag-hint">
-        ${escapeText(ctx.i18n.t('diag.btn.recheck.tip'))}
-      </div>`,
+      }),
     );
-    const menu = host.querySelector('.settings-menu');
-    if (menu) {
-      attachSettingsHandlers(menu, ctx, {
-        setActiveTab: (t) => { activeTab = t; },
-        rerender,
-        onDiag: () => {
-          // Popup can't run live diagnostics; nudge user to in-player gear.
-          ui.showNotification(
-            ctx.i18n.t('diag.status.click_to_check'),
-            'info',
-          );
-        },
-      });
-    }
+    host.replaceChildren(
+      menu,
+      h(
+        'div',
+        { class: 'vs-popup-diag-hint' },
+        ctx.i18n.t('diag.btn.recheck.tip'),
+      ),
+    );
+    attachSettingsHandlers(menu, ctx, {
+      setActiveTab: (t) => { activeTab = t; },
+      rerender,
+      onDiag: () => {
+        // Popup can't run live diagnostics; nudge user to in-player gear.
+        ui.showNotification(
+          ctx.i18n.t('diag.status.click_to_check'),
+          'info',
+        );
+      },
+    });
   }
 
   // Re-init translator on language switch. Subscriber fires on every
@@ -211,24 +216,17 @@ function renderNoSitePlaceholder(host: HTMLElement): void {
   // without knowing the site (settings are per-site).
   const lang = detectBrowserLang();
   const t = createTranslator(lang).t;
-  safeSetInnerHTML(
-    host,
-    `<div class="vs-popup-empty">
-      <span class="vs-popup-empty-title">Video Speed Controller</span>
-      ${escapeText(t('tabs.general.tip'))}
-      <div style="margin-top:12px;font-size:11px;opacity:0.55;">
-        ${lang === 'ru'
-          ? 'Откройте YouTube или RuTube, чтобы открыть настройки.'
-          : 'Open YouTube or RuTube to access settings.'}
-      </div>
-    </div>`,
+  const subline = lang === 'ru'
+    ? 'Откройте YouTube или RuTube, чтобы открыть настройки.'
+    : 'Open YouTube or RuTube to access settings.';
+  host.replaceChildren(
+    h(
+      'div',
+      { class: 'vs-popup-empty' },
+      h('span', { class: 'vs-popup-empty-title' }, 'Video Speed Controller'),
+      ' ',
+      t('tabs.general.tip'),
+      h('div', { style: 'margin-top:12px;font-size:11px;opacity:0.55;' }, subline),
+    ),
   );
-}
-
-function escapeText(s: string): string {
-  return s.replace(/[&<>]/g, (c) => {
-    if (c === '&') return '&amp;';
-    if (c === '<') return '&lt;';
-    return '&gt;';
-  });
 }

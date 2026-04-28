@@ -21,7 +21,6 @@ import { renderSlider, setSliderValue, updateSliderFill } from './slider';
 import { renderSettingsMenu, type ActiveTab } from './settings/modal';
 import { attachSettingsHandlers } from './settings/handlers';
 import { refreshDiagnosticStatus } from './settings/diag-status';
-import { safeSetInnerHTML } from './safe-html';
 import type { AppContext } from '../app/context';
 import { CleanupRegistry } from '../app/cleanup';
 import { speedBoundsFor } from '../config';
@@ -97,7 +96,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   gearBtn.type = 'button';
   gearBtn.className = 'vs-gear-button';
   gearBtn.title = ctx.i18n.t('menu.title');
-  safeSetInnerHTML(gearBtn, vsFilledGearIcon(16));
+  gearBtn.appendChild(vsFilledGearIcon(16));
 
   const settingsMenu = document.createElement('div');
   settingsMenu.className = 'settings-menu';
@@ -279,8 +278,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     menuRegistry = new CleanupRegistry();
     const menuCtx: AppContext = { ...ctx, cleanup: menuRegistry };
 
-    safeSetInnerHTML(
-      settingsMenu,
+    settingsMenu.replaceChildren(
       renderSettingsMenu({
         settings: ctx.settingsStore.get(),
         site: ctx.site,

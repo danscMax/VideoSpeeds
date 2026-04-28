@@ -176,11 +176,22 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     return settingsMenu.classList.contains('show');
   }
 
+  // Vertical flip decision is FROZEN at menu-open time. Without this,
+  // every tab switch (rerender) recomputed flip-y based on the current
+  // tab's content height — and tabs of different heights would put the
+  // menu above-gear on one tab and below-gear on the next. User
+  // perceived this as the menu jumping around (audit 2026-04-28). The
+  // first call to adjustMenuPosition after open decides; later calls
+  // (tab switches, settings change) only refresh horizontal placement
+  // and max-height. Reset to null when the menu closes.
+  let frozenFlipY: 'up' | 'down' | null = null;
+
   function adjustMenuPosition(): void {
     if (!isMenuOpen()) return;
-    // Reset all positioning overrides so each measurement is honest.
+    // Reset positioning overrides every call EXCEPT the vertical flip,
+    // which we freeze on first open. Reapply the frozen flip below so
+    // CSS keeps anchoring the menu to the same edge of the gear.
     settingsMenu.removeAttribute('data-vs-flip');
-    settingsMenu.removeAttribute('data-vs-flip-y');
     settingsMenu.style.removeProperty('max-height');
     settingsMenu.style.removeProperty('left');
     settingsMenu.style.removeProperty('right');
@@ -217,32 +228,52 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
 
     // ----- Vertical -----
     //
-    // When the modal spills below the viewport AND there is more
-    // headroom above the gear than below, flip the modal so it opens
-    // upward (anchored to the gear's top edge). If neither direction can
-    // fit the modal's natural height, cap with an inline max-height so
-    // the internal scroll engages.
-    const rect = settingsMenu.getBoundingClientRect();
+    // FROZEN on first open: compute "should we flip up?" once, lock the
+    // decision, restore it on every subsequent call so tab switches
+    // don't move the menu.
     const gearRect = gearBtn.getBoundingClientRect();
     const viewportH = window.innerHeight;
     const spaceBelow = Math.max(0, viewportH - gearRect.bottom - PAD);
     const spaceAbove = Math.max(0, gearRect.top - PAD);
-    if (rect.bottom > viewportH - 4 && spaceAbove > spaceBelow) {
-      settingsMenu.setAttribute('data-vs-flip-y', 'up');
+
+    if (frozenFlipY === null) {
+      // Initial open — measure the natural height and decide. We
+      // temporarily clear flip-y so the measurement is honest.
+      settingsMenu.removeAttribute('data-vs-flip-y');
+      const rect = settingsMenu.getBoundingClientRect();
+      if (rect.bottom > viewportH - 4 && spaceAbove > spaceBelow) {
+        frozenFlipY = 'up';
+      } else {
+        frozenFlipY = 'down';
+      }
     }
-    const flipUp = settingsMenu.getAttribute('data-vs-flip-y') === 'up';
-    const room = flipUp ? spaceAbove : spaceBelow;
+    if (frozenFlipY === 'up') {
+      settingsMenu.setAttribute('data-vs-flip-y', 'up');
+    } else {
+      settingsMenu.removeAttribute('data-vs-flip-y');
+    }
+
+    // max-height — recomputed every call so a growing tab can scroll
+    // internally instead of overflowing the viewport.
+    const room = frozenFlipY === 'up' ? spaceAbove : spaceBelow;
     const naturalH = settingsMenu.scrollHeight;
     if (naturalH > room && room > 0) {
       settingsMenu.style.maxHeight = `${room}px`;
     }
   }
 
+  function closeMenu(): void {
+    settingsMenu.classList.remove('show');
+    settingsMenu.setAttribute('aria-hidden', 'true');
+    // Reset the frozen flip so the next open re-decides based on the
+    // current viewport (the user may have scrolled or resized).
+    frozenFlipY = null;
+  }
+
   ctx.cleanup.addEventListener(gearBtn, 'click', (event) => {
     event.stopPropagation();
     if (isMenuOpen()) {
-      settingsMenu.classList.remove('show');
-      settingsMenu.setAttribute('aria-hidden', 'true');
+      closeMenu();
     } else {
       rerenderSettings();
       settingsMenu.classList.add('show');
@@ -265,8 +296,7 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     if (!isMenuOpen()) return;
     const target = event.target as Node | null;
     if (target && !gearWrapper.contains(target)) {
-      settingsMenu.classList.remove('show');
-      settingsMenu.setAttribute('aria-hidden', 'true');
+      closeMenu();
     }
   });
 

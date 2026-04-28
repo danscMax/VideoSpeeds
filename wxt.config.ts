@@ -42,6 +42,7 @@ export default defineConfig({
     description:
       'Adds speed buttons, slider, and hotkeys to YouTube and RuTube videos. Bilingual interface (English/Russian).',
     version: pkg.version,
+    author: 'MaxScorpy',
     permissions: ['storage'],
     // Product scope is YouTube + RuTube. Audit H5 dropped the *.piped.video
     // host that an earlier scaffold included -- it was out of product scope
@@ -67,12 +68,19 @@ export default defineConfig({
           },
         }
       : {}),
-    // Icons intentionally omitted for Wave 1 dev — Chrome will use a default
-    // puzzle-piece icon. Real icons are produced and wired in Wave 5 (store
-    // assets) before publishing.
+    icons: {
+      16: 'icon/16.png',
+      32: 'icon/32.png',
+      48: 'icon/48.png',
+      128: 'icon/128.png',
+    },
     action: {
       default_popup: 'popup.html',
       default_title: 'Video Speed Controller',
+      default_icon: {
+        16: 'icon/16.png',
+        32: 'icon/32.png',
+      },
     },
   }),
 });

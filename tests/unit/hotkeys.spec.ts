@@ -96,6 +96,18 @@ describe('matchesSingleHotkey', () => {
   it('rejects event with different code', () => {
     expect(matchesSingleHotkey(makeEvent({ code: 'KeyV', ctrlKey: true }), hotkey)).toBe(false);
   });
+
+  it('refuses to match an empty-key hotkey definition', () => {
+    // Regression for the +0.10 drift bug 2026-04-28: an unfilled placeholder
+    // slot ({ key: '' }) used to match ANY keyboard event whose code was
+    // also empty -- and Chrome dispatches such events for media keys
+    // (Play/Pause buttons on keyboards/headsets/remotes), dead-keys, and
+    // some IME composition states. matchesSingleHotkey now refuses to
+    // match an empty key, eliminating the spurious +0.1 trigger.
+    const empty: Hotkey = { ctrl: false, shift: false, alt: false, meta: false, key: '' };
+    expect(matchesSingleHotkey(makeEvent({ code: '' }), empty)).toBe(false);
+    expect(matchesSingleHotkey(makeEvent({ code: 'MediaPlayPause' }), empty)).toBe(false);
+  });
 });
 
 describe('matchesHotkeyArray', () => {

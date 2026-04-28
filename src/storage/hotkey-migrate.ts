@@ -15,9 +15,12 @@ import type { Hotkey } from './types';
  * we accept anything with a string `key` and 4 booleans, ignoring extras.
  *
  * Empty `key` strings are accepted — they represent a placeholder slot
- * the user just added but hasn't filled in yet (matchesSingleHotkey
- * compares `event.code === hotkey.key`, so empty never matches a real
- * keypress and is a safe inert state).
+ * the user just added but hasn't filled in yet. matchesSingleHotkey
+ * has a defensive guard that refuses to match empty keys (Chrome
+ * dispatches keydown with empty `event.code` for media keys / dead-keys
+ * / IME composition, which would otherwise trigger speedUp every time
+ * the user pressed Play/Pause on a keyboard or headset — user bug
+ * 2026-04-28). So empty placeholders are inert by design here.
  */
 function isHotkey(value: unknown): value is Hotkey {
   if (!value || typeof value !== 'object') return false;

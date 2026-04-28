@@ -71,8 +71,20 @@ export function captureHotkey(event: KeyboardEvent): Hotkey {
   };
 }
 
-/** True if a single Hotkey definition matches the live event. */
+/** True if a single Hotkey definition matches the live event.
+ *
+ * Refuses to match when `hotkey.key` is an empty string. An empty key
+ * combined with no modifiers matches ANY keydown event whose `event.code`
+ * is also empty -- and Chrome dispatches such empty-code events for
+ * media keys (Play/Pause buttons on keyboards / headsets / remotes),
+ * dead-keys, and some IME composition states. Without this guard a
+ * stray empty-key entry in `speedUp` (or `speedDown`) causes the speed
+ * to drift +0.1 every time the user uses a media-pause button or even
+ * clicks a player overlay that synthesises a play/pause keystroke
+ * (user bug 2026-04-28).
+ */
 export function matchesSingleHotkey(event: KeyboardEvent, hotkey: Hotkey): boolean {
+  if (!hotkey.key) return false;
   return (
     event.ctrlKey === hotkey.ctrl &&
     event.shiftKey === hotkey.shift &&

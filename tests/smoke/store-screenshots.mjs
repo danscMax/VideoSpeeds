@@ -4,26 +4,35 @@
  * CWS spec: 1280x800 (or 640x400) PNG/JPG, recommended 5 images.
  * AMO spec: similar, no hard size; we use 1280x800 universally.
  *
- * Captures:
+ * Captures (5 store-quality + 2 optional close-ups):
  *   1. YouTube panel default (light theme)
  *   2. YouTube settings modal open
- *   3. YouTube panel highlighted (magenta outline so reviewers can see
- *      what we're showing off in a screenshot)
+ *   3. Welcome onboarding page (light theme)
  *   4. RuTube panel default (dark theme)
  *   5. RuTube settings modal open
+ *
+ * Old runs may have produced different scenes (e.g. youtube-panel-highlighted);
+ * we wipe the dir up-front to avoid mixing stale and fresh PNGs.
  *
  * Outputs to dist-store-assets/screenshots/.
  */
 
 import { chromium } from '@playwright/test';
-import { mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(__dirname, '..', '..');
 const OUT = resolve(REPO, 'dist-store-assets', 'screenshots');
-if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true });
+if (!existsSync(OUT)) {
+  mkdirSync(OUT, { recursive: true });
+} else {
+  for (const f of readdirSync(OUT)) {
+    if (f.endsWith('.png')) unlinkSync(join(OUT, f));
+  }
+  console.log(`cleaned ${OUT}`);
+}
 
 const browser = await chromium.connectOverCDP('http://127.0.0.1:9333');
 const ctx = browser.contexts()[0];
@@ -107,21 +116,27 @@ if (yt) {
   await shoot(yt, 'youtube-settings-modal');
   await yt.evaluate(() => document.querySelector('.vs-gear-button')?.click());
   await yt.waitForTimeout(400);
+}
 
-  // Highlight panel.
-  await yt.evaluate(() => {
-    const p = document.querySelector('.vs-panel');
-    if (p) {
-      p.style.outline = '3px solid #2196F3';
-      p.style.outlineOffset = '3px';
-      p.style.boxShadow = '0 0 0 4px rgba(33,150,243,0.15)';
-    }
-  });
-  await shoot(yt, 'youtube-panel-highlighted');
-  await yt.evaluate(() => {
-    const p = document.querySelector('.vs-panel');
-    if (p) { p.style.outline = ''; p.style.outlineOffset = ''; p.style.boxShadow = ''; }
-  });
+// Welcome onboarding page. Discover extension ID from the running browser's
+// service workers (chrome-extension://<id>/...). Force prefers-color-scheme:
+// light to match the rest of the listing's tonal direction.
+const sw = ctx.serviceWorkers().find((w) => w.url().startsWith('chrome-extension://'));
+if (sw) {
+  console.log('\n=== Welcome ===');
+  const extId = new URL(sw.url()).host;
+  const welcomeUrl = `chrome-extension://${extId}/welcome.html`;
+  const welcome = await ctx.newPage();
+  await welcome.emulateMedia({ colorScheme: 'light' });
+  await welcome.setViewportSize({ width: 1280, height: 800 });
+  await welcome.goto(welcomeUrl, { waitUntil: 'networkidle' });
+  // Welcome renders synchronously after script load; give fonts/animations
+  // a beat before capture.
+  await welcome.waitForTimeout(800);
+  await shoot(welcome, 'welcome-page-light');
+  await welcome.close();
+} else {
+  console.warn('skipping welcome shot: no extension service worker found');
 }
 
 const ru = ctx.pages().find((p) => p.url().includes('rutube.ru'));

@@ -33,5 +33,5 @@ playwright-report/
 tests/smoke/**/*.png
 tests/smoke/audit-shots/
 
-# Store screenshots are regenerated via `npm run smoke:shots`; not for git.
-dist-store-assets/screenshots/
+# Personal scratch (donation link kept locally, not for public repo)
+Ссылка для чаевых.txt

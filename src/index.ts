@@ -281,6 +281,25 @@ export async function bootstrap(
   //     `reapplyTheme` is also invoked manually on each SPA reattach.
   const reapplyTheme = installThemeWatcher(site, ctx, () => panel.element);
 
+  // 9b. Persist the detected theme to per-site settings so the toolbar
+  //     popup can match the host-page theme instead of falling back to
+  //     OS prefers-color-scheme (which doesn't follow YouTube's in-page
+  //     theme toggle). Watch <html> data-vs-theme changes — the in-script
+  //     watcher above writes that attribute on every detect/reapply.
+  const persistTheme = (): void => {
+    const theme = document.documentElement.dataset.vsTheme;
+    if (theme !== 'dark' && theme !== 'light') return;
+    if (settingsStore.getKey('lastSeenTheme') === theme) return;
+    void settingsStore.update({ lastSeenTheme: theme }).catch(() => { /* fire-and-forget */ });
+  };
+  persistTheme();
+  const themePersistObserver = new MutationObserver(persistTheme);
+  themePersistObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-vs-theme'],
+  });
+  ctx.cleanup.addObserver(themePersistObserver);
+
   // 10. Attach to <video> -- apply initial speed, install ratechange meter.
   //
   // We use a NESTED CleanupRegistry (`attachCleanup`) so the listeners
@@ -323,13 +342,17 @@ export async function bootstrap(
       const ev = event as KeyboardEvent;
       if (shouldSkipHotkey(ev)) return;
       const hk = settingsStore.getKey('hotkeys');
+      // Configurable since 0.1.43 — read live from settings every keypress
+      // so changes from the welcome page / settings menu apply without
+      // reload. SPEED_STEP retained as the constant default.
+      const step = settingsStore.getKey('speedStep') ?? SPEED_STEP;
       const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
       if (matchesHotkeyArray(ev, hk.speedUp)) {
         ev.preventDefault();
-        if (v) void setTemporary(ctx, v.playbackRate + SPEED_STEP);
+        if (v) void setTemporary(ctx, v.playbackRate + step);
       } else if (matchesHotkeyArray(ev, hk.speedDown)) {
         ev.preventDefault();
-        if (v) void setTemporary(ctx, v.playbackRate - SPEED_STEP);
+        if (v) void setTemporary(ctx, v.playbackRate - step);
       }
     },
     { capture: true },

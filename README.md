@@ -101,4 +101,12 @@ timing) and the local CDP-smoke recipe.
 
 ## License
 
-MIT.
+GNU General Public License v3.0 or later (GPL-3.0-or-later) -- see
+[LICENSE](LICENSE). Copyright (C) 2026 MaxScorpy.
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. The program is distributed in the hope that
+it will be useful, but WITHOUT ANY WARRANTY -- see the LICENSE file for
+the full terms.

@@ -52,6 +52,20 @@ export interface Settings {
    * to keep the panel useful even after an accidental clear-all.
    */
   speedPresets: number[];
+  /**
+   * Hotkey step in playback rate units. Speed-Up adds this, Slow-Down
+   * subtracts. Default 0.1 mirrors the userscript baseline. Configurable
+   * from welcome page and (eventually) Settings → Keys. Range 0.01..1.0.
+   */
+  speedStep: number;
+  /**
+   * Last theme detected on the host page. Written by the content script's
+   * theme watcher; read by the toolbar popup so it can match the host
+   * page's theme instead of guessing from OS prefers-color-scheme. Per-
+   * site (YouTube and RuTube can be in different themes — RuTube is
+   * always dark, YouTube can be either).
+   */
+  lastSeenTheme?: 'dark' | 'light';
   /** Set after a successful one-time TM-import on first run. */
   __migrated_from_tm?: boolean;
 }
@@ -88,5 +102,6 @@ export function defaultSettings(language: Lang, site?: Site): Settings {
     // RT preset row (1x-3x). Without a site (test/standalone), fall
     // back to a vanilla 1x-2x trio.
     speedPresets: site ? [...defaultPresetsFor(site)] : [1, 1.5, 2],
+    speedStep: 0.1,
   };
 }

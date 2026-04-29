@@ -57,6 +57,7 @@ if (root) {
   // DOM at that moment. Putting a properly-sized shell up front means
   // the popup window opens at the natural menu height regardless of
   // how long detectActiveTabSite + storage init take.
+  applyPopupTheme();
   renderInitialShell(root);
   void bootstrapPopup(root).catch((e) => {
     console.error('[VIDEO-SPEEDS] popup bootstrap failed', e);
@@ -70,6 +71,22 @@ if (root) {
       ),
     );
   });
+}
+
+/**
+ * Apply light/dark theme to the popup root before any rendering. The
+ * popup is in extension chrome (not a host page), so there's no host
+ * theme to detect — fall back to the OS-level preferred color scheme.
+ * Re-applies live when the user toggles their OS theme.
+ */
+function applyPopupTheme(): void {
+  const apply = (mql: MediaQueryList | MediaQueryListEvent) => {
+    document.documentElement.dataset.vsTheme = mql.matches ? 'light' : 'dark';
+  };
+  const mql = window.matchMedia('(prefers-color-scheme: light)');
+  apply(mql);
+  // Live-update if the user flips their OS theme while the popup is open.
+  mql.addEventListener('change', apply);
 }
 
 /**
@@ -121,12 +138,20 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
   }
   const site: Site = detected;
 
+  // Tag <html> with the active-tab site so the cascading menu styles
+  // (active pills, toggles, segmented control) use the per-site accent
+  // — red on YouTube, blue on RuTube. Mirrors the in-player .vs-panel
+  // [data-vs-site] approach. Without this attribute the popup falls back
+  // to the YouTube-red default declared at :root.
+  document.documentElement.dataset.vsSite = site;
+
   // 2. Build the popup-flavoured context.
   const adapter = createBrowserStorageAdapter();
   const settingsStore = createSettingsStore(adapter);
   const speedStore = createSpeedStore(adapter);
   await settingsStore.init(site);
   await speedStore.init(site);
+
 
   const logger = createLogger({ scriptName: 'VS-POPUP' });
   const cleanup = new CleanupRegistry();
@@ -171,6 +196,17 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
   //    instead of floating).
   injectStyles(site);
 
+  // 3a. Override the OS-based theme guess with whatever the content
+  //     script last persisted for this site. injectStyles() above ran
+  //     detectAndApplyTheme() which falls back to prefers-color-scheme
+  //     (popup has no host-page attributes); but on YouTube the user's
+  //     in-page light/dark toggle is the only authoritative signal —
+  //     we capture it in lastSeenTheme on the host page side.
+  const persistedTheme = settingsStore.getKey('lastSeenTheme');
+  if (persistedTheme === 'dark' || persistedTheme === 'light') {
+    document.documentElement.dataset.vsTheme = persistedTheme;
+  }
+
   // 4. Render. activeTab persists across re-renders.
   let activeTab: ActiveTab = 'general';
   function rerender(): void {
@@ -188,14 +224,21 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
         healthCheckEnabled: true,
       }),
     );
-    host.replaceChildren(
-      menu,
-      h(
-        'div',
-        { class: 'vs-popup-diag-hint' },
-        ctx.i18n.t('diag.btn.recheck.tip'),
-      ),
-    );
+    // Show the "open the player to run diagnostics" hint only on the
+     // Diagnostics tab — on General/Keys/Donate it has no context and just
+     // looked like a leaked tooltip pinned to the popup bottom (audit
+     // 0.2.0).
+    const children: Node[] = [menu];
+    if (activeTab === 'diag') {
+      children.push(
+        h(
+          'div',
+          { class: 'vs-popup-diag-hint' },
+          ctx.i18n.t('diag.status.click_to_check'),
+        ),
+      );
+    }
+    host.replaceChildren(...children);
     attachSettingsHandlers(menu, ctx, {
       setActiveTab: (t) => { activeTab = t; },
       rerender,
@@ -231,28 +274,40 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
 
 async function detectActiveTabSite(): Promise<Site | null> {
   try {
-    // Two query strategies:
-    //   1) currentWindow=true       -- works when popup is opened via the
-    //                                  toolbar action (popup is "attached"
-    //                                  to the browser window, currentWindow
-    //                                  resolves to the parent).
-    //   2) lastFocusedWindow=true   -- fallback for testing/debug where the
-    //                                  popup is opened directly as a tab.
-    //   Either way we ignore matches that point at our own popup URL --
-    //   that means we picked up the popup's own tab and need a different
-    //   answer.
     const ourPopupPrefix = browser.runtime.getURL('/popup.html');
-    const candidates = await browser.tabs.query({});
-    const supported = candidates.find((t) => {
+    const matches = (t: { url?: string }): boolean => {
       if (!t.url || t.url.startsWith(ourPopupPrefix)) return false;
       try {
         return detectSite(new URL(t.url).hostname) !== null;
       } catch {
         return false;
       }
-    });
-    if (!supported?.url) return null;
-    return detectSite(new URL(supported.url).hostname);
+    };
+
+    // Strategy ladder, in order of authority:
+    //   1) The toolbar popup runs in `currentWindow` and resolves to the
+    //      window that owns the toolbar button. {active:true, currentWindow:true}
+    //      gives us THE tab the user was looking at when they clicked.
+    //      Earlier we used `tabs.query({})` and `.find()` which matched
+    //      any supported tab in any window — on a multi-window setup with
+    //      both YouTube and RuTube open it locked onto whichever Chrome
+    //      enumerated first (audit 0.2.0).
+    //   2) `lastFocusedWindow:true` covers the dev-tab case (popup opened
+    //      directly as `chrome-extension://<id>/popup.html` for testing).
+    //   3) Last-resort fallback to any supported tab in any window — at
+    //      least gives the user *some* settings rather than the empty-
+    //      placeholder when both windows have the popup-as-page URL active.
+    const queries = [
+      { active: true, currentWindow: true },
+      { active: true, lastFocusedWindow: true },
+      {},
+    ] as const;
+    for (const q of queries) {
+      const tabs = await browser.tabs.query(q);
+      const hit = tabs.find(matches);
+      if (hit?.url) return detectSite(new URL(hit.url).hostname);
+    }
+    return null;
   } catch {
     return null;
   }

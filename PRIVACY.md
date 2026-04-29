@@ -53,8 +53,9 @@ so the AMO listing makes the zero-collection promise machine-readable.
 
 ## Source code
 
-The extension is open source under the MIT licence. Audit the
-implementation at the project's GitHub repository.
+The extension is open source under the GNU General Public License v3.0
+or later (GPL-3.0-or-later). Audit the implementation at the project's
+GitHub repository.
 
 ## Contact
 

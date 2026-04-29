@@ -45,7 +45,7 @@ export default defineConfig({
         version: pkg.version,
         description: pkg.description,
         author: 'MaxScorpy',
-        license: 'MIT',
+        license: 'GPL-3.0-or-later',
         match: [
           '*://*.youtube.com/*',
           '*://rutube.ru/*',

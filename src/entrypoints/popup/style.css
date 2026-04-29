@@ -15,6 +15,35 @@ html, body {
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Light theme — applyPopupTheme() in main.ts sets html[data-vs-theme="light"]
+   when prefers-color-scheme is light. The settings-menu styles cascade in
+   from styles.ts and pick up the light --vs-menu-* tokens automatically;
+   here we only override the popup-shell-specific surfaces. */
+html[data-vs-theme="light"], html[data-vs-theme="light"] body {
+  background: rgba(248, 248, 250, 0.98);
+  color: rgba(15, 15, 15, 0.92);
+}
+html[data-vs-theme="light"] .vs-popup-loading,
+html[data-vs-theme="light"] .vs-popup-empty {
+  color: rgba(15, 15, 15, 0.55);
+}
+html[data-vs-theme="light"] .vs-popup-empty-title {
+  color: rgba(15, 15, 15, 0.85);
+}
+html[data-vs-theme="light"] .vs-skel-tabs {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+html[data-vs-theme="light"] .vs-skel-pill,
+html[data-vs-theme="light"] .vs-skel-line,
+html[data-vs-theme="light"] .vs-skel-block,
+html[data-vs-theme="light"] .vs-skel-row {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-vs-theme="light"] .vs-popup-diag-hint {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(15, 15, 15, 0.55);
+}
+
 /* Popup sizing — pin width + height so the window does not shift when
  * the user switches tabs (audit feedback 2026-04-28).
  *
@@ -38,10 +67,14 @@ html, body {
  */
 html {
   width: 380px;
-  min-height: 500px;
 }
 body {
-  min-height: 100vh;
+  /* Body sizes to content. Earlier we forced 100vh + html min-height 500
+     to stop the toolbar popup from sampling a half-rendered DOM, but the
+     synchronous skeleton in main.ts now lays out at the real size from
+     frame 0 so the artificial floor isn't needed — and it caused visible
+     blank space below the content on light theme (audit 0.2.0). */
+  min-height: 0;
 }
 
 .vs-popup-shell {
@@ -73,17 +106,24 @@ body {
   display: block !important;
   background: transparent;
   box-shadow: none;
+  /* Drop the modal's outer border too — it creates a visible "double
+     frame" inside the toolbar popup window on light theme. */
+  border: none;
   padding: 0;
   min-width: 0;
   /* In the popup the body itself is the scroll container — Chrome popup
      window grows to fit body up to its 600px ceiling. Drop the in-player
      max-height + overflow:auto so we never get a nested scrollbar
-     fighting for the same vertical space. scrollbar-gutter:stable kicks
-     in only if the popup window genuinely overflows (huge font scale,
-     translation lengths) — keeps the layout stable in that edge case. */
+     fighting for the same vertical space. */
   max-height: none;
   overflow: visible;
-  scrollbar-gutter: stable;
+}
+/* Inner tab-panel has its own max-height: 60vh + overflow-y in the
+   shared modal stylesheet — disable in popup so the tab body flows
+   inline and only the popup window itself grows / scrolls. */
+.vs-popup-shell .vs-tab-panel {
+  max-height: none;
+  overflow: visible;
 }
 
 /* Skeleton placeholder — rendered synchronously by main.ts before async

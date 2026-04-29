@@ -177,6 +177,18 @@ function sanitizePatch(
       .map((v) => Math.round(v * 100) / 100);
     out.speedPresets = Array.from(new Set(cleaned));
   }
+  // speedStep — finite number in [0.01, 1.0]. 1.0 keeps the upper bound
+  // useful (jump 0.5x→1.5x in two presses) while preventing absurd
+  // values from a corrupt write.
+  if (typeof safe.speedStep === 'number' && Number.isFinite(safe.speedStep)
+      && safe.speedStep >= 0.01 && safe.speedStep <= 1.0) {
+    out.speedStep = Math.round(safe.speedStep * 100) / 100;
+  }
+  // lastSeenTheme — only accept the two valid string values; anything
+  // else means a corrupt write or a stale shape from an older version.
+  if (safe.lastSeenTheme === 'dark' || safe.lastSeenTheme === 'light') {
+    out.lastSeenTheme = safe.lastSeenTheme;
+  }
   if (safe.__migrated_from_tm === true) out.__migrated_from_tm = true;
 
   return out;
@@ -197,4 +209,5 @@ const ARRAY_FALLBACK_DEFAULTS: Settings = {
     speedDown: [{ ctrl: true, shift: false, alt: false, meta: false, key: 'KeyV' }],
   },
   speedPresets: [1, 1.5, 2],
+  speedStep: 0.1,
 };

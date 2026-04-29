@@ -207,8 +207,39 @@ html[data-vs-theme="dark"] {
   --vs-bg-track: rgba(255, 255, 255, 0.22);
   --vs-text-primary: rgba(255, 255, 255, 0.95);
   --vs-text-secondary: rgba(255, 255, 255, 0.65);
+  --vs-text-dim: rgba(255, 255, 255, 0.45);
   --vs-border: rgba(255, 255, 255, 0.08);
+  /* Default accent palette (YouTube-red). Overridden by per-site rules
+     below — both at .vs-panel scope (in-player) and at html scope
+     (popup, where there's no panel context). */
   --vs-accent: #ff0000;
+  --vs-accent-dark: #cc0000;
+  --vs-accent-darker: #990000;
+  --vs-accent-rgb: 255, 0, 0;
+  /* Settings-menu scoped tokens — translucent dark surface, white text. */
+  --vs-menu-bg: rgba(20, 20, 22, 0.94);
+  --vs-menu-divider: rgba(255, 255, 255, 0.06);
+  --vs-menu-input-bg: rgba(255, 255, 255, 0.05);
+  --vs-menu-input-border: rgba(255, 255, 255, 0.12);
+  --vs-menu-button-bg: rgba(255, 255, 255, 0.06);
+  --vs-menu-button-bg-hover: rgba(255, 255, 255, 0.10);
+  --vs-menu-button-border: rgba(255, 255, 255, 0.10);
+  --vs-menu-track-bg: rgba(255, 255, 255, 0.04);
+  --vs-menu-scrollbar: rgba(255, 255, 255, 0.18);
+  --vs-menu-shadow-1: 0 20px 60px -10px rgba(0, 0, 0, 0.7);
+  --vs-menu-shadow-2: 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+  /* Active state — calmer than .speed-button.active (which uses the
+     bright --vs-accent gradient): the menu can have several actives at
+     once, brighter would overwhelm. Bound to the site-aware --vs-accent-*
+     palette so on YouTube it's red, on RuTube it's blue. Hover deepens
+     via filter:brightness so we don't need a separate per-site hover
+     gradient. */
+  --vs-menu-active-bg: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker) 100%);
+  --vs-menu-active-fg: #ffffff;
+  --vs-menu-active-glow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+  --vs-menu-active-glow-hover: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
+  /* Toggle ON — site-aware accent. */
+  --vs-toggle-on: var(--vs-accent-dark);
 }
 html[data-vs-theme="light"] {
   --vs-bg-button: rgba(0, 0, 0, 0.06);
@@ -217,15 +248,40 @@ html[data-vs-theme="light"] {
   --vs-bg-track: rgba(0, 0, 0, 0.15);
   --vs-text-primary: rgba(15, 15, 15, 0.92);
   --vs-text-secondary: rgba(15, 15, 15, 0.55);
-  --vs-border: rgba(0, 0, 0, 0.08);
+  --vs-text-dim: rgba(15, 15, 15, 0.40);
+  --vs-border: rgba(0, 0, 0, 0.10);
   --vs-accent: #ff0000;
+  /* Settings-menu scoped tokens — light translucent surface, dark text. */
+  --vs-menu-bg: rgba(248, 248, 250, 0.97);
+  --vs-menu-divider: rgba(0, 0, 0, 0.06);
+  --vs-menu-input-bg: rgba(0, 0, 0, 0.04);
+  --vs-menu-input-border: rgba(0, 0, 0, 0.12);
+  --vs-menu-button-bg: rgba(0, 0, 0, 0.05);
+  --vs-menu-button-bg-hover: rgba(0, 0, 0, 0.09);
+  --vs-menu-button-border: rgba(0, 0, 0, 0.12);
+  --vs-menu-track-bg: rgba(0, 0, 0, 0.05);
+  --vs-menu-scrollbar: rgba(0, 0, 0, 0.20);
+  --vs-menu-shadow-1: 0 20px 60px -10px rgba(0, 0, 0, 0.18);
+  --vs-menu-shadow-2: 0 8px 24px -6px rgba(0, 0, 0, 0.10);
+  /* Same site-aware gradient on light theme. White on #cc0000 gives
+     5.89:1, on #0086c4 gives 4.78:1 — both AA pass. */
+  --vs-menu-active-bg: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker) 100%);
+  --vs-menu-active-fg: #ffffff;
+  --vs-menu-active-glow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+  --vs-menu-active-glow-hover: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
+  --vs-toggle-on: var(--vs-accent-dark);
 }
 
 /* Per-site accent + accent-dark + accent-darker for 3-step gradient on
    .speed-button.active:hover (mirrors .user.js:2912 where hover went
-   from accent->accent-dark to accent-dark->accent-darker). */
-.vs-panel[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-darker: #005f8a; --vs-accent-rgb: 0,161,231; }
-.vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-darker: #990000; --vs-accent-rgb: 255,0,0; }
+   from accent->accent-dark to accent-dark->accent-darker). Defined
+   at BOTH .vs-panel scope (in-player UI) and html scope (popup, where
+   no panel exists — popup main.ts writes data-vs-site onto the html
+   element based on the active tab). */
+.vs-panel[data-vs-site="rutube"],
+html[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-darker: #005f8a; --vs-accent-rgb: 0,161,231; }
+.vs-panel[data-vs-site="youtube"],
+html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-darker: #990000; --vs-accent-rgb: 255,0,0; }
 
 /* The panel: TRANSPARENT flex row attached just below the player. No
    capsule background -- buttons and the gear handle their own visual
@@ -702,21 +758,20 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: rgba(20, 20, 22, 0.94);
+  /* Surface adapts to the host page theme via --vs-menu-* tokens defined
+     at html[data-vs-theme="dark|light"]. No local hardcoded values so the
+     modal matches whichever YouTube theme the user has chosen. */
+  background: var(--vs-menu-bg);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
-  color: rgba(255, 255, 255, 0.95);
-  --vs-text-primary: rgba(255, 255, 255, 0.95);
-  --vs-text-secondary: rgba(255, 255, 255, 0.65);
-  --vs-border: rgba(255, 255, 255, 0.08);
+  color: var(--vs-text-primary);
   border-radius: 14px;
   padding: 0;
   width: 340px;
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 80px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.7),
-              0 8px 24px -6px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--vs-border);
+  box-shadow: var(--vs-menu-shadow-1), var(--vs-menu-shadow-2);
   z-index: 999999;
   display: none;
   /* Internal vertical scroll engages once panel.ts caps max-height for a
@@ -725,14 +780,14 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: var(--vs-menu-scrollbar) transparent;
   font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 .settings-menu::-webkit-scrollbar {
   width: 6px;
 }
 .settings-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--vs-menu-scrollbar);
   border-radius: 3px;
 }
 .settings-menu.show {
@@ -796,7 +851,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--vs-menu-divider);
   flex-shrink: 0;
 }
 .vs-menu-title {
@@ -806,7 +861,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--vs-text-primary);
 }
 .vs-menu-title svg {
   width: 14px;
@@ -822,18 +877,18 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   margin-left: auto;
   padding: 4px;
   border-radius: 6px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--vs-text-secondary);
   text-decoration: none;
   transition: color 140ms ease, background 140ms ease;
 }
 .vs-menu-help:hover {
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--vs-text-primary);
+  background: var(--vs-menu-button-bg-hover);
 }
 .vs-menu-version {
   font-size: 10px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--vs-text-dim);
   font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   letter-spacing: 0;
 }
@@ -844,7 +899,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   display: flex;
   gap: 4px;
   margin: 10px 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--vs-menu-divider);
   flex-shrink: 0;
 }
 .vs-tab {
@@ -882,13 +937,13 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: var(--vs-menu-scrollbar) transparent;
   animation: vs-panel-in 160ms ease-out;
 }
 .vs-tab-panel::-webkit-scrollbar { width: 6px; }
 .vs-tab-panel::-webkit-scrollbar-track { background: transparent; }
 .vs-tab-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--vs-menu-scrollbar);
   border-radius: 3px;
 }
 .vs-tab-panel[aria-hidden="true"] { display: none; }
@@ -908,7 +963,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-segmented {
   display: flex;
   gap: 2px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--vs-menu-track-bg);
   border-radius: 9px;
   padding: 4px;
 }
@@ -918,7 +973,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   height: 28px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--vs-text-secondary);
   cursor: pointer;
   border-radius: 6px;
   display: flex;
@@ -929,11 +984,16 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   font-weight: 500;
   transition: color 140ms ease, background 140ms ease;
 }
-.vs-segmented-option:hover { color: rgba(255, 255, 255, 0.85); }
+.vs-segmented-option:hover { color: var(--vs-text-primary); }
 .vs-segmented-option[aria-pressed="true"] {
-  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.18);
-  color: rgba(255, 255, 255, 0.98);
-  box-shadow: inset 0 0 0 1px rgba(var(--vs-accent-rgb, 255, 0, 0), 0.35);
+  background: var(--vs-menu-active-bg);
+  color: var(--vs-menu-active-fg);
+  box-shadow: var(--vs-menu-active-glow);
+  font-weight: 600;
+}
+.vs-segmented-option[aria-pressed="true"]:hover {
+  filter: brightness(0.9);
+  box-shadow: var(--vs-menu-active-glow-hover);
 }
 .vs-segmented-option[aria-pressed="true"] svg { color: var(--vs-accent, #ff0000); }
 
@@ -950,23 +1010,30 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   flex: 0 0 auto;
   min-width: 52px;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--vs-menu-button-bg);
+  border: 1px solid transparent;
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--vs-text-secondary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 .vs-preset-pill:hover {
-  color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--vs-text-primary);
+  background: var(--vs-menu-button-bg-hover);
+  transform: translateY(-1px);
 }
 .vs-preset-pill.active {
-  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.18);
-  border-color: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.45);
-  color: #fff;
+  background: var(--vs-menu-active-bg);
+  border-color: transparent;
+  color: var(--vs-menu-active-fg);
+  font-weight: 600;
+  box-shadow: var(--vs-menu-active-glow);
+}
+.vs-preset-pill.active:hover {
+  filter: brightness(0.9);
+  box-shadow: var(--vs-menu-active-glow-hover);
 }
 
 /* Custom speed input row — sits under the pool grid + above the
@@ -982,17 +1049,17 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--vs-menu-input-bg);
+  border: 1px solid var(--vs-menu-input-border);
   border-radius: 8px;
-  color: inherit;
+  color: var(--vs-text-primary);
   font: inherit;
   font-size: 13px;
 }
 .vs-preset-custom-input:focus {
   outline: none;
   border-color: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.55);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--vs-menu-button-bg-hover);
 }
 /* Hide the native number-input spinner — distracting alongside our
    accent-tinted Add button. Users still get the keyboard up/down arrows
@@ -1006,18 +1073,21 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-preset-custom-add {
   flex-shrink: 0;
   padding: 6px 14px;
-  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.18);
-  border: 1px solid rgba(var(--vs-accent-rgb, 255, 0, 0), 0.45);
+  background: var(--vs-menu-active-bg);
+  border: 1px solid transparent;
   border-radius: 8px;
-  color: #fff;
+  color: var(--vs-menu-active-fg);
   font: inherit;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 140ms ease;
+  box-shadow: var(--vs-menu-active-glow);
+  transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 .vs-preset-custom-add:hover {
-  background: rgba(var(--vs-accent-rgb, 255, 0, 0), 0.28);
+  filter: brightness(0.9);
+  box-shadow: var(--vs-menu-active-glow-hover);
+  transform: translateY(-1px);
 }
 
 .vs-row {
@@ -1040,8 +1110,8 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
+  background: var(--vs-menu-button-bg-hover);
+  color: var(--vs-text-secondary);
   font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 9px;
   cursor: help;
@@ -1059,7 +1129,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-toggle-track {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--vs-bg-track);
   border-radius: 10px;
   transition: background 180ms ease;
 }
@@ -1073,14 +1143,14 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   border-radius: 50%;
   transition: left 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.vs-toggle input:checked + .vs-toggle-track { background: var(--vs-accent, #ff0000); }
+.vs-toggle input:checked + .vs-toggle-track { background: var(--vs-toggle-on, #cc0000); }
 .vs-toggle input:checked ~ .vs-toggle-thumb { left: 16px; }
 
 .vs-help-text { font-size: 12px; opacity: 0.7; margin: 8px 0; }
 
 .vs-hotkey-block {
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--vs-menu-divider);
 }
 .vs-hotkey-block:last-child { border-bottom: none; }
 .vs-hotkey-block-title {
@@ -1098,9 +1168,9 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   flex: 1;
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: inherit;
+  border: 1px solid var(--vs-menu-input-border);
+  background: var(--vs-menu-input-bg);
+  color: var(--vs-text-primary);
   font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
   cursor: pointer;
@@ -1109,7 +1179,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-hotkey-input:focus {
   border-color: var(--vs-accent, #ff0000);
   outline: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--vs-menu-button-bg-hover);
 }
 .vs-hotkey-input.capturing,
 .vs-hotkey-input:focus.capturing {
@@ -1130,7 +1200,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   justify-content: center;
   transition: background 140ms ease, color 140ms ease;
 }
-.vs-icon-button:hover { background: rgba(255, 255, 255, 0.08); }
+.vs-icon-button:hover { background: var(--vs-menu-button-bg-hover); }
 .vs-icon-button.danger { color: #f44336; }
 .vs-icon-button.danger:hover {
   background: rgba(239, 68, 68, 0.12);
@@ -1141,9 +1211,9 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   margin-top: 6px;
   padding: 4px 8px;
   background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed var(--vs-menu-input-border);
   border-radius: 4px;
-  color: inherit;
+  color: var(--vs-text-primary);
   cursor: pointer;
   font-size: 12px;
   display: inline-flex;
@@ -1153,8 +1223,8 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 .vs-add-button:hover {
   border-style: solid;
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--vs-menu-button-border);
+  background: var(--vs-menu-track-bg);
 }
 .vs-reset-link {
   display: inline-block;
@@ -1175,7 +1245,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   gap: 8px;
   padding: 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--vs-menu-button-bg);
   margin-bottom: 8px;
 }
 .vs-status-dot {
@@ -1200,10 +1270,10 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 .vs-action {
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--vs-menu-button-bg-hover);
   border: 1px solid transparent;
   border-radius: 6px;
-  color: inherit;
+  color: var(--vs-text-primary);
   cursor: pointer;
   font-size: 12px;
   display: inline-flex;
@@ -1212,7 +1282,10 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   gap: 4px;
   transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
-.vs-action:hover { background: rgba(255, 255, 255, 0.14); }
+.vs-action:hover {
+  background: var(--vs-menu-button-bg-hover);
+  filter: brightness(1.1);
+}
 .vs-action.danger { color: #f44336; }
 .vs-action.danger:hover {
   background: rgba(239, 68, 68, 0.10);
@@ -1226,9 +1299,10 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  opacity: 0.5;
+  opacity: 0.6;
+  color: var(--vs-text-secondary);
   padding: 8px 16px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--vs-menu-divider);
 }
 
 /* Donate tab — its own dedicated 4th tab so users actually find it.
@@ -1268,10 +1342,10 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   box-sizing: border-box;
   margin-top: 6px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--vs-menu-button-bg);
+  border: 1px solid var(--vs-menu-button-border);
   border-radius: 8px;
-  color: inherit;
+  color: var(--vs-text-primary);
   font: inherit;
   text-decoration: none;
   cursor: pointer;
@@ -1279,8 +1353,8 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 .vs-donate-cloudtips:hover,
 .vs-donate-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: var(--vs-menu-button-bg-hover);
+  border-color: var(--vs-menu-input-border);
 }
 
 .vs-donate-stack {
@@ -1326,8 +1400,8 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   box-sizing: border-box;
   margin: 0;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--vs-menu-track-bg);
+  border: 1px solid var(--vs-menu-button-border);
   border-top: none;
   border-radius: 0 0 8px 8px;
   font-size: 12px;
@@ -1380,7 +1454,8 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10.5px;
   word-break: break-all;
-  background: rgba(0, 0, 0, 0.32);
+  background: var(--vs-bg-track);
+  color: var(--vs-text-primary);
   padding: 6px 8px;
   border-radius: 6px;
   user-select: all;
@@ -1395,14 +1470,14 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   justify-content: center;
   width: 32px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: inherit;
+  background: var(--vs-menu-button-bg-hover);
+  color: var(--vs-text-primary);
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--vs-menu-button-border);
 }
 .vs-donate-copy-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--vs-bg-track);
+  border-color: var(--vs-menu-input-border);
 }
 
 /* Mobile / narrow desktop window adjustments. Mirror .user.js:2855-2860

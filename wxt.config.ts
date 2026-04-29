@@ -45,6 +45,9 @@ export default defineConfig({
       // dir, but the file ships in dist-userscript/ explicitly so power
       // users can grab it from the repo.
       'dist-userscript/**',
+      // Personal scratch notes that live untracked in the working tree —
+      // not part of the source the AMO reviewer needs.
+      'Ссылка для чаевых.txt',
     ],
   },
   // Mirror pkg.version into the bundle so SCRIPT_VERSION (which keys the

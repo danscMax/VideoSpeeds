@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en" data-vs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>YouTube mock — store screenshot</title>
+<style>
+  /* YouTube dark theme — colours mirrored from a real watch page so
+     the screenshot reads as authentic without us shipping any of
+     YouTube's actual UI assets. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0f0f0f;
+    color: rgba(255, 255, 255, 0.92);
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+  .yt-masthead {
+    height: 56px;
+    background: #0f0f0f;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .yt-logo-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+  .yt-logo {
+    width: 28px;
+    height: 28px;
+    background: #ff0000;
+    border-radius: 50%;
+    position: relative;
+  }
+  .yt-logo::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0; height: 0;
+    border-left: 9px solid #fff;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+  }
+  .yt-search {
+    flex: 0 1 540px;
+    height: 36px;
+    margin: 0 auto;
+    background: #121212;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+  }
+  .yt-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+  }
+
+  .yt-page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .yt-player {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background:
+      radial-gradient(ellipse at 35% 40%, rgba(180, 30, 30, 0.18), transparent 55%),
+      radial-gradient(ellipse at 80% 70%, rgba(60, 60, 60, 0.20), transparent 55%),
+      linear-gradient(160deg, #1a0808 0%, #0a0606 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+  .yt-play-btn {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 76px;
+    height: 76px;
+    background: rgba(255, 0, 0, 0.85);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(255, 0, 0, 0.4);
+  }
+  .yt-play-btn::after {
+    content: '';
+    width: 0; height: 0;
+    border-left: 22px solid #fff;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    margin-left: 5px;
+  }
+  .ytp-controls {
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.7));
+    padding: 12px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+  }
+  .ytp-progress {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .ytp-progress::after {
+    content: '';
+    display: block;
+    width: 32%;
+    height: 100%;
+    background: #ff0000;
+  }
+
+  .yt-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 12px 0 4px;
+  }
+  .yt-meta {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 8px;
+  }
+
+  /* ─── In-player UI — verbatim CSS from src/ui/styles.ts ─── */
+
+  :root,
+  html[data-vs-theme="dark"] {
+    --vs-bg-button: rgba(255, 255, 255, 0.10);
+    --vs-bg-button-hover: rgba(255, 255, 255, 0.18);
+    --vs-button-text: rgba(255, 255, 255, 0.95);
+    --vs-bg-track: rgba(255, 255, 255, 0.22);
+    --vs-text-primary: rgba(255, 255, 255, 0.95);
+    --vs-text-secondary: rgba(255, 255, 255, 0.65);
+    --vs-text-dim: rgba(255, 255, 255, 0.45);
+    --vs-border: rgba(255, 255, 255, 0.08);
+    --vs-accent: #ff0000;
+    --vs-accent-dark: #cc0000;
+    --vs-accent-darker: #990000;
+    --vs-accent-rgb: 255, 0, 0;
+    --vs-menu-bg: rgba(20, 20, 22, 0.94);
+    --vs-menu-divider: rgba(255, 255, 255, 0.06);
+    --vs-menu-button-bg: rgba(255, 255, 255, 0.06);
+    --vs-menu-button-bg-hover: rgba(255, 255, 255, 0.10);
+    --vs-menu-track-bg: rgba(255, 255, 255, 0.04);
+    --vs-menu-shadow-1: 0 20px 60px -10px rgba(0, 0, 0, 0.7);
+    --vs-menu-shadow-2: 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+    --vs-menu-active-bg: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker) 100%);
+    --vs-menu-active-fg: #ffffff;
+    --vs-menu-active-glow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+    --vs-toggle-on: var(--vs-accent-dark);
+  }
+  .vs-panel[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-darker: #990000; --vs-accent-rgb: 255, 0, 0; }
+
+  .vs-panel {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 12px auto;
+    width: 100%;
+    box-sizing: border-box;
+    background: transparent;
+    color: var(--vs-text-primary);
+    font-family: inherit;
+  }
+  .speed-buttons-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .speed-button {
+    position: relative;
+    min-width: 56px;
+    height: 28px;
+    padding: 0 14px;
+    border: none;
+    outline: none;
+    border-radius: 14px;
+    background: var(--vs-bg-button);
+    color: var(--vs-button-text);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .speed-button.active {
+    background: linear-gradient(135deg, var(--vs-accent) 0%, var(--vs-accent-dark) 100%);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+  }
+
+  .speed-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px;
+    flex: 0 1 300px;
+    min-width: 100px;
+    max-width: 300px;
+    height: 32px;
+  }
+  .speed-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--vs-accent) 0%,
+      var(--vs-accent) var(--vs-slider-fill),
+      var(--vs-bg-track) var(--vs-slider-fill),
+      var(--vs-bg-track) 100%
+    );
+  }
+  .speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .vs-gear-wrapper { position: relative; display: inline-flex; }
+  .vs-gear-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: var(--vs-bg-button);
+    color: var(--vs-button-text);
+    cursor: pointer;
+  }
+
+  /* Settings modal */
+  .settings-menu {
+    background: var(--vs-menu-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    color: var(--vs-text-primary);
+    border-radius: 14px;
+    width: 340px;
+    border: 1px solid var(--vs-border);
+    box-shadow: var(--vs-menu-shadow-1), var(--vs-menu-shadow-2);
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .vs-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--vs-menu-divider);
+  }
+  .vs-menu-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .vs-menu-title-dot {
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    background: var(--vs-accent);
+  }
+  .vs-menu-version {
+    font-size: 10px;
+    color: var(--vs-text-dim);
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  .vs-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 10px 12px 0;
+    border-bottom: 1px solid var(--vs-menu-divider);
+  }
+  .vs-tab {
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.55;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .vs-tab.active {
+    opacity: 1;
+    border-bottom: 2px solid var(--vs-accent);
+  }
+  .vs-tab-panel { padding: 10px 16px 14px; }
+  .vs-section { margin-bottom: 18px; }
+  .vs-section-label {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .vs-segmented {
+    display: flex;
+    gap: 2px;
+    background: var(--vs-menu-track-bg);
+    border-radius: 9px;
+    padding: 4px;
+  }
+  .vs-segmented-option {
+    flex: 1;
+    height: 28px;
+    background: transparent;
+    border: none;
+    color: var(--vs-text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .vs-segmented-option.active {
+    background: var(--vs-menu-active-bg);
+    color: var(--vs-menu-active-fg);
+    box-shadow: var(--vs-menu-active-glow);
+    font-weight: 600;
+  }
+  .vs-preset-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .vs-preset-pill {
+    min-width: 52px;
+    padding: 6px 10px;
+    background: var(--vs-menu-button-bg);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: var(--vs-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .vs-preset-pill.active {
+    background: var(--vs-menu-active-bg);
+    color: var(--vs-menu-active-fg);
+    font-weight: 600;
+    box-shadow: var(--vs-menu-active-glow);
+  }
+  .vs-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .vs-toggle {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+  }
+  .vs-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--vs-bg-track);
+    border-radius: 10px;
+  }
+  .vs-toggle.on .vs-toggle-track { background: var(--vs-toggle-on); }
+  .vs-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .vs-toggle.on .vs-toggle-thumb { left: 16px; }
+</style>
+</head>
+<body>
+<div class="yt-masthead">
+  <div class="yt-logo-row">
+    <span class="yt-logo"></span>
+    YouTube
+  </div>
+  <div class="yt-search">Search</div>
+  <div class="yt-actions"><span>Sign in</span></div>
+</div>
+
+<div class="yt-page">
+  <div class="yt-player">
+    <div class="yt-play-btn"></div>
+    <div class="ytp-controls">
+      <div class="ytp-progress"></div>
+      <span style="font-variant-numeric:tabular-nums">12:34 / 38:42</span>
+    </div>
+  </div>
+
+  <!-- Speed panel -->
+  <div class="vs-panel" data-vs-site="youtube" id="vs-panel">
+    <div class="speed-buttons-row">
+      <button class="speed-button">1.5x</button>
+      <button class="speed-button">1.75x</button>
+      <button class="speed-button">2x</button>
+      <button class="speed-button">2.25x</button>
+      <button class="speed-button">2.5x</button>
+      <button class="speed-button active">2.75x</button>
+      <button class="speed-button">3x</button>
+      <button class="speed-button">3.25x</button>
+      <button class="speed-button">3.5x</button>
+    </div>
+    <div class="speed-slider-container">
+      <input type="range" min="0.75" max="10" step="0.05" value="2.75"
+             class="speed-slider"
+             style="--vs-slider-fill: 21.6%">
+    </div>
+    <div class="vs-gear-wrapper">
+      <button class="vs-gear-button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <h1 class="yt-title">How playback speed control turns long videos into 30-minute briefings</h1>
+  <div class="yt-meta">142,857 views · 3 days ago · Channel · Productivity</div>
+</div>
+
+<!-- Settings modal -->
+<div id="settings-modal" class="settings-menu" style="display:none; position:fixed; bottom: 80px; right: calc(50vw - 540px - 8px); z-index: 1000;">
+  <div class="vs-menu-header">
+    <div class="vs-menu-title">
+      <span class="vs-menu-title-dot"></span>
+      Playback Speed
+    </div>
+    <span class="vs-menu-version">v0.2.0</span>
+  </div>
+  <div class="vs-tabs">
+    <button class="vs-tab active">General</button>
+    <button class="vs-tab">Keys</button>
+    <button class="vs-tab">Diagnostics</button>
+    <button class="vs-tab">Support</button>
+  </div>
+  <div class="vs-tab-panel">
+    <div class="vs-section">
+      <div class="vs-section-label">Slider position</div>
+      <div class="vs-segmented">
+        <button class="vs-segmented-option active">Right</button>
+        <button class="vs-segmented-option">Below</button>
+        <button class="vs-segmented-option">In player</button>
+      </div>
+    </div>
+    <div class="vs-section">
+      <div class="vs-section-label">Speed buttons</div>
+      <div class="vs-preset-grid">
+        <button class="vs-preset-pill">0.5x</button>
+        <button class="vs-preset-pill">0.75x</button>
+        <button class="vs-preset-pill">1x</button>
+        <button class="vs-preset-pill">1.25x</button>
+        <button class="vs-preset-pill active">1.5x</button>
+        <button class="vs-preset-pill active">1.75x</button>
+        <button class="vs-preset-pill active">2x</button>
+        <button class="vs-preset-pill active">2.25x</button>
+        <button class="vs-preset-pill active">2.5x</button>
+        <button class="vs-preset-pill active">2.75x</button>
+        <button class="vs-preset-pill active">3x</button>
+        <button class="vs-preset-pill active">3.25x</button>
+        <button class="vs-preset-pill active">3.5x</button>
+        <button class="vs-preset-pill">4x</button>
+      </div>
+    </div>
+    <div class="vs-section">
+      <div class="vs-section-label">Behaviour</div>
+      <div class="vs-row">
+        <span>Remember last speed</span>
+        <span class="vs-toggle on"><span class="vs-toggle-track"></span><span class="vs-toggle-thumb"></span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (new URLSearchParams(location.search).has('modal')) {
+    document.getElementById('settings-modal').style.display = 'block';
+  }
+</script>
+</body>
+</html>

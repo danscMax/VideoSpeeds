@@ -1,5 +1,7 @@
 # Video Speed Controller (YouTube + RuTube)
 
+**English** | [Русский](README.ru.md)
+
 Cross-browser extension that adds **speed buttons, a slider, and
 configurable hotkeys** to YouTube and RuTube players. English / Russian
 UI, no telemetry, settings stored locally.
@@ -35,13 +37,13 @@ UI, no telemetry, settings stored locally.
 
 ## Screenshots
 
-| Light theme (YouTube) | Dark theme (RuTube) |
+| YouTube panel | RuTube panel |
 |---|---|
-| ![YouTube panel](dist-store-assets/screenshots/02-youtube-panel-light-close.png) | ![RuTube panel](dist-store-assets/screenshots/06-rutube-panel-dark-close.png) |
+| ![YouTube panel](dist-store-assets/screenshots/01-youtube-panel.jpg) | ![RuTube panel](dist-store-assets/screenshots/03-rutube-panel.jpg) |
 
 | Settings menu (YouTube) | Settings menu (RuTube) |
 |---|---|
-| ![YT settings](dist-store-assets/screenshots/03-youtube-settings-modal.png) | ![RuTube settings](dist-store-assets/screenshots/07-rutube-settings-modal.png) |
+| ![YT settings](dist-store-assets/screenshots/02-youtube-settings.jpg) | ![RuTube settings](dist-store-assets/screenshots/04-rutube-settings.jpg) |
 
 ## Install
 

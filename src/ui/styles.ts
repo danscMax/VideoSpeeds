@@ -903,7 +903,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   flex-shrink: 0;
 }
 .vs-tab {
-  padding: 6px 8px;
+  padding: 6px 6px;
   background: transparent;
   border: none;
   color: inherit;
@@ -915,7 +915,15 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  flex: 0 0 auto;
+  /* Even distribution + crop on overflow: keeps four tabs inside the
+     popup 380px frame and the gear menu 340px frame, while the
+     active border-bottom always equals the tab box width (no
+     spill-past-the-button issue from the earlier flex: 0 1 auto
+     setup). Also dropped horizontal padding from 8px to 6px to give
+     the active accent a slightly larger visible label. */
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
   transition: color 160ms ease, opacity 160ms ease, border-color 160ms ease;
 }
 .vs-tab:hover { opacity: 0.85; }

@@ -228,16 +228,21 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
      // Diagnostics tab — on General/Keys/Donate it has no context and just
      // looked like a leaked tooltip pinned to the popup bottom (audit
      // 0.2.0).
-    const children: Node[] = [menu];
+    // Hint goes BEFORE the menu when on Diagnostics so the user sees
+    // the explanation before reaching for the (greyed-out) action
+    // buttons. CSS in popup/style.css disables those buttons in popup
+    // context.
+    const children: Node[] = [];
     if (activeTab === 'diag') {
       children.push(
         h(
           'div',
-          { class: 'vs-popup-diag-hint' },
-          ctx.i18n.t('diag.status.click_to_check'),
+          { class: 'vs-popup-diag-hint vs-popup-diag-hint-top' },
+          ctx.i18n.t('diag.popup_hint'),
         ),
       );
     }
+    children.push(menu);
     host.replaceChildren(...children);
     attachSettingsHandlers(menu, ctx, {
       setActiveTab: (t) => { activeTab = t; },

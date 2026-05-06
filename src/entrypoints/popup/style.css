@@ -5,7 +5,13 @@
   color-scheme: light dark;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
-  --vs-accent: #2196F3;
+  /* HDRezka cyan palette — defined here so the popup's link[rel=stylesheet]
+     ships it before the JS-injected <style id="vs-styles"> hits the DOM
+     (avoids a single render frame with the styles.ts fallback red). */
+  --vs-accent: #00a1db;
+  --vs-accent-dark: #0080b0;
+  --vs-accent-darker: #005f85;
+  --vs-accent-rgb: 0, 161, 219;
 }
 
 html, body {
@@ -68,18 +74,58 @@ html[data-vs-theme="light"] .vs-popup-diag-hint {
 /* Hard-pin the popup width on BOTH html and body. Some Firefox builds
    sample body's intrinsic width on first paint and shrink the popup
    window to whatever the body wants — and the synchronous skeleton's
-   intrinsic width is much smaller than 380px. Audit 0.2.1: users
-   reported popup collapsing to ~60px after install. */
+   intrinsic width is much smaller than 380px (vertical column of
+   pills, vertical text fragments). Min-width belts-and-braces so the
+   sample never reads below 380. Audit 0.2.1: users reported popup
+   collapsing to ~60px after install. */
 html, body {
   width: 380px;
   min-width: 380px;
 }
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+html[data-vs-theme="light"] {
+  scrollbar-color: rgba(0, 0, 0, 0.20) transparent;
+}
 body {
   min-height: 0;
 }
+.vs-popup-shell {
+  width: 100%;
+  min-width: 380px;
+}
+/* WebKit browsers (Chrome, Edge) need explicit ::-webkit-scrollbar rules;
+   `scrollbar-width: thin` alone is a Firefox-only hint. */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+html[data-vs-theme="light"]::-webkit-scrollbar-thumb,
+html[data-vs-theme="light"] body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22);
+}
+html[data-vs-theme="light"]::-webkit-scrollbar-thumb:hover,
+html[data-vs-theme="light"] body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.34);
+}
 
 .vs-popup-shell {
-  min-width: 380px;
   padding: 12px;
 }
 
@@ -197,4 +243,29 @@ body {
   font-size: 11px;
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.6);
+}
+.vs-popup-diag-hint-top {
+  margin: 0 12px 8px;
+  background: rgba(0, 161, 219, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 161, 219, 0.30);
+}
+html[data-vs-theme="light"] .vs-popup-diag-hint-top {
+  background: rgba(0, 161, 219, 0.10);
+  color: rgba(15, 15, 15, 0.85);
+  border-color: rgba(0, 161, 219, 0.30);
+}
+
+/* In the toolbar popup, the Diagnostics action grid points at services
+   that only exist inside the content script (HealthChecker, selector
+   cache). Disable them visually here so the user doesn't tap a button
+   that silently no-ops. The "feedback" button is exempt — it opens a
+   real extension page that works from any context. */
+.vs-popup-shell .vs-action-grid > [data-vs-diag]:not([data-vs-diag="feedback"]) {
+  opacity: 0.40;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.vs-popup-shell .vs-status[data-vs-diag-status] {
+  opacity: 0.55;
 }

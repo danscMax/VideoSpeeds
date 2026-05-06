@@ -5,6 +5,88 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.2.8] — 2026-05-06
+
+### Changed
+- **Default hotkeys** moved off `Ctrl+C` / `Ctrl+V` (collided with the
+  system copy/paste shortcut whenever the user had a text selection
+  on the page) to `Alt+Shift+ArrowUp` / `Alt+Shift+ArrowDown`.
+  Existing installations keep their saved hotkeys; new installs get
+  the safer default.
+- **Feedback form** "Attach diagnostic report" checkbox now unchecked
+  by default — opt-in only.
+- **Feedback payload** stopped sending the full `userAgent` string;
+  browser-version detection lives inside the opt-in diagnostic blob.
+
+### Privacy
+- AMO `data_collection_permissions` updated from `'none'` to
+  `'technicalAndInteractionData'` to honestly disclose the optional
+  Send-feedback flow.
+
+## [0.2.7] — 2026-05-06
+
+### Fixed
+- Popup flicker on Diagnostics open (storage listener was caught by
+  every cache-write the HealthChecker emitted).
+
+### Changed
+- Settings menu width 340 → 380, popup 380 → 420 so the four-tab
+  strip fits.
+
+## [0.2.6] — 2026-05-06
+
+### Changed
+- Popup auto-runs `vs:recheck` on Diagnostics tab open so popup and
+  gear menu always agree on the report.
+
+## [0.2.5] — 2026-05-06
+
+### Fixed
+- Tab strip overflowed both popup and gear-menu frames after the
+  underline fix. Now `flex: 1 1 0` distributes width evenly.
+
+## [0.2.4] — 2026-05-06
+
+### Added
+- Live diagnostics in toolbar popup via runtime message-passing to
+  the content script's HealthChecker.
+
+### Fixed
+- Active-tab underline visibly shorter than the label.
+
+## [0.2.3] — 2026-05-06
+
+### Added
+- Feedback button in three places: General CTA, Diagnostics action,
+  Support row.
+- Free-form contact field (email, `@telegram`, Discord, anything).
+
+### Fixed
+- Diagnostics action grid disabled in popup context (services only
+  available in content script); explanatory banner added.
+
+## [0.2.2] — 2026-05-06
+
+### Changed
+- Feedback button moved from Diagnostics into Support tab.
+
+### Fixed
+- Popup width pinned with `min-width: 380px` on `<html>`, `<body>`,
+  `.vs-popup-shell` to defend against Firefox sampling body intrinsic
+  width on first paint.
+
+## [0.2.1] — 2026-05-06
+
+### Added
+- Cloudflare Worker + in-extension feedback page (Send Feedback
+  button opens a form that POSTs to a developer-owned Worker
+  forwarding to Telegram).
+
+### Fixed
+- Feedback button tried `browser.tabs.create` (unavailable in content
+  script) and silently fell back to a relative URL the host site
+  resolved as a 404. Switched to `runtime.getURL()` + `window.open`.
+
 ## [0.2.0] — 2026-04-29
 
 First minor bump after the long 0.1.x line of patches. Marks the transition

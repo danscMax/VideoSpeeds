@@ -75,7 +75,8 @@ function renderForm(host: HTMLElement, t: Translator): void {
     rating: 'neutral',
     message: '',
     contact: '',
-    attachDiagnostics: true,
+    // Off by default — fingerprint surface (audit 0.2.8).
+    attachDiagnostics: false,
   };
 
   const ratingBtn = (value: Rating, emoji: string, labelKey: string): HTMLButtonElement => {
@@ -118,7 +119,6 @@ function renderForm(host: HTMLElement, t: Translator): void {
 
   const diagCheckbox = h('input', {
     type: 'checkbox',
-    checked: 'checked',
   }) as HTMLInputElement;
   diagCheckbox.addEventListener('change', () => {
     state.attachDiagnostics = diagCheckbox.checked;
@@ -291,7 +291,8 @@ async function submit(state: FormState): Promise<void> {
     message: state.message,
     contact: state.contact || undefined,
     diagnostics,
-    userAgent: navigator.userAgent,
+    // userAgent removed in 0.2.8 — fingerprint reduction. Browser
+    // version is already inside the opt-in diagnostic snapshot.
   };
 
   let res: Response;

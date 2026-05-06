@@ -88,12 +88,14 @@ export function defaultSettings(language: Lang, site?: Site): Settings {
     hidePremium: false,
     language,
     hotkeys: {
+      // Default switched away from Ctrl+C / Ctrl+V (audit 0.2.8) —
+      // they collide with the system copy/paste shortcut.
       speedUp: [
-        { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' },
+        { ctrl: false, shift: true, alt: true, meta: false, key: 'ArrowUp' },
         { ctrl: true, shift: false, alt: false, meta: false, key: 'Insert' },
       ],
       speedDown: [
-        { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyV' },
+        { ctrl: false, shift: true, alt: true, meta: false, key: 'ArrowDown' },
         { ctrl: false, shift: true, alt: false, meta: false, key: 'Insert' },
       ],
     },

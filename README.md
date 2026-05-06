@@ -53,26 +53,24 @@ UI, no telemetry, settings stored locally.
 
 ### Install
 
-#### Chrome / Edge / Brave (MV3)
+- **Firefox AMO** — [**Install from AMO**](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/) ✅ approved
+- **Chrome Web Store** — *(under review)*
+
+#### Chrome / Edge / Brave — manual (until CWS listing is approved)
 
 1. Build: `npm install && npx wxt build`
 2. Open `chrome://extensions`, enable Developer mode
 3. **Load unpacked** → `.output/chrome-mv3/`
 
-For published Web-Store install, see the listing once submitted.
-
 > Windows users with Cyrillic in the project path: copy
 > `.output/chrome-mv3/` to `C:\Temp\videospeeds-build\` first —
 > Chrome's `--load-extension=` flag rejects non-ASCII paths.
 
-#### Firefox (MV3)
+#### Firefox — temporary build (alternative to AMO)
 
 1. Build: `npx wxt build -b firefox --mv3`
 2. `npx web-ext run --source-dir=.output/firefox-mv3` — launches a
    fresh Firefox with the extension installed temporarily
-
-For permanent install, submit the AMO build (`npx wxt zip -b firefox
---mv3`) or sign locally with `web-ext sign`.
 
 #### Tampermonkey / Violentmonkey
 
@@ -181,26 +179,24 @@ the full terms.
 
 ### Установка
 
-#### Chrome / Edge / Brave (MV3)
+- **Firefox AMO** — [**Установить из AMO**](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/) ✅ одобрено
+- **Chrome Web Store** — *(на ревью)*
+
+#### Chrome / Edge / Brave — вручную (пока CWS-листинг не одобрен)
 
 1. Сборка: `npm install && npx wxt build`
 2. Открыть `chrome://extensions`, включить «Режим разработчика»
 3. **Загрузить распакованное расширение** → `.output/chrome-mv3/`
 
-После публикации в Web Store устанавливайте через листинг.
-
 > Для Windows-пользователей с кириллицей в пути проекта: сначала
 > скопируйте `.output/chrome-mv3/` в `C:\Temp\videospeeds-build\` —
 > Chrome `--load-extension=` не принимает не-ASCII пути.
 
-#### Firefox (MV3)
+#### Firefox — временная сборка (альтернатива AMO)
 
 1. Сборка: `npx wxt build -b firefox --mv3`
 2. `npx web-ext run --source-dir=.output/firefox-mv3` — запустится
    свежий Firefox с временно установленным расширением
-
-Для постоянной установки отправьте AMO-сборку (`npx wxt zip -b
-firefox --mv3`) или подпишите локально через `web-ext sign`.
 
 #### Tampermonkey / Violentmonkey
 

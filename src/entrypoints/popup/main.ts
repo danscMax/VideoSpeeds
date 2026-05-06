@@ -290,8 +290,13 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
       },
     });
 
+    // Force a fresh recheck on Diagnostics tab open so popup and gear
+    // menu always agree on the report. get-status returns the cached
+    // last-report which can lag the gear-menu live one by a couple
+    // of seconds and produced contradictory readings between the
+    // two surfaces.
     if (activeTab === 'diag') {
-      void sendToActiveTab({ type: 'vs:get-status' }).then((report) => {
+      void sendToActiveTab({ type: 'vs:recheck' }).then((report) => {
         if (report) applyReportToMenu(menu, ctx.i18n, report);
       });
     }

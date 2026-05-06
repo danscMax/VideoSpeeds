@@ -915,8 +915,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   transition: color 160ms ease, opacity 160ms ease, border-color 160ms ease;
 }
 .vs-tab:hover { opacity: 0.85; }

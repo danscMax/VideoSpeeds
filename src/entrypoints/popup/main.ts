@@ -247,14 +247,54 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
     attachSettingsHandlers(menu, ctx, {
       setActiveTab: (t) => { activeTab = t; },
       rerender,
-      onDiag: () => {
-        // Popup can't run live diagnostics; nudge user to in-player gear.
-        ui.showNotification(
-          ctx.i18n.t('diag.status.click_to_check'),
-          'info',
-        );
+      onDiag: async (action) => {
+        if (action === 'recheck') {
+          const report = await sendToActiveTab({ type: 'vs:recheck' });
+          if (report) {
+            applyReportToMenu(menu, ctx.i18n, report);
+            ui.showNotification(
+              report.healthy
+                ? ctx.i18n.t('toast.diag_ok')
+                : ctx.i18n.t('toast.diag_issues'),
+              report.healthy ? 'info' : 'warn',
+            );
+          } else {
+            ui.showNotification(ctx.i18n.t('diag.popup_hint'), 'info');
+          }
+          return;
+        }
+        if (action === 'copy') {
+          const report = await sendToActiveTab({ type: 'vs:get-status' });
+          if (report) {
+            try {
+              await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
+              ui.showNotification(ctx.i18n.t('toast.report_copied'), 'info');
+            } catch {
+              ui.showNotification(ctx.i18n.t('toast.report_copy_failed'), 'error');
+            }
+          } else {
+            ui.showNotification(ctx.i18n.t('diag.popup_hint'), 'info');
+          }
+          return;
+        }
+        if (action === 'purge-cache') {
+          const ok = await sendToActiveTab({ type: 'vs:purge-cache' });
+          ui.showNotification(
+            ok ? ctx.i18n.t('toast.cache_cleared') : ctx.i18n.t('diag.popup_hint'),
+            ok ? 'info' : 'warn',
+          );
+          return;
+        }
+        // full-reset stays gear-only.
+        ui.showNotification(ctx.i18n.t('diag.popup_hint'), 'info');
       },
     });
+
+    if (activeTab === 'diag') {
+      void sendToActiveTab({ type: 'vs:get-status' }).then((report) => {
+        if (report) applyReportToMenu(menu, ctx.i18n, report);
+      });
+    }
   }
 
   // Re-init translator on language switch. Subscriber fires on every
@@ -336,4 +376,70 @@ function renderNoSitePlaceholder(host: HTMLElement): void {
       h('div', { style: 'margin-top:12px;font-size:11px;opacity:0.55;' }, subline),
     ),
   );
+}
+
+async function sendToActiveTab(
+  message: { type: 'vs:recheck' | 'vs:get-status' },
+): Promise<DiagnosticReport | null>;
+async function sendToActiveTab(
+  message: { type: 'vs:purge-cache' },
+): Promise<boolean>;
+async function sendToActiveTab(
+  message: { type: string },
+): Promise<DiagnosticReport | boolean | null> {
+  try {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tabId = tabs[0]?.id;
+    if (typeof tabId !== 'number') return null;
+    const res = await browser.tabs.sendMessage(tabId, message) as
+      | { ok: boolean; report?: DiagnosticReport; error?: string }
+      | undefined;
+    if (!res || !res.ok) return null;
+    if (message.type === 'vs:purge-cache') return true;
+    return res.report ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function applyReportToMenu(
+  menuRoot: Element,
+  i18n: { t: (key: string, vars?: Record<string, string | number>) => string },
+  report: DiagnosticReport,
+): void {
+  const statusEl = menuRoot.querySelector<HTMLElement>('[data-vs-diag-status]');
+  const headlineEl = menuRoot.querySelector<HTMLElement>('[data-vs-diag-headline]');
+  const detailEl = menuRoot.querySelector<HTMLElement>('[data-vs-diag-detail]');
+  if (!statusEl || !headlineEl || !detailEl) return;
+
+  const r = report as unknown as Record<string, unknown>;
+  const waiting = r.isWaiting === true;
+  const healthy = r.healthy === true;
+  const issues = Array.isArray(r.issues) ? (r.issues as string[]) : [];
+  const lastCheckTime = typeof r.lastCheckTime === 'string' ? r.lastCheckTime : '';
+
+  if (waiting) {
+    statusEl.dataset.state = 'waiting';
+    headlineEl.textContent = i18n.t('diag.status.waiting');
+    detailEl.textContent = i18n.t('diag.status.waiting_detail');
+    return;
+  }
+  if (healthy) {
+    statusEl.dataset.state = 'ok';
+    headlineEl.textContent = i18n.t('diag.status.ok');
+    detailEl.textContent = lastCheckTime
+      ? i18n.t('diag.status.last_check', { time: lastCheckTime })
+      : '';
+    return;
+  }
+  statusEl.dataset.state = 'warn';
+  if (issues.length === 1) {
+    headlineEl.textContent = i18n.t('diag.status.issue_single', { issue: issues[0] ?? '' });
+    detailEl.textContent = i18n.t('diag.status.try_again');
+  } else {
+    headlineEl.textContent = i18n.t('diag.status.issues_count', { count: issues.length });
+    detailEl.textContent = issues.length > 0
+      ? issues.map((s) => '• ' + s).join('\n')
+      : i18n.t('diag.status.try_again');
+  }
 }

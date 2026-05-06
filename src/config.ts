@@ -115,3 +115,15 @@ export const SELECTOR_CACHE_PREFIX = 'vs-cache:';
  * subsequent extension-side edits.
  */
 export const TM_MIGRATION_FLAG = '__migrated_from_tm';
+
+/**
+ * Feedback Worker endpoint. Worker source lives in the sibling
+ * `HDRezkaSpeeds/cloudflare-worker/` package; both extensions POST to
+ * the same deployed instance and the Worker routes by `app` field.
+ */
+export const FEEDBACK_WORKER_URL =
+  'https://speeds-feedback.REPLACE-ME.workers.dev/feedback';
+
+export const FALLBACK_CONTACT_EMAIL = 'matsiyak@gmail.com';
+
+export const FEEDBACK_APP_ID = 'videospeeds';

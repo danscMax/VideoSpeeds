@@ -22,6 +22,7 @@ import type { AppContext } from '../../app/context';
 import { createBrowserStorageAdapter } from '../../storage/adapter';
 import { createSettingsStore } from '../../storage/settings-store';
 import { createSpeedStore } from '../../storage/speed-store';
+import { storageKeysFor } from '../../config';
 import { detectSite } from '../../sites/detect';
 import {
   attachSettingsHandlers,
@@ -312,12 +313,33 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
 
   // 5. Listen for storage.onChanged so the popup reflects edits made in
   //    the in-player gear without needing a manual refresh.
+  //
+  // Filtered to settings/speed keys only — HealthChecker writes
+  // selector-cache entries on every recheck, and the recheck the
+  // popup itself fires on Diagnostics open used to flicker the whole
+  // menu (audit 0.2.7).
+  const settingsKeys = new Set([
+    storageKeysFor('youtube').settings,
+    storageKeysFor('youtube').speed,
+    storageKeysFor('rutube').settings,
+    storageKeysFor('rutube').speed,
+  ]);
+  let pendingRerender: ReturnType<typeof setTimeout> | null = null;
   const storageListener = (changes: Record<string, unknown>): void => {
     if (changes['__vs_skip__']) return;
-    rerender();
+    const changedKeys = Object.keys(changes);
+    if (!changedKeys.some((k) => settingsKeys.has(k))) return;
+    if (pendingRerender !== null) clearTimeout(pendingRerender);
+    pendingRerender = setTimeout(() => {
+      pendingRerender = null;
+      rerender();
+    }, 50);
   };
   browser.storage.local.onChanged.addListener(storageListener);
-  cleanup.add(() => browser.storage.local.onChanged.removeListener(storageListener));
+  cleanup.add(() => {
+    if (pendingRerender !== null) clearTimeout(pendingRerender);
+    browser.storage.local.onChanged.removeListener(storageListener);
+  });
 
   rerender();
 }

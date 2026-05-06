@@ -57,6 +57,30 @@ The Firefox manifest declares
 `browser_specific_settings.gecko.data_collection_permissions: { required: ['none'] }`
 so the AMO listing makes the zero-collection promise machine-readable.
 
+### Feedback form
+
+The extension ships a "Send feedback" button (Settings → Diagnostics).
+Clicking it opens an in-extension form. Nothing is sent until you press
+"Submit". When you do:
+
+- Your message, optional reply email, optional diagnostic snapshot
+  (anonymous: per-site settings, browser, viewport, language), and
+  your IP address are POSTed to a Cloudflare Worker the developer
+  hosts at `speeds-feedback.matsiyak.workers.dev`.
+- The Worker validates the payload, rate-limits to 5 submissions per
+  IP per hour, and forwards the message to the developer's personal
+  Telegram chat via the Telegram Bot API.
+- No third-party analytics, no email-marketing service, no ticketing
+  vendor. The Worker source lives in the sister project
+  [HDRezkaSpeeds/cloudflare-worker/](https://github.com/danscMax/HDRezkaSpeeds/tree/main/cloudflare-worker)
+  and is the only network hop between your browser and the developer.
+- The IP address is used solely for rate limiting, stored in
+  Cloudflare KV with a 1-hour TTL, then automatically deleted.
+
+If you do not provide a reply email, the developer cannot contact you
+back — the Telegram message contains only what you typed, the
+diagnostic snapshot you opted into, and your transient IP.
+
 ### Source code
 
 The extension is open source under the GNU General Public License v3.0
@@ -126,6 +150,31 @@ URL-фрагмента**, ваш user agent, размер окна, текуще
 `browser_specific_settings.gecko.data_collection_permissions: { required: ['none'] }`,
 чтобы листинг AMO мог автоматически проверить обещание о нулевом
 сборе данных.
+
+### Форма обратной связи
+
+В расширении есть кнопка «Связаться с автором» (Настройки →
+Диагностика). По клику открывается форма внутри расширения. Ничего
+не отправляется, пока вы не нажмёте «Отправить». При нажатии:
+
+- Ваше сообщение, опционально email для ответа, опционально
+  диагностический снимок (анонимный: per-site настройки, браузер,
+  размер окна, язык), а также ваш IP-адрес отправляются
+  POST-запросом на Cloudflare Worker, который автор хостит на
+  `speeds-feedback.matsiyak.workers.dev`.
+- Worker валидирует payload, ограничивает скорость до 5 отправок
+  с одного IP в час, и пересылает сообщение в личный Telegram-чат
+  автора через Telegram Bot API.
+- Никакой сторонней аналитики, никакого email-маркетинга, никаких
+  тикет-сервисов. Исходник Worker'а лежит в проекте
+  [HDRezkaSpeeds/cloudflare-worker/](https://github.com/danscMax/HDRezkaSpeeds/tree/main/cloudflare-worker)
+  и является единственным сетевым узлом между вашим браузером и
+  автором.
+- IP-адрес используется только для rate-limit, хранится в
+  Cloudflare KV с TTL 1 час, после чего автоматически удаляется.
+
+Если email для ответа не указан — автор не сможет вам ответить,
+но сообщение всё равно прочитает.
 
 ### Исходный код
 

@@ -122,7 +122,7 @@ export const TM_MIGRATION_FLAG = '__migrated_from_tm';
  * the same deployed instance and the Worker routes by `app` field.
  */
 export const FEEDBACK_WORKER_URL =
-  'https://speeds-feedback.REPLACE-ME.workers.dev/feedback';
+  'https://speeds-feedback.matsiyak.workers.dev/feedback';
 
 export const FALLBACK_CONTACT_EMAIL = 'matsiyak@gmail.com';
 

@@ -65,19 +65,21 @@ html[data-vs-theme="light"] .vs-popup-diag-hint {
  * naturally without spawning an internal scrollbar (which used to
  * appear on the General tab and pull the content sideways).
  */
-html {
+/* Hard-pin the popup width on BOTH html and body. Some Firefox builds
+   sample body's intrinsic width on first paint and shrink the popup
+   window to whatever the body wants — and the synchronous skeleton's
+   intrinsic width is much smaller than 380px. Audit 0.2.1: users
+   reported popup collapsing to ~60px after install. */
+html, body {
   width: 380px;
+  min-width: 380px;
 }
 body {
-  /* Body sizes to content. Earlier we forced 100vh + html min-height 500
-     to stop the toolbar popup from sampling a half-rendered DOM, but the
-     synchronous skeleton in main.ts now lays out at the real size from
-     frame 0 so the artificial floor isn't needed — and it caused visible
-     blank space below the content on light theme (audit 0.2.0). */
   min-height: 0;
 }
 
 .vs-popup-shell {
+  min-width: 380px;
   padding: 12px;
 }
 

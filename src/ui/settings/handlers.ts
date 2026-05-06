@@ -24,17 +24,21 @@ import type { Lang } from '../../i18n/dict';
 import type { ActiveTab } from './modal';
 
 /**
- * Open the in-extension feedback page in a new tab. Resolved via
- * `runtime.getURL` so it works under both `chrome-extension://` and
- * `moz-extension://` schemes; the page itself ships as a WXT entrypoint
- * (`src/entrypoints/feedback/`).
+ * Open the in-extension feedback page in a new tab.
+ *
+ * `runtime.getURL` resolves to the absolute moz-extension:// /
+ * chrome-extension:// URL; `window.open` is used (rather than
+ * `browser.tabs.create`) because the latter is NOT exposed in
+ * content-script contexts. The user-gesture from the click that
+ * triggered us carries through, so the popup-blocker doesn't
+ * intervene.
  */
 function openFeedbackPage(): void {
   try {
     const url = browser.runtime.getURL('/feedback.html');
-    void browser.tabs.create({ url });
-  } catch {
-    try { window.open('feedback.html', '_blank'); } catch { /* swallow */ }
+    window.open(url, '_blank');
+  } catch (e) {
+    console.warn('[VIDEO-SPEEDS] Failed to open feedback page', e);
   }
 }
 

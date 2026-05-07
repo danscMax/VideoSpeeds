@@ -1,0 +1,109 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly in the extension.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug.
+
+        Quick path: if you don't need to track this on GitHub, the
+        in-extension **Send feedback** form (gear menu → Поддержать,
+        or the popup's Support tab) attaches the diagnostic snapshot
+        for you and reaches the maintainer directly. Use this template
+        if you'd rather discuss publicly or attach screenshots.
+  - type: input
+    id: ext-version
+    attributes:
+      label: Extension version
+      description: Found in `chrome://extensions` or `about:addons`. Also visible in the gear menu footer.
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Edge
+        - Brave
+        - Vivaldi
+        - Opera
+        - Firefox
+        - LibreWolf
+        - Other (specify in "Repro steps")
+    validations:
+      required: true
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser version
+      placeholder: "e.g. 131.0.6778.86"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host site
+      options:
+        - YouTube (youtube.com)
+        - YouTube embeds (youtube-nocookie.com)
+        - RuTube (rutube.ru)
+        - Other (specify below)
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Repro steps
+      description: Numbered steps so the maintainer can reproduce.
+      placeholder: |
+        1. Open a YouTube watch page
+        2. Toggle theatre mode
+        3. Click the speed panel "1.5x" button
+        4. Speed silently fails to apply (still 1.0x)
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      placeholder: |
+        Expected: speed switches to 1.5x and panel highlights the active button.
+        Actual: nothing changes; no console error.
+    validations:
+      required: true
+  - type: textarea
+    id: diag
+    attributes:
+      label: Diagnostic snapshot (optional)
+      description: |
+        Open the gear menu → **Диагностика** → **Скопировать отчёт**, then paste here.
+        The snapshot includes settings, browser, viewport, language. It does NOT include URLs or personal data.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / video (optional)
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Sanity checks
+      options:
+        - label: I disabled other speed-control extensions/userscripts and reproduced the bug.
+          required: false
+        - label: I checked existing issues for duplicates.
+          required: false

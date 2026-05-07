@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.2.9] — 2026-05-07
+
+### Fixed
+- AMO rejected 0.2.8 with
+  `"data_collection_permissions/required/0" must be equal to one of
+  the allowed values`. The string `'technicalAndInteractionData'`
+  isn't in the schema. Corrected to
+  `required: ['none']` + `optional: ['personalCommunications',
+  'technicalAndInteraction']` — fully opt-in feedback flow expressed
+  through the schema's actual key names. PRIVACY.md updated to match.
+
 ## [0.2.8] — 2026-05-06
 
 ### Changed

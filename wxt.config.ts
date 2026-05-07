@@ -94,15 +94,19 @@ export default defineConfig({
               // by 2026-04 and ESR users are unaffected (they already
               // pin to a specific channel).
               strict_min_version: '142.0',
-              // The optional feedback form (Settings -> Support -> Send
-              // feedback) POSTs the user's message + chosen contact
-              // method + opt-in diagnostic snapshot to a developer-
-              // owned Cloudflare Worker, which forwards them to the
-              // developer's personal Telegram. That puts the
-              // collection bucket above 'none'. Everything else
-              // (settings, speed presets) still lives only in
-              // browser.storage.local — see PRIVACY.md.
-              data_collection_permissions: { required: ['technicalAndInteractionData'] },
+              // Extension collects nothing automatically — settings
+              // stay in browser.storage.local. The Send-feedback flow
+              // is fully opt-in (user types a message, optionally
+              // attaches a diagnostic snapshot, explicitly clicks
+              // Submit). Mapping to AMO's data-collection schema:
+              //   - required: ['none']         — nothing forced.
+              //   - optional: personalCommunications (the message)
+              //               + technicalAndInteraction (diag blob,
+              //               only when user checks the box).
+              data_collection_permissions: {
+                required: ['none'],
+                optional: ['personalCommunications', 'technicalAndInteraction'],
+              },
             },
           },
         }

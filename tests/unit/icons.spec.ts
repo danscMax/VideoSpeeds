@@ -28,15 +28,17 @@ describe('vsIcon()', () => {
   });
 
   it('exposes ICON_NAMES with the full set', () => {
-    // 26 icons: 22 from the original userscript + globe (language
+    // 27 icons: 22 from the original userscript + globe (language
     // switcher) + heart (donate tab) + external-link (donate links)
-    // + help-circle (welcome page link in modal header).
-    expect(ICON_NAMES.length).toBe(26);
+    // + help-circle (welcome page link in modal header) + mail
+    // (feedback CTA, added in 0.2.x feedback flow).
+    expect(ICON_NAMES.length).toBe(27);
     expect(ICON_NAMES).toContain('globe');
     expect(ICON_NAMES).toContain('settings');
     expect(ICON_NAMES).toContain('heart');
     expect(ICON_NAMES).toContain('external-link');
     expect(ICON_NAMES).toContain('help-circle');
+    expect(ICON_NAMES).toContain('mail');
   });
 
   it('every icon name renders without throwing and yields an SVGElement', () => {

@@ -13,11 +13,12 @@ describe('SettingsStore', () => {
       const s = store.get();
       expect(s.sliderPosition).toBe('right');
       expect(s.rememberSpeed).toBe(true);
-      // Defaults: Ctrl+C/V plus Insert/Shift+Insert second slot (audit B2.5).
+      // Defaults: Alt+Shift+ArrowUp/Down (0.2.8 moved off Ctrl+C/V to
+      // avoid the copy-paste collision) plus Insert second slot.
       expect(s.hotkeys.speedUp).toHaveLength(2);
-      expect(s.hotkeys.speedUp[0]?.key).toBe('KeyC');
+      expect(s.hotkeys.speedUp[0]?.key).toBe('ArrowUp');
       expect(s.hotkeys.speedUp[1]?.key).toBe('Insert');
-      expect(s.hotkeys.speedDown[0]?.key).toBe('KeyV');
+      expect(s.hotkeys.speedDown[0]?.key).toBe('ArrowDown');
       expect(s.hotkeys.speedDown[1]?.key).toBe('Insert');
     });
 

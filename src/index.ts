@@ -498,7 +498,7 @@ export async function bootstrap(
   //     asks the active tab (us) to run the diagnostic and stream the
   //     result back. This lets the popup show a LIVE status instead of
   //     a static "Not checked yet" placeholder.
-  const onPopupMessage = (
+  const onPopupMessage = async (
     msg: unknown,
   ): Promise<{ ok: boolean; report?: DiagnosticReport; error?: string }> => {
     const m = msg as { type?: string } | null | undefined;
@@ -516,7 +516,10 @@ export async function bootstrap(
           return Promise.resolve({ ok: true, report });
         }
         case 'vs:purge-cache': {
-          void cache.purgeAll();
+          // Await: the popup shows success/failure based on this resolved
+          // value. Without await a real adapter failure would surface as
+          // ok=true and the user would think the purge succeeded.
+          await cache.purgeAll();
           return Promise.resolve({ ok: true });
         }
         default:
@@ -662,6 +665,21 @@ function installRemovalObserver(
 ): void {
   const parent = panelEl.parentElement;
   if (!parent) return; // shouldn't happen -- caller invoked us post-insert
+  // Idempotency brand: skip if we already have a removal observer
+  // tracking this exact panel on this exact parent. Without the guard,
+  // rapid SPA navigation on RuTube (next-up clicks within the 800 ms
+  // path-changed reattach window) schedules overlapping insert chains
+  // that each install a sibling observer on the same parent — every
+  // child mutation then fires the callback twice (or three times),
+  // doubling per-mutation work for the rest of the page lifetime.
+  type Branded = Element & { __vsRemovalObserverPanel?: HTMLElement };
+  if ((parent as Branded).__vsRemovalObserverPanel === panelEl) return;
+  (parent as Branded).__vsRemovalObserverPanel = panelEl;
+  ctx.cleanup.add(() => {
+    if ((parent as Branded).__vsRemovalObserverPanel === panelEl) {
+      delete (parent as Branded).__vsRemovalObserverPanel;
+    }
+  });
   // Track the last known previous-sibling so we only re-run insertPanel
   // when the panel's position has ACTUALLY shifted. Without this guard
   // YouTube's high-volume mutation traffic (comments hydrating, ads

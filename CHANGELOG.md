@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.3] — 2026-05-07
+
+### Fixed
+- **`Diagnostics → Очистить кеш` no longer reports success when the
+  cache wipe fails.** Popup handler now awaits the real adapter call
+  before resolving. (`src/index.ts`)
+- **First-install settings are now pinned to disk.** Defends against
+  silent default-value drift in future versions. One storage write
+  per fresh install, ever. (`src/storage/settings-store.ts`)
+- **`unhandledrejection` listener now ties to `ctx.signal`.** Without
+  it, dev HMR rebuilds accumulated one filter per reload. (`src/entrypoints/content.ts`)
+- **`clamp()` rounding comment now matches the code.** Comment claimed
+  1-decimal rounding while the implementation rounded to 0.01 — the
+  0.01 behaviour is correct (configurable speed step), only the
+  comment was misleading. (`src/speed/controller.ts`)
+- **RuTube rapid-nav no longer stacks duplicate panel-removal
+  observers.** Two next-up clicks within 800 ms used to install
+  overlapping observers on the same parent; every child mutation
+  fired the callback twice for the rest of the page lifetime.
+  Idempotency brand on the parent skips re-installation. (`src/index.ts`)
+
 ## [0.3.2] — 2026-05-07
 
 ### Fixed

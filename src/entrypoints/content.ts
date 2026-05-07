@@ -26,13 +26,20 @@ export default defineContentScript({
     // but WXT internals (runtime.connect, sendMessage) and any future
     // chrome.* calls can still trip the same rejection. Filter at the
     // window level so unrelated rejections are still surfaced.
-    window.addEventListener('unhandledrejection', (event) => {
-      const reason = event.reason;
-      const msg = reason instanceof Error ? reason.message : String(reason ?? '');
-      if (/extension context (?:was )?invalidated/i.test(msg)) {
-        event.preventDefault();
-      }
-    });
+    // `signal` ties the listener's lifetime to ctx (WXT invalidates on
+    // HMR / extension reload). Without it, dev rebuilds accumulate one
+    // unhandledrejection filter per cycle.
+    window.addEventListener(
+      'unhandledrejection',
+      (event) => {
+        const reason = event.reason;
+        const msg = reason instanceof Error ? reason.message : String(reason ?? '');
+        if (/extension context (?:was )?invalidated/i.test(msg)) {
+          event.preventDefault();
+        }
+      },
+      { signal: ctx.signal },
+    );
     const { bootstrap } = await import('../index');
     await bootstrap(ctx);
   },

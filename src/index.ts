@@ -225,6 +225,9 @@ export async function bootstrap(
         }
       },
       purgeCache: async () => {
+        const confirmText = ctx.i18n.t('diag.purge_cache_confirm');
+        const ok = typeof window.confirm === 'function' ? window.confirm(confirmText) : true;
+        if (!ok) return;
         await cache.purgeAll();
         logger.info('diag: selector cache purged');
       },

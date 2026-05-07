@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.0] — 2026-05-07
+
+### Added
+- **`prefers-reduced-motion` support** in the in-player UI. When the
+  OS Reduce Motion preference is on, fades/slides/pulses are
+  instant; everything else stays.
+- **Confirmation dialog on Diagnostics → "Очистить кеш"** matches
+  the full-reset gate.
+- **`aria-live="polite"`** on the diagnostic status block for
+  screen-reader announcements.
+
+### Changed
+- Worker (separate deploy): IP addresses are hashed (HMAC-SHA256)
+  before storage in KV and are no longer included in the Telegram
+  message.
+
 ## [0.2.9] — 2026-05-07
 
 ### Fixed

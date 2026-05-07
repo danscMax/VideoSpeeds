@@ -1547,4 +1547,18 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
     display: block !important;
   }
 }
+
+/* Honour the user's OS-level "reduce motion" preference. Strips
+   animations and transitions inside our scoped UI roots only — the
+   active accent gradient, slider fill etc. stay; only fades/slides/
+   pulses go. */
+@media (prefers-reduced-motion: reduce) {
+  .vs-panel *, .vs-panel,
+  .settings-menu *, .settings-menu {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 `;

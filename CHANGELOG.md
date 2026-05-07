@@ -5,6 +5,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.4] — 2026-05-07
+
+### Accessibility & Usability (UI/UX audit pass)
+
+Same five-expert audit pass as the HDRezka sibling. 13 findings closed
+in this release; three (fullscreen reparent, pinned-speed indicator,
+preset-pool grouping) ship in 0.3.5.
+
+### Added
+- **YouTube default preset row now includes 1×** so a user who
+  fast-forwarded can return to normal speed in a single click. Earlier
+  set was `[1.5..3.5]` inheriting userscript fast-forward bias —
+  audit found the missing 1× consistently confused casual users.
+  (`src/config.ts`, `src/ui/buttons.ts`)
+- **Brand marker** (`vs-brand`) — a tiny accent-coloured chevron at
+  the leading edge of the panel so users can tell at a glance that
+  this is our extension rather than native host UI. Host-theme
+  mirroring stays intact; this is only an identity cue. (`src/ui/panel.ts`)
+- **Hotkey hint in onboarding** — the welcome page's first annotation
+  now mentions `Alt+Shift+↑/↓` alongside click + double-click.
+
+### Changed
+- **Slider value is now visible at rest** (`opacity: 0.92` instead of
+  `0`). Earlier the floating tooltip only appeared on hover / drag.
+- **Active settings tab** reads with bold + underline + colour for
+  stronger non-colour cue.
+- **`vs-help-text` opacity** lifted from 0.7 to 0.85 with better
+  line-height, so the "Pick which speeds appear on the in-player
+  panel" subtitle is actually readable.
+- **Pill-button row** gets a subtle backdrop so it reads as a
+  coherent group on host backgrounds.
+- **Contrast tokens bumped** for both themes; section captions get
+  bold-600 for readability at 10px.
+
+### Fixed
+- **Diagnostics gear icon now has `aria-label` and `aria-haspopup`**.
+- **"Закрепить навсегда" wording softened** to "сделать скоростью по
+  умолчанию для новых видео" in onboarding.
+
 ## [0.3.3] — 2026-05-07
 
 ### Fixed

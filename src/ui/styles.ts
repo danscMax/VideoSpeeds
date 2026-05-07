@@ -206,8 +206,8 @@ html[data-vs-theme="dark"] {
   --vs-button-text: rgba(255, 255, 255, 0.95);
   --vs-bg-track: rgba(255, 255, 255, 0.22);
   --vs-text-primary: rgba(255, 255, 255, 0.95);
-  --vs-text-secondary: rgba(255, 255, 255, 0.65);
-  --vs-text-dim: rgba(255, 255, 255, 0.45);
+  --vs-text-secondary: rgba(255, 255, 255, 0.72);
+  --vs-text-dim: rgba(255, 255, 255, 0.60);
   --vs-border: rgba(255, 255, 255, 0.08);
   /* Default accent palette (YouTube-red). Overridden by per-site rules
      below — both at .vs-panel scope (in-player) and at html scope
@@ -247,8 +247,8 @@ html[data-vs-theme="light"] {
   --vs-button-text: rgba(15, 15, 15, 0.88);
   --vs-bg-track: rgba(0, 0, 0, 0.15);
   --vs-text-primary: rgba(15, 15, 15, 0.92);
-  --vs-text-secondary: rgba(15, 15, 15, 0.55);
-  --vs-text-dim: rgba(15, 15, 15, 0.40);
+  --vs-text-secondary: rgba(15, 15, 15, 0.66);
+  --vs-text-dim: rgba(15, 15, 15, 0.55);
   --vs-border: rgba(0, 0, 0, 0.10);
   --vs-accent: #ff0000;
   /* Settings-menu scoped tokens — light translucent surface, dark text. */
@@ -456,12 +456,37 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
 /* Speed-button row: pill buttons. min-width keeps every label centred
    even when the text varies (1x vs 1.25x); height fixed so the row is
    visually stable. Ported from .user.js:.speed-button. */
+.vs-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  opacity: 0.5;
+  color: var(--vs-accent, currentColor);
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+  cursor: default;
+  pointer-events: auto;
+}
+.vs-brand:hover { opacity: 0.85; }
 .speed-buttons-row {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
   flex-shrink: 0;
+  /* Subtle surface so the pill row reads as a unit rather than as
+     pills "floating in the air" on host backgrounds (audit MAJ-13). */
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 18px;
+  padding: 4px 6px;
+}
+html[data-vs-theme="light"] .speed-buttons-row {
+  background: rgba(255, 255, 255, 0.55);
 }
 .speed-button {
   position: relative;
@@ -607,25 +632,25 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
   flex-shrink: 0;
 }
 
-/* Floating tooltip above the slider thumb. Opacity 0 by default; reveals
-   on container :hover and while the thumb is :active. Slides
-   horizontally via inline style.left set by updateSliderFill (in
-   slider.ts). Mirrors .user.js:3713-3748 .speed-value. */
+/* Floating tooltip above the slider thumb. Now ALWAYS visible (audit
+   CRIT-2: at rest the user couldn't read the slider's current value).
+   Reveals at full scale + opacity on container :hover and while the
+   thumb is :active. */
 .speed-value {
   position: absolute;
   bottom: 32px;
   background: rgba(28, 28, 28, 0.92);
   color: #fff;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.92;
   transition: opacity 0.2s ease, left 0.1s ease, transform 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  transform: translateX(-50%) scale(0.9);
+  transform: translateX(-50%) scale(0.92);
   font-variant-numeric: tabular-nums;
 }
 .speed-value::after {
@@ -929,6 +954,11 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-tab:hover { opacity: 0.85; }
 .vs-tab[aria-selected="true"] {
   opacity: 1;
+  /* Bold-weight + accent underline. Earlier the only signal was the
+     1px accent underline + opacity diff — not a strong enough non-
+     colour cue (audit MAJ-8). Bold makes the active tab readable
+     even in deuteranopia simulation. */
+  font-weight: 700;
   border-bottom: 2px solid var(--vs-accent, #ff0000);
 }
 .vs-tab[aria-selected="true"] svg { color: var(--vs-accent, #ff0000); }
@@ -959,10 +989,13 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-section + .vs-section { margin-top: 18px; }
 .vs-section-label {
   font-size: 10px;
-  opacity: 0.7;
+  /* Bumped from 0.7 to 0.85 for WCAG AA compliance on small uppercase
+     text — at 10px we need >=4.5:1 since it's not "large text". */
+  opacity: 0.85;
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 /* Segmented control: pill row inside a translucent track. Active option
@@ -1153,7 +1186,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 .vs-toggle input:checked + .vs-toggle-track { background: var(--vs-toggle-on, #cc0000); }
 .vs-toggle input:checked ~ .vs-toggle-thumb { left: 16px; }
 
-.vs-help-text { font-size: 12px; opacity: 0.7; margin: 8px 0; }
+.vs-help-text { font-size: 12px; opacity: 0.85; margin: 6px 0 12px; line-height: 1.4; }
 
 .vs-hotkey-block {
   padding: 8px 0;

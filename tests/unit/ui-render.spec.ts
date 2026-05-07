@@ -43,14 +43,17 @@ describe('renderButtonsRow', () => {
     expect(active?.textContent).toBe('2x');
   });
 
-  it('exports per-site presets matching the original userscript', () => {
-    // YouTube: 1.5–3.5 / 0.25 step (no 1× by design — fast-forward focus,
-    // userscript .user.js:4007 parity).
+  it('exports per-site presets including 1× as the reset anchor', () => {
+    // YouTube: 1× through 3.25× / 0.25 step. v0.3.4 audit added 1× to
+    // the default set so a user who fast-forwarded can return to
+    // normal in a single click (was [1.5..3.5] inheriting userscript
+    // bias).
+    expect(DEFAULT_PRESETS.youtube).toContain(1);
     expect(DEFAULT_PRESETS.youtube).toContain(1.5);
     expect(DEFAULT_PRESETS.youtube).toContain(2);
-    expect(DEFAULT_PRESETS.youtube).toContain(3.5);
-    expect(DEFAULT_PRESETS.youtube?.every((s) => s >= 1.5 && s <= 3.5)).toBe(true);
-    // RuTube: 1–3 / 0.25 step.
+    expect(DEFAULT_PRESETS.youtube).toContain(3.25);
+    expect(DEFAULT_PRESETS.youtube?.every((s) => s >= 1 && s <= 3.25)).toBe(true);
+    // RuTube: 1–3 / 0.25 step (unchanged).
     expect(DEFAULT_PRESETS.rutube).toContain(1);
     expect(DEFAULT_PRESETS.rutube).toContain(3);
     expect(DEFAULT_PRESETS.rutube?.every((s) => s >= 1 && s <= 3)).toBe(true);

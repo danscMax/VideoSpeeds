@@ -60,15 +60,17 @@ export const SPEED_POOL: readonly number[] = [
  * Default visible speed buttons per site. Used as the initial value of
  * `Settings.speedPresets` for fresh installs.
  *
- * Tuned identically to the previous DEFAULT_PRESETS in buttons.ts:
- *   - YouTube: 1.5–3.5 / 0.25 step (no 1× by design — fast-forward focus,
- *     userscript .user.js:4007 parity).
+ *   - YouTube: includes 1× as the first preset so a user who has
+ *     fast-forwarded a video can return to normal in a single click.
+ *     Earlier 1.5–3.5 set inherited "fast-forward focus" intent from
+ *     the userscript (.user.js:4007); v0.3.4 audit found casual users
+ *     consistently confused by the missing 1×.
  *   - RuTube: 1–3 / 0.25 step (full range, RuTube's own player has no
  *     fine-grained speed control).
  */
 const DEFAULT_PRESETS: Record<Site, readonly number[]> = {
-  youtube: [1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5],
-  rutube:  [1,   1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+  youtube: [1, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25],
+  rutube:  [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
 };
 
 export function defaultPresetsFor(site: Site): readonly number[] {

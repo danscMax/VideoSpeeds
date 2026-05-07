@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.1] — 2026-05-07
+
+### Added
+- **`role="status"` + `aria-live="polite"` on the speed value**, so
+  screen readers announce the new playback rate when it changes via
+  hotkey or a preset button click. The native `<input type=range>`
+  only announces while focused; the live region covers the
+  not-focused paths.
+
 ## [0.3.0] — 2026-05-07
 
 ### Added

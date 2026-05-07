@@ -154,7 +154,11 @@ export async function bootstrap(
 
   // 4. Cross-cutting.
   const meter = createRatechangeMeter();
-  const lang = settingsStore.getKey('language');
+  // `lang` is mutable so the settings subscriber below can compare against
+  // the LAST observed value, not the bootstrap-time value. With const, a
+  // round-trip EN → RU → EN silently failed to switch back because the
+  // baseline `lang` never updated.
+  let lang = settingsStore.getKey('language');
   const i18n: Translator = createTranslator(lang);
 
   // 5. Stubs for the chicken-and-egg with UiPort + DiagnosticsPort.
@@ -257,6 +261,7 @@ export async function bootstrap(
   // Re-create translator on language change.
   const offSettingsSub = settingsStore.subscribe((next) => {
     if (next.language !== lang) {
+      lang = next.language;
       ctx.i18n = createTranslator(next.language);
     }
   });
@@ -808,8 +813,11 @@ function attachToVideo(
       ctx.ui.refreshSlider(next);
       ctx.logger.info(`ratechange-sync(yt-external): UI -> ${next} (saved current preserved at ${target})`);
     } else {
-      // Site is reverting; counter-revert after a microtask.
-      setTimeout(() => apply('ratechange-revert'), 50);
+      // Site is reverting; counter-revert after a microtask. Routed
+      // through the per-attach cleanup registry so an SPA navigation that
+      // disposes the attach also kills any in-flight revert before it
+      // can fire on the next page's video element.
+      cleanup.setTimeout(() => apply('ratechange-revert'), 50);
     }
   });
 

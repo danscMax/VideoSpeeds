@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.2] — 2026-05-07
+
+### Fixed
+- **YouTube fresh-install no longer plays the first video at 2.75×.**
+  `SPEED_BOUNDS.youtube.defaultSpeed` was 2.75 — almost certainly a
+  leftover test value, never deliberate. Lowered to 1.0, matching the
+  site's own default. Also affects "Diagnostics → Full Reset" on
+  YouTube. RuTube's 1.5× default is unchanged. (`src/config.ts`)
+- **HealthChecker watchdog now actually watches.** Earlier behaviour
+  ran exactly one check 5 s after bootstrap; if the page was healthy
+  at that moment, polling never started and any later degradation
+  (HLS revert storm, RuTube React swapping the player column, YouTube
+  theatre-mode layout flip) went undetected. The gear's red warning
+  dot now lights up whenever the page actually breaks. (`src/health/checker.ts`)
+- **Ratechange-revert timer escaped the per-attach cleanup registry.**
+  The 50 ms counter-revert used a raw `setTimeout`; on SPA navigation
+  the disposed timer could still fire and write the previous video's
+  rate onto the freshly-attached one. Now routed through
+  `cleanup.setTimeout` so it dies with its attach. (`src/index.ts`)
+- **Language toggle round-trip silently failed.** Switching `EN → RU
+  → EN` left the UI stuck in Russian because the subscriber compared
+  against the bootstrap-time language, never updating. Each fired
+  comparison now updates the tracking variable. (`src/index.ts`)
+
 ## [0.3.1] — 2026-05-07
 
 ### Added

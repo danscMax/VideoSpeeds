@@ -32,9 +32,14 @@ export interface SpeedBounds {
 // happily play HTML5 video at rates well above 4x, but slider drag past
 // the default range gets coarser — power users wanting 5x-10x usually
 // type the value rather than scrub for it.
+// `defaultSpeed` is what a fresh-installed user lands on (and what
+// "Diagnostics → Full Reset" rewinds to). YouTube's 1.0 matches the
+// site's own default and avoids startling new users with mid-fast
+// playback they didn't ask for. RuTube keeps its long-standing 1.5 —
+// most RuTube content is bloggers/talks where the bias is welcome.
 const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
-  youtube: { min: 0.75, max: 10.0, defaultSpeed: 2.75 },
-  rutube:  { min: 1.0,  max: 10.0, defaultSpeed: 1.5  },
+  youtube: { min: 0.75, max: 10.0, defaultSpeed: 1.0 },
+  rutube:  { min: 1.0,  max: 10.0, defaultSpeed: 1.5 },
 };
 
 export function speedBoundsFor(site: Site): SpeedBounds {

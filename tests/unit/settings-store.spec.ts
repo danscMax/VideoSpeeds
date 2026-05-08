@@ -13,12 +13,18 @@ describe('SettingsStore', () => {
       const s = store.get();
       expect(s.sliderPosition).toBe('right');
       expect(s.rememberSpeed).toBe(true);
-      // Defaults: Alt+Shift+ArrowUp/Down (0.2.8 moved off Ctrl+C/V to
-      // avoid the copy-paste collision) plus Insert second slot.
+      // Defaults: Alt+Period / Alt+Comma (i.e. Alt+. and Alt+,) — v0.3.5
+      // shifted from Alt+Shift+Arrow to escape the Ru/En layout-switcher
+      // collision and adopt the >/< video-player convention. Insert keys
+      // remain as a secondary slot.
       expect(s.hotkeys.speedUp).toHaveLength(2);
-      expect(s.hotkeys.speedUp[0]?.key).toBe('ArrowUp');
+      expect(s.hotkeys.speedUp[0]?.key).toBe('Period');
+      expect(s.hotkeys.speedUp[0]?.alt).toBe(true);
+      expect(s.hotkeys.speedUp[0]?.shift).toBe(false);
       expect(s.hotkeys.speedUp[1]?.key).toBe('Insert');
-      expect(s.hotkeys.speedDown[0]?.key).toBe('ArrowDown');
+      expect(s.hotkeys.speedDown[0]?.key).toBe('Comma');
+      expect(s.hotkeys.speedDown[0]?.alt).toBe(true);
+      expect(s.hotkeys.speedDown[0]?.shift).toBe(false);
       expect(s.hotkeys.speedDown[1]?.key).toBe('Insert');
     });
 

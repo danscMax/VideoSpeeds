@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.5] — 2026-05-08
+
+Closes the three remaining items from the v0.3.4 audit pass plus a
+maintainer-flagged design issue: the hardcoded version label in the
+settings header forced a screenshot rebuild on every release.
+
+### Added
+- **Pinned-speed indicator on preset buttons.** When `rememberSpeed`
+  is on, the button matching the saved/default speed gains a tiny
+  accent dot in the top-right corner. Active state ("currently
+  playing") and pinned state ("default for new videos") are now
+  visually distinct.
+- **Speed-preset chips grouped by range** in Settings → "Кнопки
+  скорости". Three subheaders ("Медленнее 1×", "1× – 2×",
+  "Быстрее 2×"). The flat 14-18 pill wall is now scannable.
+- **Panel auto-reparents into `fullscreenElement`** when entering
+  fullscreen with `sliderPosition='right'` or `'bottom'`. The panel
+  no longer disappears in fullscreen on YouTube / RuTube.
+
+### Changed
+- **Default hotkeys reset to `Alt+Period` / `Alt+Comma`** (a.k.a.
+  `Alt+.` / `Alt+,`). The old `Alt+Shift+ArrowUp/Down` collided with
+  the Windows Ru/En layout switcher and was a 3-key chord. **Existing
+  users keep their hotkeys** — the change applies only to fresh
+  installs and Diagnostics → Full Reset.
+- **Version label removed from the settings header.** Earlier it
+  forced re-rendering store-listing screenshots on every release.
+  Version stays in the diagnostic report.
+
 ## [0.3.4] — 2026-05-07
 
 ### Accessibility & Usability (UI/UX audit pass)

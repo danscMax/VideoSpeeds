@@ -467,11 +467,42 @@ export async function bootstrap(
   );
 
   // 12c. Re-integrate the slider into player chrome on fullscreen
-  //      transitions (audit B4.2). When YouTube swaps its chrome layout
-  //      between fullscreen and inline, our injected slider gets
-  //      detached. Mirror .user.js:2600-2616 — re-run applyLayout after
-  //      a 500ms grace so the new chrome has finished mounting.
+  //      transitions (audit B4.2), AND reparent the entire panel root
+  //      into the fullscreenElement when it lives outside the player
+  //      wrapper.
+  //
+  //      Browser fullscreen renders ONLY the fullscreenElement's
+  //      subtree. With sliderPosition='right' or 'bottom', the panel
+  //      lives next-to / below the player wrapper, so it disappears
+  //      from view in fullscreen unless we move it in (v0.3.5 audit
+  //      MAJ-9).
+  let panelOrigParent: Element | null = null;
+  let panelOrigNext: Node | null = null;
   ctx.cleanup.addEventListener(document, 'fullscreenchange', () => {
+    const fs = document.fullscreenElement;
+    const panelEl = panel.element;
+
+    if (fs && !fs.contains(panelEl)) {
+      if (panelEl.parentElement) {
+        panelOrigParent = panelEl.parentElement;
+        panelOrigNext = panelEl.nextSibling;
+      }
+      try { fs.appendChild(panelEl); }
+      catch (e) { ctx.logger.warn('fullscreen: panel reparent failed', e); }
+    } else if (!fs && panelOrigParent) {
+      try {
+        if (panelOrigNext && panelOrigNext.parentNode === panelOrigParent) {
+          panelOrigParent.insertBefore(panelEl, panelOrigNext);
+        } else {
+          panelOrigParent.appendChild(panelEl);
+        }
+      } catch (e) {
+        ctx.logger.warn('fullscreen: panel restore failed', e);
+      }
+      panelOrigParent = null;
+      panelOrigNext = null;
+    }
+
     if (ctx.settingsStore.getKey('sliderPosition') === 'video') {
       ctx.cleanup.setTimeout(() => panel.applyLayout(), 500);
     }

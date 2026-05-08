@@ -138,31 +138,49 @@ describe('DiscoveryEngine.resolve', () => {
       small.src = 'blob:s';
       small.muted = true;
       small.loop = true;
-      vi.spyOn(small, 'getBoundingClientRect').mockReturnValue({
-        width: 200,
-        height: 113,
-        top: 0,
-        left: 0,
-        right: 200,
-        bottom: 113,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      } as DOMRect);
+      // happy-dom 20 no longer mirrors `.src` into `.currentSrc` automatically
+      // — the engine's heuristic ready-check (readyState >= 1 || !!currentSrc)
+      // would skip both videos. Define currentSrc explicitly so the heuristic
+      // sees a "ready" element to score.
+      Object.defineProperty(small, 'currentSrc', { value: 'blob:s', configurable: true });
+      // Use Object.defineProperty rather than vi.spyOn — happy-dom 20 + Vitest 4
+      // have a behavior shift where prototype-method spies don't intercept calls
+      // routed through the underlying impl. Explicit per-instance override is
+      // robust across versions.
+      Object.defineProperty(small, 'getBoundingClientRect', {
+        value: () =>
+          ({
+            width: 200,
+            height: 113,
+            top: 0,
+            left: 0,
+            right: 200,
+            bottom: 113,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect,
+        configurable: true,
+      });
 
       const big = document.createElement('video');
       big.src = 'blob:b';
-      vi.spyOn(big, 'getBoundingClientRect').mockReturnValue({
-        width: 1280,
-        height: 720,
-        top: 0,
-        left: 0,
-        right: 1280,
-        bottom: 720,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      } as DOMRect);
+      Object.defineProperty(big, 'currentSrc', { value: 'blob:b', configurable: true });
+      Object.defineProperty(big, 'getBoundingClientRect', {
+        value: () =>
+          ({
+            width: 1280,
+            height: 720,
+            top: 0,
+            left: 0,
+            right: 1280,
+            bottom: 720,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect,
+        configurable: true,
+      });
 
       const wrapSmall = document.createElement('aside');
       wrapSmall.appendChild(small);

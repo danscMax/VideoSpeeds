@@ -19,28 +19,37 @@ YouTube and RuTube.
 
 WHAT IT DOES
 
-- 9 preset speed buttons on YouTube (1x, 1.25x, 1.5x, 1.75x, 2x, 2.5x,
-  3x, 3.5x, 4x) and 7 on RuTube (1x through 3x), positioned right below
-  the video.
-- Slider for in-between values, with a coloured fill that tracks the
-  current speed.
+- 9 preset speed buttons on YouTube (1x, 1.5x, 1.75x, 2x, 2.25x, 2.5x,
+  2.75x, 3x, 3.25x) and 9 on RuTube (1x through 3x in 0.25 steps),
+  positioned right below the video. The 1x preset is included by
+  default so a fast-forwarded video can return to normal in a single
+  click.
+- Slider for in-between values, with a coloured fill and a value
+  tooltip that follows the thumb so you always see the exact rate.
 - Single-click on a button = temporary speed for this video only.
-  Double-click = save as the default for that site.
-- Configurable hotkeys (default Ctrl+C +0.1 / Ctrl+V -0.1) -- assign
-  multiple combinations per action so a remote and a keyboard can both
-  trigger speed changes.
-- In-player gear menu with three tabs:
+  Double-click = save as the default for new videos. The saved speed
+  is marked with a small accent dot in the corner of its button.
+- Configurable hotkeys (default Alt+Period / Alt+Comma — i.e. Alt+. /
+  Alt+,) — assign multiple combinations per action so a remote and a
+  keyboard can both trigger speed changes.
+- In-player gear menu with four tabs:
   - General: slider position (right / below / inside player), language
-    switch (English / Russian), behavior toggles, advanced auto-recover
-    and self-diagnostics switches.
+    switch (English / Russian), preset chips grouped by range
+    (slower than 1×, 1×–2×, faster than 2×), behaviour toggles.
   - Shortcuts: rebind speed-up / speed-down, add additional combos,
     reset to defaults.
   - Diagnostics: copy a structured report for bug submissions; clear
     cached selectors if a site update breaks the panel.
+  - Support: feedback form (sends to the developer's Telegram via a
+    Cloudflare Worker — no third-party analytics).
 - Toolbar popup mirrors the in-player menu so you can adjust settings
   without opening a video.
 - RuTube-only quality-of-life toggles: hide the overlay player title,
   hide Premium subscription banners.
+- Accessibility: aria-labels on the gear button, aria-live status
+  announcements for diagnostic state and speed changes,
+  prefers-reduced-motion support. Survives fullscreen playback (panel
+  re-parents into the fullscreen element so it stays visible).
 
 WHY IT'S RELIABLE
 
@@ -120,5 +129,13 @@ Re-generate any time with: `node tests/store-screenshots/render.mjs`
 
 ## Privacy policy URL (CWS + AMO require this)
 
-Host `PRIVACY.md` on GitHub Pages: `https://<author>.github.io/video-speeds/PRIVACY.html`
-(or use a Markdown -> HTML conversion via `marked`).
+`https://github.com/danscMax/VideoSpeeds/blob/main/PRIVACY.md`
+(GitHub renders the Markdown directly — no Pages setup needed.)
+
+## Files to upload
+
+| Store | File |
+|---|---|
+| Chrome Web Store | `.output/video-speeds-0.3.5-chrome.zip` |
+| Firefox AMO (extension) | `.output/video-speeds-0.3.5-firefox.zip` |
+| Firefox AMO (sources) | `.output/video-speeds-0.3.5-sources.zip` |

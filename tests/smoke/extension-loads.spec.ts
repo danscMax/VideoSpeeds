@@ -1,8 +1,8 @@
-import { test, expect, chromium } from '@playwright/test';
-import { mkdtempSync, existsSync, cpSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium, expect, test } from '@playwright/test';
 
 // ESM context — derive __dirname manually (package.json has "type": "module").
 const __dirname = dirname(fileURLToPath(import.meta.url));

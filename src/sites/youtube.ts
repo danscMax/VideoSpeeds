@@ -20,11 +20,17 @@ export function bootstrapYouTubeSite(ctx: AppContext): YouTubeSiteHandle {
   ctx.cleanup.addEventListener(window, 'yt-navigate-finish', () => {
     ctx.logger.debug('site:youtube yt-navigate-finish');
     for (const fn of subscribers) {
-      try { fn(); } catch (e) { ctx.logger.error('site:youtube nav handler', e); }
+      try {
+        fn();
+      } catch (e) {
+        ctx.logger.error('site:youtube nav handler', e);
+      }
     }
   });
 
   return {
-    onNavigation(fn) { subscribers.add(fn); },
+    onNavigation(fn) {
+      subscribers.add(fn);
+    },
   };
 }

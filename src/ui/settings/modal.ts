@@ -13,13 +13,13 @@
  * Ported from .user.js:4134-4311.
  */
 
-import { vsIcon } from '../icons';
-import { h, fragment, type HChild } from '../dom-h';
-import { generateHotkeyBlock } from './hotkey-block';
-import { renderDonateSection } from './donate-section';
+import type { Site, Translator } from '../../app/ports';
 import { SPEED_POOL, speedBoundsFor } from '../../config';
 import type { Settings } from '../../storage/types';
-import type { Site, Translator } from '../../app/ports';
+import { fragment, type HChild, h } from '../dom-h';
+import { vsIcon } from '../icons';
+import { renderDonateSection } from './donate-section';
+import { generateHotkeyBlock } from './hotkey-block';
 
 /**
  * Resolve a URL inside the extension package. Prefers chrome.runtime
@@ -27,9 +27,12 @@ import type { Site, Translator } from '../../app/ports';
  * where neither chrome nor browser globals exist.
  */
 function extensionUrl(path: string): string {
-  const c = (globalThis as unknown as { chrome?: { runtime?: { getURL?: (p: string) => string } } }).chrome;
+  const c = (globalThis as unknown as { chrome?: { runtime?: { getURL?: (p: string) => string } } })
+    .chrome;
   if (c?.runtime?.getURL) return c.runtime.getURL(path);
-  const b = (globalThis as unknown as { browser?: { runtime?: { getURL?: (p: string) => string } } }).browser;
+  const b = (
+    globalThis as unknown as { browser?: { runtime?: { getURL?: (p: string) => string } } }
+  ).browser;
   if (b?.runtime?.getURL) return b.runtime.getURL(path);
   return path;
 }
@@ -118,14 +121,22 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
         t('general.pos.right'),
       ),
       vsSegmentedOption(
-        { 'data-vs-pos': 'bottom', 'aria-pressed': sel('bottom'), title: t('general.pos.bottom.tip') },
+        {
+          'data-vs-pos': 'bottom',
+          'aria-pressed': sel('bottom'),
+          title: t('general.pos.bottom.tip'),
+        },
         vsIcon('panel-bottom', 13),
         ' ',
         t('general.pos.bottom'),
       ),
       isYouTube
         ? vsSegmentedOption(
-            { 'data-vs-pos': 'video', 'aria-pressed': sel('video'), title: t('general.pos.video.tip') },
+            {
+              'data-vs-pos': 'video',
+              'aria-pressed': sel('video'),
+              title: t('general.pos.video.tip'),
+            },
             vsIcon('tv', 13),
             ' ',
             t('general.pos.video'),
@@ -146,9 +157,9 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
   // ranges with subheaders. Casual users were overwhelmed by the wall;
   // grouping by speed range makes the choice scannable.
   const groups: { label: string; filter: (s: number) => boolean }[] = [
-    { label: t('general.speed_presets.group.below'),  filter: (s) => s < 1 },
+    { label: t('general.speed_presets.group.below'), filter: (s) => s < 1 },
     { label: t('general.speed_presets.group.normal'), filter: (s) => s >= 1 && s <= 2 },
-    { label: t('general.speed_presets.group.above'),  filter: (s) => s > 2 },
+    { label: t('general.speed_presets.group.above'), filter: (s) => s > 2 },
   ];
   const renderPill = (s: number): HTMLElement =>
     h(
@@ -243,24 +254,18 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
 
   const behaviorSection = vsSection(
     t('behavior.section'),
-    vsRow(
-      t('behavior.remember'),
-      vsToggle('remember-speed', !!settings.rememberSpeed),
-      { title: t('behavior.remember.tip') },
-    ),
+    vsRow(t('behavior.remember'), vsToggle('remember-speed', !!settings.rememberSpeed), {
+      title: t('behavior.remember.tip'),
+    }),
     isRutube
-      ? vsRow(
-          t('behavior.hide_title'),
-          vsToggle('hide-player-title', !!settings.hidePlayerTitle),
-          { title: t('behavior.hide_title.tip') },
-        )
+      ? vsRow(t('behavior.hide_title'), vsToggle('hide-player-title', !!settings.hidePlayerTitle), {
+          title: t('behavior.hide_title.tip'),
+        })
       : null,
     isRutube
-      ? vsRow(
-          t('behavior.hide_premium'),
-          vsToggle('hide-premium', !!settings.hidePremium),
-          { title: t('behavior.hide_premium.tip') },
-        )
+      ? vsRow(t('behavior.hide_premium'), vsToggle('hide-premium', !!settings.hidePremium), {
+          title: t('behavior.hide_premium.tip'),
+        })
       : null,
   );
 
@@ -319,7 +324,7 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
  *  to a shared helper would cross the storage/ui boundary needlessly. */
 function formatPresetLabel(s: number): string {
   if (Number.isInteger(s)) return `${s}x`;
-  return s.toFixed(2).replace(/0+$/, '').replace(/\.$/, '') + 'x';
+  return `${s.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}x`;
 }
 
 function hotkeysTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
@@ -333,7 +338,13 @@ function hotkeysTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
       'aria-hidden': hidden ? 'true' : 'false',
     },
     h('p', { class: 'vs-help-text' }, t('hotkeys.help')),
-    generateHotkeyBlock('speedUp', settings.hotkeys.speedUp, t('hotkeys.speedup_label'), 'chevron-up', i18n),
+    generateHotkeyBlock(
+      'speedUp',
+      settings.hotkeys.speedUp,
+      t('hotkeys.speedup_label'),
+      'chevron-up',
+      i18n,
+    ),
     generateHotkeyBlock(
       'speedDown',
       settings.hotkeys.speedDown,
@@ -454,12 +465,7 @@ function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
         ),
       ),
     ),
-    h(
-      'div',
-      { class: 'vs-privacy-hint' },
-      vsIcon('lock', 11),
-      h('span', {}, t('diag.privacy')),
-    ),
+    h('div', { class: 'vs-privacy-hint' }, vsIcon('lock', 11), h('span', {}, t('diag.privacy'))),
   );
 }
 
@@ -505,13 +511,7 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
   const header = h(
     'div',
     { class: 'vs-menu-header' },
-    h(
-      'div',
-      { class: 'vs-menu-title' },
-      vsIcon('settings', 14),
-      ' ',
-      t('menu.title'),
-    ),
+    h('div', { class: 'vs-menu-title' }, vsIcon('settings', 14), ' ', t('menu.title')),
     helpLink,
   );
   void scriptVersion;

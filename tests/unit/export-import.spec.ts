@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildExportEnvelope,
-  importSettingsFromText,
-} from '../../src/ui/settings/export-import';
+import { buildExportEnvelope, importSettingsFromText } from '../../src/ui/settings/export-import';
 import { createMockContext } from '../helpers/mock-context';
 
 describe('buildExportEnvelope', () => {
@@ -39,10 +36,7 @@ describe('importSettingsFromText', () => {
 
   it('accepts a bare settings object (legacy userscript export)', async () => {
     const { ctx, settingsStore } = await createMockContext({ site: 'youtube' });
-    const result = await importSettingsFromText(
-      ctx,
-      JSON.stringify({ sliderPosition: 'bottom' }),
-    );
+    const result = await importSettingsFromText(ctx, JSON.stringify({ sliderPosition: 'bottom' }));
     expect(result.ok).toBe(true);
     expect(settingsStore.getKey('sliderPosition')).toBe('bottom');
   });
@@ -67,14 +61,14 @@ describe('importSettingsFromText', () => {
     const json = JSON.stringify({
       sliderPosition: 'INVALID',
       rememberSpeed: 'yes',
-      hidePremium: true,    // valid -- should land
+      hidePremium: true, // valid -- should land
     });
     const result = await importSettingsFromText(ctx, json);
     expect(result.ok).toBe(true);
     // Invalid fields dropped, valid ones preserved.
-    expect(settingsStore.getKey('sliderPosition')).toBe('right');  // default
-    expect(settingsStore.getKey('rememberSpeed')).toBe(true);      // default
-    expect(settingsStore.getKey('hidePremium')).toBe(true);        // imported
+    expect(settingsStore.getKey('sliderPosition')).toBe('right'); // default
+    expect(settingsStore.getKey('rememberSpeed')).toBe(true); // default
+    expect(settingsStore.getKey('hidePremium')).toBe(true); // imported
   });
 
   it('strips __migrated_from_tm from imports (audit M13)', async () => {

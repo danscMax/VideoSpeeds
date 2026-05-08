@@ -20,10 +20,10 @@ import type {
   Translator,
   UiPort,
 } from '../../src/app/ports';
+import { createTranslator } from '../../src/i18n/translator';
 import { createMemoryStorageAdapter, type StorageAdapter } from '../../src/storage/adapter';
 import { createSettingsStore, type SettingsStoreImpl } from '../../src/storage/settings-store';
 import { createSpeedStore, type SpeedStoreImpl } from '../../src/storage/speed-store';
-import { createTranslator } from '../../src/i18n/translator';
 
 export interface MockUi extends UiPort {
   refreshButtons: ReturnType<typeof vi.fn>;
@@ -57,7 +57,7 @@ export function createMockDiscovery(initial?: { video?: Element | null }): MockD
 
 export function createMockDiagnostics(): DiagnosticsPort {
   return {
-    report: vi.fn(() => ({} as DiagnosticReport)),
+    report: vi.fn(() => ({}) as DiagnosticReport),
     isHealthy: vi.fn(() => true),
     killSwitchEngaged: vi.fn(() => false),
     trip: vi.fn(),

@@ -6,8 +6,15 @@ beforeEach(() => {
   // happy-dom returns 0/0 for getBoundingClientRect on detached and even
   // attached elements; stub a positive geometry for elements that need it.
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
-    width: 800, height: 450, top: 0, left: 0, right: 800, bottom: 450,
-    x: 0, y: 0, toJSON: () => ({}),
+    width: 800,
+    height: 450,
+    top: 0,
+    left: 0,
+    right: 800,
+    bottom: 450,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
   } as DOMRect);
 });
 
@@ -34,8 +41,15 @@ describe('Validators.video', () => {
     v.src = 'blob:fake';
     document.body.appendChild(v);
     vi.spyOn(v, 'getBoundingClientRect').mockReturnValue({
-      width: 50, height: 30, top: 0, left: 0, right: 50, bottom: 30,
-      x: 0, y: 0, toJSON: () => ({}),
+      width: 50,
+      height: 30,
+      top: 0,
+      left: 0,
+      right: 50,
+      bottom: 30,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
     } as DOMRect);
     expect(Validators.video(v).ok).toBe(false);
   });
@@ -44,8 +58,15 @@ describe('Validators.video', () => {
     const v = document.createElement('video');
     document.body.appendChild(v);
     vi.spyOn(v, 'getBoundingClientRect').mockReturnValue({
-      width: 50, height: 30, top: 0, left: 0, right: 50, bottom: 30,
-      x: 0, y: 0, toJSON: () => ({}),
+      width: 50,
+      height: 30,
+      top: 0,
+      left: 0,
+      right: 50,
+      bottom: 30,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
     } as DOMRect);
     expect(Validators.video(v).ok).toBe(true);
   });
@@ -57,8 +78,15 @@ describe('Validators.video', () => {
     v.loop = true;
     document.body.appendChild(v);
     vi.spyOn(v, 'getBoundingClientRect').mockReturnValue({
-      width: 200, height: 110, top: 0, left: 0, right: 200, bottom: 110,
-      x: 0, y: 0, toJSON: () => ({}),
+      width: 200,
+      height: 110,
+      top: 0,
+      left: 0,
+      right: 200,
+      bottom: 110,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
     } as DOMRect);
     expect(Validators.video(v).ok).toBe(false);
   });
@@ -88,8 +116,15 @@ describe('Validators.playerContainer', () => {
     div.appendChild(document.createElement('video'));
     document.body.appendChild(div);
     vi.spyOn(div, 'getBoundingClientRect').mockReturnValue({
-      width: 100, height: 50, top: 0, left: 0, right: 100, bottom: 50,
-      x: 0, y: 0, toJSON: () => ({}),
+      width: 100,
+      height: 50,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 50,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
     } as DOMRect);
     expect(Validators.playerContainer(div).ok).toBe(false);
   });

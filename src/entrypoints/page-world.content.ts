@@ -39,8 +39,7 @@ export default defineContentScript({
   registration: 'manifest',
   main() {
     try {
-      (window as unknown as { __VS_PAGE_WORLD?: string }).__VS_PAGE_WORLD =
-        'loaded@' + Date.now();
+      (window as unknown as { __VS_PAGE_WORLD?: string }).__VS_PAGE_WORLD = `loaded@${Date.now()}`;
     } catch {
       /* readonly window -- swallow */
     }
@@ -62,7 +61,9 @@ export default defineContentScript({
           { source: SOURCE, sessionId: 'page', type, payload: { method } },
           window.location.origin,
         );
-      } catch { /* swallow */ }
+      } catch {
+        /* swallow */
+      }
     };
 
     // Primary path: Navigation API (audit C4.1). Modern Chromium ships
@@ -80,7 +81,9 @@ export default defineContentScript({
           Promise.resolve().then(() => broadcast('navigated', 'nav-api'));
         });
         console.info('[VIDEO-SPEEDS] page-world: Navigation API hook installed');
-      } catch { /* swallow — fallback to history-patch below */ }
+      } catch {
+        /* swallow — fallback to history-patch below */
+      }
     }
 
     for (const method of ['pushState', 'replaceState'] as const) {

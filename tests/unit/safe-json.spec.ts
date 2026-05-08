@@ -22,7 +22,9 @@ describe('safeJsonParse', () => {
   });
 
   it('preserves the fallback type via generic', () => {
-    interface Foo { a: number }
+    interface Foo {
+      a: number;
+    }
     const result = safeJsonParse<Foo>('not json', { a: 99 });
     expect(result.a).toBe(99);
   });

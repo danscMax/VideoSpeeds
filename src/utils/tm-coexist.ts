@@ -35,10 +35,7 @@ export const EXT_MARKER_ATTR = 'data-vs-ext-active';
 
 // CSS selectors for legacy userscript UI artifacts. Used as a fallback when
 // the marker isn't set (older userscript versions, third-party speed scripts).
-const LEGACY_TM_DOM_SELECTORS = [
-  '.speed-button',
-  '#more-speeds-container',
-].join(', ');
+const LEGACY_TM_DOM_SELECTORS = ['.speed-button', '#more-speeds-container'].join(', ');
 
 export type CoexistReason = 'tm-userscript-active' | 'extension-already-injected';
 
@@ -97,7 +94,5 @@ export function release(): void {
 export function __resetForTests(): void {
   delete document.documentElement.dataset[TM_MARKER_KEY];
   delete document.documentElement.dataset[EXT_MARKER_KEY];
-  document
-    .querySelectorAll(LEGACY_TM_DOM_SELECTORS)
-    .forEach((el) => el.remove());
+  for (const el of document.querySelectorAll(LEGACY_TM_DOM_SELECTORS)) el.remove();
 }

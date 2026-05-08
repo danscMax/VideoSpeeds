@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ICON_NAMES, vsIcon, vsFilledGearIcon } from '../../src/ui/icons';
+import { ICON_NAMES, vsFilledGearIcon, vsIcon } from '../../src/ui/icons';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { renderButtonsRow, refreshActiveButton, DEFAULT_PRESETS } from '../../src/ui/buttons';
-import { renderSlider, setSliderValue } from '../../src/ui/slider';
-import { showSpeedPopup } from '../../src/ui/popup';
-import { showNotification } from '../../src/ui/notifications';
-import { renderSettingsMenu } from '../../src/ui/settings/modal';
-import { generateHotkeyBlock } from '../../src/ui/settings/hotkey-block';
-import { injectStyles, removeStyles } from '../../src/ui/styles';
-import { defaultSettings } from '../../src/storage/types';
 import { createTranslator } from '../../src/i18n/translator';
+import { defaultSettings } from '../../src/storage/types';
+import { DEFAULT_PRESETS, refreshActiveButton, renderButtonsRow } from '../../src/ui/buttons';
+import { showNotification } from '../../src/ui/notifications';
+import { showSpeedPopup } from '../../src/ui/popup';
+import { generateHotkeyBlock } from '../../src/ui/settings/hotkey-block';
+import { renderSettingsMenu } from '../../src/ui/settings/modal';
+import { renderSlider, setSliderValue } from '../../src/ui/slider';
+import { injectStyles, removeStyles } from '../../src/ui/styles';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -183,7 +183,9 @@ describe('renderSettingsMenu', () => {
       scriptVersion: '0.1.0',
     });
     expect(host.querySelector('[data-vs-tab="diag"]')?.getAttribute('aria-selected')).toBe('true');
-    expect(host.querySelector('[data-vs-tab="general"]')?.getAttribute('aria-selected')).toBe('false');
+    expect(host.querySelector('[data-vs-tab="general"]')?.getAttribute('aria-selected')).toBe(
+      'false',
+    );
   });
 
   it('renders the language switcher with both English and Russian options', () => {

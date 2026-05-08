@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { storageKeysFor } from '../../src/config';
 import { createMemoryStorageAdapter } from '../../src/storage/adapter';
 import { createSettingsStore } from '../../src/storage/settings-store';
 import { defaultSettings } from '../../src/storage/types';
-import { storageKeysFor } from '../../src/config';
 
 describe('SettingsStore', () => {
   describe('init()', () => {
@@ -56,9 +56,9 @@ describe('SettingsStore', () => {
       await store.init('rutube');
 
       const s = store.get();
-      expect(s.sliderPosition).toBe('right');         // bad enum value rejected
-      expect(s.rememberSpeed).toBe(true);             // bad type rejected
-      expect(s.hotkeys.speedUp).toHaveLength(2);      // bad shape -> defaults (with Insert second slot)
+      expect(s.sliderPosition).toBe('right'); // bad enum value rejected
+      expect(s.rememberSpeed).toBe(true); // bad type rejected
+      expect(s.hotkeys.speedUp).toHaveLength(2); // bad shape -> defaults (with Insert second slot)
       expect(s.language === 'en' || s.language === 'ru').toBe(true);
     });
 
@@ -98,10 +98,7 @@ describe('SettingsStore', () => {
 
       await store.update({ rememberSpeed: false });
 
-      const persisted = await adapter.get(
-        storageKeysFor('rutube').settings,
-        null,
-      );
+      const persisted = await adapter.get(storageKeysFor('rutube').settings, null);
       expect(persisted).toMatchObject({ rememberSpeed: false });
     });
 
@@ -118,7 +115,7 @@ describe('SettingsStore', () => {
           language: 'klingon' as never,
         });
         expect(store.getKey('sliderPosition')).toBe('right'); // rejected
-        expect(store.getKey('rememberSpeed')).toBe(false);    // accepted
+        expect(store.getKey('rememberSpeed')).toBe(false); // accepted
         expect(['en', 'ru']).toContain(store.getKey('language')); // rejected
       });
 
@@ -207,9 +204,7 @@ describe('SettingsStore', () => {
       await store.reset();
 
       expect(store.getKey('sliderPosition')).toBe('right');
-      expect(
-        await adapter.get(storageKeysFor('youtube').settings, 'gone'),
-      ).toBe('gone');
+      expect(await adapter.get(storageKeysFor('youtube').settings, 'gone')).toBe('gone');
     });
   });
 
@@ -221,13 +216,11 @@ describe('SettingsStore', () => {
       await store.update({ sliderPosition: 'bottom' });
 
       // YouTube key untouched.
-      expect(
-        await adapter.get(storageKeysFor('youtube').settings, null),
-      ).toBe(null);
+      expect(await adapter.get(storageKeysFor('youtube').settings, null)).toBe(null);
       // RuTube key has the value.
-      expect(
-        await adapter.get(storageKeysFor('rutube').settings, null),
-      ).toMatchObject({ sliderPosition: 'bottom' });
+      expect(await adapter.get(storageKeysFor('rutube').settings, null)).toMatchObject({
+        sliderPosition: 'bottom',
+      });
     });
   });
 });

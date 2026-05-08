@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeHotkeys } from '../../src/storage/hotkey-migrate';
 import type { Hotkey } from '../../src/storage/types';
 
-const defaults: Hotkey[] = [
-  { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' },
-];
+const defaults: Hotkey[] = [{ ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' }];
 
 const valid: Hotkey = {
   ctrl: false,

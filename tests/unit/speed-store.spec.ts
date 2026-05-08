@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { speedBoundsFor, storageKeysFor } from '../../src/config';
 import { createMemoryStorageAdapter } from '../../src/storage/adapter';
 import { createSpeedStore } from '../../src/storage/speed-store';
-import { speedBoundsFor, storageKeysFor } from '../../src/config';
 
 describe('SpeedStore', () => {
   describe('init()', () => {
@@ -78,9 +78,7 @@ describe('SpeedStore', () => {
       expect(store.current()).toBe(2.0); // sync read sees new value
       await promise;
 
-      expect(
-        await adapter.get(storageKeysFor('youtube').speed, null),
-      ).toBe(2.0);
+      expect(await adapter.get(storageKeysFor('youtube').speed, null)).toBe(2.0);
     });
 
     it('clamps NaN/Infinity to default', async () => {

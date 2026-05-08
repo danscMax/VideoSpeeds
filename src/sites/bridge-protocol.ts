@@ -16,11 +16,7 @@
 
 const SOURCE = 'video-speeds';
 
-export type BridgeMessageType =
-  | 'history-changed'
-  | 'navigated'
-  | 'dispose'
-  | 'pong';
+export type BridgeMessageType = 'history-changed' | 'navigated' | 'dispose' | 'pong';
 
 export interface BridgeMessage<P = unknown> {
   source: typeof SOURCE;
@@ -45,7 +41,9 @@ export function generateSessionId(): string {
   try {
     const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
     if (c?.randomUUID) return c.randomUUID();
-  } catch { /* swallow */ }
+  } catch {
+    /* swallow */
+  }
   // Fallback -- not cryptographically strong but unique per content-script load.
-  return 'vs-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  return `vs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }

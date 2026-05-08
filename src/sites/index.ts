@@ -1,16 +1,16 @@
-export { detectSite, isRutube, isYouTube } from './detect';
 export {
-  bootstrapYouTubeSite,
-  type YouTubeSiteHandle,
-} from './youtube';
+  BRIDGE_SOURCE,
+  type BridgeMessage,
+  type BridgeMessageType,
+  generateSessionId,
+  isBridgeMessage,
+} from './bridge-protocol';
+export { detectSite, isRutube, isYouTube } from './detect';
 export {
   bootstrapRutubeSite,
   type RutubeSiteHandle,
 } from './rutube';
 export {
-  BRIDGE_SOURCE,
-  generateSessionId,
-  isBridgeMessage,
-  type BridgeMessage,
-  type BridgeMessageType,
-} from './bridge-protocol';
+  bootstrapYouTubeSite,
+  type YouTubeSiteHandle,
+} from './youtube';

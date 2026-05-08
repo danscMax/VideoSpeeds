@@ -13,9 +13,9 @@
  * Run via `npm run build:userscript` -> `dist-userscript/video-speeds.user.js`.
  */
 
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import monkey, { cdn } from 'vite-plugin-monkey';
-import { fileURLToPath } from 'node:url';
 import pkg from './package.json' with { type: 'json' };
 
 void cdn; // imported for type guidance; we don't use any @require CDNs (keep bundle self-contained)
@@ -27,7 +27,9 @@ export default defineConfig({
       // Proxy shim. Production code paths never reach for browser.* in
       // the TM build (the orchestrator gets a GM-storage adapter), so
       // the shim is a safety net that throws loud on accidents.
-      'wxt/browser': fileURLToPath(new URL('./src/userscript-shims/wxt-browser.ts', import.meta.url)),
+      'wxt/browser': fileURLToPath(
+        new URL('./src/userscript-shims/wxt-browser.ts', import.meta.url),
+      ),
     },
   },
   build: {
@@ -46,17 +48,8 @@ export default defineConfig({
         description: pkg.description,
         author: 'MaxScorpy',
         license: 'GPL-3.0-or-later',
-        match: [
-          '*://*.youtube.com/*',
-          '*://rutube.ru/*',
-          '*://*.rutube.ru/*',
-        ],
-        grant: [
-          'GM_setValue',
-          'GM_getValue',
-          'GM_deleteValue',
-          'GM_listValues',
-        ],
+        match: ['*://*.youtube.com/*', '*://rutube.ru/*', '*://*.rutube.ru/*'],
+        grant: ['GM_setValue', 'GM_getValue', 'GM_deleteValue', 'GM_listValues'],
         'run-at': 'document-idle',
       },
       build: {

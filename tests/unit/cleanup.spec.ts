@@ -157,7 +157,10 @@ describe('CleanupRegistry', () => {
 
   describe('post-dispose guards', () => {
     it.each([
-      ['addEventListener', (r: CleanupRegistry) => r.addEventListener(new EventTarget(), 'x', () => {})],
+      [
+        'addEventListener',
+        (r: CleanupRegistry) => r.addEventListener(new EventTarget(), 'x', () => {}),
+      ],
       ['setInterval', (r: CleanupRegistry) => r.setInterval(() => {}, 1000)],
       ['setTimeout', (r: CleanupRegistry) => r.setTimeout(() => {}, 1000)],
       ['addObserver', (r: CleanupRegistry) => r.addObserver({ disconnect: () => {} })],

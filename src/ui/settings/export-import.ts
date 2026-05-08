@@ -11,8 +11,8 @@
  */
 
 import type { AppContext } from '../../app/context';
-import { safeJsonParse } from '../../utils/safe-json';
 import type { Settings } from '../../storage/types';
+import { safeJsonParse } from '../../utils/safe-json';
 
 const FILENAME_PREFIX = 'video-speeds-settings';
 

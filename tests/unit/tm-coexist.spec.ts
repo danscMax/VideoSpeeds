@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  EXT_MARKER_ATTR,
-  TM_MARKER_ATTR,
   __resetForTests,
   detectAndClaim,
+  EXT_MARKER_ATTR,
   release,
+  TM_MARKER_ATTR,
 } from '../../src/utils/tm-coexist';
 
 describe('tm-coexist', () => {

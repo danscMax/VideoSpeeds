@@ -39,7 +39,7 @@ export interface SpeedBounds {
 // most RuTube content is bloggers/talks where the bias is welcome.
 const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
   youtube: { min: 0.75, max: 10.0, defaultSpeed: 1.0 },
-  rutube:  { min: 1.0,  max: 10.0, defaultSpeed: 1.5 },
+  rutube: { min: 1.0, max: 10.0, defaultSpeed: 1.5 },
 };
 
 export function speedBoundsFor(site: Site): SpeedBounds {
@@ -70,7 +70,7 @@ export const SPEED_POOL: readonly number[] = [
  */
 const DEFAULT_PRESETS: Record<Site, readonly number[]> = {
   youtube: [1, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25],
-  rutube:  [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+  rutube: [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
 };
 
 export function defaultPresetsFor(site: Site): readonly number[] {
@@ -89,11 +89,11 @@ export interface StorageKeys {
 const STORAGE_KEYS: Record<Site, StorageKeys> = {
   youtube: {
     settings: 'youtube-speed-settings',
-    speed:    'youtube-selected-speed',
+    speed: 'youtube-selected-speed',
   },
   rutube: {
     settings: 'rutube-speed-settings',
-    speed:    'rutube-selected-speed',
+    speed: 'rutube-selected-speed',
   },
 };
 
@@ -128,8 +128,7 @@ export const TM_MIGRATION_FLAG = '__migrated_from_tm';
  * `HDRezkaSpeeds/cloudflare-worker/` package; both extensions POST to
  * the same deployed instance and the Worker routes by `app` field.
  */
-export const FEEDBACK_WORKER_URL =
-  'https://speeds-feedback.matsiyak.workers.dev/feedback';
+export const FEEDBACK_WORKER_URL = 'https://speeds-feedback.matsiyak.workers.dev/feedback';
 
 export const FALLBACK_CONTACT_EMAIL = 'matsiyak@gmail.com';
 

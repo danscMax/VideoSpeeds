@@ -9,11 +9,7 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 
 export default defineContentScript({
-  matches: [
-    '*://*.youtube.com/*',
-    '*://rutube.ru/*',
-    '*://*.rutube.ru/*',
-  ],
+  matches: ['*://*.youtube.com/*', '*://rutube.ru/*', '*://*.rutube.ru/*'],
   runAt: 'document_idle',
   allFrames: false,
   async main(ctx) {

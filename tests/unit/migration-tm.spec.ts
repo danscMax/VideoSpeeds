@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { storageKeysFor, TM_MIGRATION_FLAG } from '../../src/config';
 import { createMemoryStorageAdapter } from '../../src/storage/adapter';
+import { runTmMigration } from '../../src/storage/migration-tm';
 import { createSettingsStore } from '../../src/storage/settings-store';
 import { createSpeedStore } from '../../src/storage/speed-store';
-import { runTmMigration } from '../../src/storage/migration-tm';
-import { storageKeysFor, TM_MIGRATION_FLAG } from '../../src/config';
 import type { Settings } from '../../src/storage/types';
 
 const ytKeys = storageKeysFor('youtube');
@@ -41,9 +41,7 @@ describe('runTmMigration', () => {
     const result = await runTmMigration('youtube', settingsStore, speedStore);
 
     expect(result.imported).toBe(true);
-    expect(result.importedKeys).toEqual(
-      expect.arrayContaining([ytKeys.settings, ytKeys.speed]),
-    );
+    expect(result.importedKeys).toEqual(expect.arrayContaining([ytKeys.settings, ytKeys.speed]));
     expect(settingsStore.getKey('sliderPosition')).toBe('bottom');
     expect(settingsStore.getKey('rememberSpeed')).toBe(false);
     expect(settingsStore.getKey('language')).toBe('ru');

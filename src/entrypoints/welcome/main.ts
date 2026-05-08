@@ -14,19 +14,18 @@
  * and Mozilla's static analyzer doesn't flag it.
  */
 
-import { h, svgEl, type HChild } from '../../ui/dom-h';
-import { vsIcon, vsFilledGearIcon } from '../../ui/icons';
+import { storageKeysFor } from '../../config';
 import { detectBrowserLang } from '../../i18n/detect';
+import { type Lang, SUPPORTED_LANGS } from '../../i18n/dict';
 import { createTranslator } from '../../i18n/translator';
 import { captureHotkey, formatHotkey } from '../../speed/hotkeys';
-import { defaultSettings, type Hotkey, type Settings } from '../../storage/types';
 import { createBrowserStorageAdapter } from '../../storage/adapter';
-import { storageKeysFor } from '../../config';
-import { SUPPORTED_LANGS, type Lang } from '../../i18n/dict';
+import { defaultSettings, type Settings } from '../../storage/types';
+import { type HChild, h, svgEl } from '../../ui/dom-h';
+import { vsFilledGearIcon, vsIcon } from '../../ui/icons';
 
 declare const __VS_VERSION__: string | undefined;
-const SCRIPT_VERSION =
-  typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
+const SCRIPT_VERSION = typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
 
 type T = (key: string) => string;
 
@@ -99,11 +98,7 @@ async function renderWelcome(host: HTMLElement, langOverride?: Lang): Promise<vo
     renderTips(t),
     renderDonate(t),
     renderCta(t),
-    h(
-      'div',
-      { class: 'welcome-version' },
-      `v${SCRIPT_VERSION} · video-speeds`,
-    ),
+    h('div', { class: 'welcome-version' }, `v${SCRIPT_VERSION} · video-speeds`),
   );
 
   wireHoverGroups(host);
@@ -286,8 +281,12 @@ function wireHoverGroups(rootEl: HTMLElement): void {
     bucket.push(el);
   });
   for (const peers of groups.values()) {
-    const on = () => peers.forEach((p) => p.classList.add('vs-hover'));
-    const off = () => peers.forEach((p) => p.classList.remove('vs-hover'));
+    const on = () => {
+      for (const p of peers) p.classList.add('vs-hover');
+    };
+    const off = () => {
+      for (const p of peers) p.classList.remove('vs-hover');
+    };
     for (const el of peers) {
       el.addEventListener('mouseenter', on);
       el.addEventListener('mouseleave', off);
@@ -408,11 +407,7 @@ function renderRealPanel(): HTMLElement {
     'aria-hidden': true,
   });
 
-  const sliderWrap = h(
-    'div',
-    { class: 'real-slider-wrap', 'data-ann-group': 'slider' },
-    slider,
-  );
+  const sliderWrap = h('div', { class: 'real-slider-wrap', 'data-ann-group': 'slider' }, slider);
 
   const gear = h(
     'button',
@@ -458,11 +453,8 @@ function renderRealSettings(t: T): HTMLElement {
   helpIcon.classList.add('rs-header-help');
   helpIcon.dataset.annGroup = 'help';
 
-  const tab = (
-    icon: SVGElement,
-    label: string,
-    active = false,
-  ): HTMLElement => h('button', { class: active ? 'rs-tab active' : 'rs-tab', tabindex: -1 }, icon, label);
+  const tab = (icon: SVGElement, label: string, active = false): HTMLElement =>
+    h('button', { class: active ? 'rs-tab active' : 'rs-tab', tabindex: -1 }, icon, label);
 
   const heart = vsIcon('heart', 13);
   heart.style.color = '#ff6e87';
@@ -515,7 +507,11 @@ function renderRealSettings(t: T): HTMLElement {
       tabindex: -1,
       readonly: '',
     }),
-    h('button', { class: 'rs-custom-add', tabindex: -1 }, '+ ' + t('general.speed_presets.custom_add')),
+    h(
+      'button',
+      { class: 'rs-custom-add', tabindex: -1 },
+      `+ ${t('general.speed_presets.custom_add')}`,
+    ),
   );
 
   return h(
@@ -571,15 +567,25 @@ function renderHotkeys(
   let liveStep = initial.speedStep;
 
   // ----- Capture input — records the next keystroke into slot[0] -----
-  function captureInput(action: 'speedUp' | 'speedDown', savedBadge: HTMLElement): HTMLInputElement {
-    const slot0 = liveHotkeys[action][0] ?? { ctrl: false, shift: false, alt: false, meta: false, key: '' };
+  function captureInput(
+    action: 'speedUp' | 'speedDown',
+    savedBadge: HTMLElement,
+  ): HTMLInputElement {
+    const slot0 = liveHotkeys[action][0] ?? {
+      ctrl: false,
+      shift: false,
+      alt: false,
+      meta: false,
+      key: '',
+    };
     const input = h('input', {
       type: 'text',
       class: 'hk-capture',
       value: slot0.key ? formatHotkey(slot0) : '',
       readonly: '',
       placeholder: t('welcome.hotkeys.placeholder'),
-      'aria-label': action === 'speedUp' ? t('welcome.hotkeys.faster') : t('welcome.hotkeys.slower'),
+      'aria-label':
+        action === 'speedUp' ? t('welcome.hotkeys.faster') : t('welcome.hotkeys.slower'),
     }) as HTMLInputElement;
 
     let armed = false;
@@ -590,7 +596,7 @@ function renderHotkeys(
     input.addEventListener('blur', () => {
       armed = false;
       const cur = liveHotkeys[action][0];
-      if (cur && cur.key) input.value = formatHotkey(cur);
+      if (cur?.key) input.value = formatHotkey(cur);
     });
     input.addEventListener('keydown', (event) => {
       if (!armed) return;
@@ -600,7 +606,7 @@ function renderHotkeys(
       // Esc / Tab: leave field without changing.
       if (ev.key === 'Escape' || ev.key === 'Tab') {
         const cur = liveHotkeys[action][0];
-        if (cur && cur.key) input.value = formatHotkey(cur);
+        if (cur?.key) input.value = formatHotkey(cur);
         input.blur();
         return;
       }
@@ -648,9 +654,21 @@ function renderHotkeys(
     window.setTimeout(() => badge.classList.remove('hk-saved-visible'), 1200);
   }
 
-  const savedUp = h('span', { class: 'hk-saved', 'aria-live': 'polite' }, t('welcome.hotkeys.saved'));
-  const savedDown = h('span', { class: 'hk-saved', 'aria-live': 'polite' }, t('welcome.hotkeys.saved'));
-  const savedStep = h('span', { class: 'hk-saved', 'aria-live': 'polite' }, t('welcome.hotkeys.saved'));
+  const savedUp = h(
+    'span',
+    { class: 'hk-saved', 'aria-live': 'polite' },
+    t('welcome.hotkeys.saved'),
+  );
+  const savedDown = h(
+    'span',
+    { class: 'hk-saved', 'aria-live': 'polite' },
+    t('welcome.hotkeys.saved'),
+  );
+  const savedStep = h(
+    'span',
+    { class: 'hk-saved', 'aria-live': 'polite' },
+    t('welcome.hotkeys.saved'),
+  );
 
   return h(
     'div',
@@ -719,12 +737,7 @@ function renderTips(t: T): HTMLElement {
   pinSvg.setAttribute('aria-hidden', 'true');
 
   const tipRow = (icon: SVGElement, text: string): HTMLElement =>
-    h(
-      'div',
-      { class: 'tip-row' },
-      icon,
-      h('span', {}, ...richText(text)),
-    );
+    h('div', { class: 'tip-row' }, icon, h('span', {}, ...richText(text)));
 
   return h(
     'div',

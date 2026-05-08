@@ -71,7 +71,11 @@ describe('captureHotkey', () => {
   it('reads modifier flags + event.code', () => {
     const ev = makeEvent({ code: 'KeyV', ctrlKey: true });
     expect(captureHotkey(ev)).toEqual({
-      ctrl: true, shift: false, alt: false, meta: false, key: 'KeyV',
+      ctrl: true,
+      shift: false,
+      alt: false,
+      meta: false,
+      key: 'KeyV',
     });
   });
 
@@ -90,7 +94,9 @@ describe('matchesSingleHotkey', () => {
   });
 
   it('rejects event with different modifier', () => {
-    expect(matchesSingleHotkey(makeEvent({ code: 'KeyC', ctrlKey: true, shiftKey: true }), hotkey)).toBe(false);
+    expect(
+      matchesSingleHotkey(makeEvent({ code: 'KeyC', ctrlKey: true, shiftKey: true }), hotkey),
+    ).toBe(false);
   });
 
   it('rejects event with different code', () => {
@@ -112,7 +118,7 @@ describe('matchesSingleHotkey', () => {
 
 describe('matchesHotkeyArray', () => {
   const hotkeys: Hotkey[] = [
-    { ctrl: true,  shift: false, alt: false, meta: false, key: 'KeyC' },
+    { ctrl: true, shift: false, alt: false, meta: false, key: 'KeyC' },
     { ctrl: false, shift: false, alt: false, meta: false, key: 'Insert' },
   ];
 
@@ -128,6 +134,8 @@ describe('matchesHotkeyArray', () => {
   it('handles undefined / non-array gracefully', () => {
     expect(matchesHotkeyArray(makeEvent({ code: 'KeyC' }), undefined)).toBe(false);
     expect(matchesHotkeyArray(makeEvent({ code: 'KeyC' }), [])).toBe(false);
-    expect(matchesHotkeyArray(makeEvent({ code: 'KeyC' }), null as unknown as Hotkey[])).toBe(false);
+    expect(matchesHotkeyArray(makeEvent({ code: 'KeyC' }), null as unknown as Hotkey[])).toBe(
+      false,
+    );
   });
 });

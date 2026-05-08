@@ -11,9 +11,9 @@
 import type { AppContext } from '../app/context';
 import {
   BRIDGE_SOURCE,
+  type BridgeMessage,
   generateSessionId,
   isBridgeMessage,
-  type BridgeMessage,
 } from './bridge-protocol';
 
 export interface RutubeSiteHandle {
@@ -106,7 +106,11 @@ export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
     if (msg.type === 'history-changed' || msg.type === 'navigated') {
       ctx.logger.debug('site:rutube nav via bridge', msg.payload);
       for (const fn of subscribers) {
-        try { fn(); } catch (e) { ctx.logger.error('site:rutube nav handler', e); }
+        try {
+          fn();
+        } catch (e) {
+          ctx.logger.error('site:rutube nav handler', e);
+        }
       }
     }
   });
@@ -138,11 +142,15 @@ export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
         } satisfies BridgeMessage,
         window.location.origin,
       );
-    } catch { /* swallow */ }
+    } catch {
+      /* swallow */
+    }
   });
 
   return {
-    onNavigation(fn) { subscribers.add(fn); },
+    onNavigation(fn) {
+      subscribers.add(fn);
+    },
     sessionId,
   };
 }

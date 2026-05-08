@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createMemoryStorageAdapter } from '../../src/storage/adapter';
-import { createSelectorCache } from '../../src/discovery/cache';
 import { SELECTOR_CACHE_PREFIX } from '../../src/config';
+import { createSelectorCache } from '../../src/discovery/cache';
+import { createMemoryStorageAdapter } from '../../src/storage/adapter';
 
 const HOST = 'test.example.com';
 const STORAGE_KEY = `${SELECTOR_CACHE_PREFIX}${HOST}`;
@@ -20,7 +20,9 @@ function makeCache(initial?: Record<string, unknown>) {
   return { adapter, cache };
 }
 
-async function flushPending(adapter: ReturnType<typeof createMemoryStorageAdapter>): Promise<unknown> {
+async function flushPending(
+  adapter: ReturnType<typeof createMemoryStorageAdapter>,
+): Promise<unknown> {
   // Persistence is a fire-and-forget chained Promise. A single setTimeout
   // round flushes both the .then() callback and the adapter.set() that it
   // schedules; setting it to 0 yields the macrotask we need.
@@ -49,9 +51,15 @@ describe('SelectorCache', () => {
           script_version: VERSION,
           entries: {
             video: {
-              selector: 'video', source: 'exact', confidence: 0.9,
-              signature: 'sig', found_at: 1, last_used_at: 1,
-              valid_until: 9999999999999, success_count: 0, last_failure_count: 0,
+              selector: 'video',
+              source: 'exact',
+              confidence: 0.9,
+              signature: 'sig',
+              found_at: 1,
+              last_used_at: 1,
+              valid_until: 9999999999999,
+              success_count: 0,
+              last_failure_count: 0,
             },
           },
         },
@@ -80,7 +88,10 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig',
+        selector: 'video',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig',
       });
       expect(cache.get('video')?.selector).toBe('video');
     });
@@ -89,9 +100,14 @@ describe('SelectorCache', () => {
       const { adapter, cache } = makeCache();
       await cache.hydrate();
       cache.set('playerContainer', {
-        selector: '#player', source: 'exact', confidence: 0.9, signature: 'sig',
+        selector: '#player',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig',
       });
-      const persisted = (await flushPending(adapter)) as { entries: Record<string, { selector: string }> };
+      const persisted = (await flushPending(adapter)) as {
+        entries: Record<string, { selector: string }>;
+      };
       expect(persisted?.entries?.playerContainer?.selector).toBe('#player');
     });
 
@@ -99,19 +115,28 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'heuristic', confidence: 0.4, signature: 'sigA',
+        selector: 'video',
+        source: 'heuristic',
+        confidence: 0.4,
+        signature: 'sigA',
       });
       expect(cache.get('video')).toBe(null);
 
       // Different signature -> still not committed.
       cache.set('video', {
-        selector: 'video', source: 'heuristic', confidence: 0.4, signature: 'sigB',
+        selector: 'video',
+        source: 'heuristic',
+        confidence: 0.4,
+        signature: 'sigB',
       });
       expect(cache.get('video')).toBe(null);
 
       // Same signature twice in a row -> commits.
       cache.set('video', {
-        selector: 'video', source: 'heuristic', confidence: 0.4, signature: 'sigB',
+        selector: 'video',
+        source: 'heuristic',
+        confidence: 0.4,
+        signature: 'sigB',
       });
       expect(cache.get('video')?.selector).toBe('video');
     });
@@ -122,7 +147,10 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig',
+        selector: 'video',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig',
       });
       cache.bumpSuccess('video');
       cache.bumpSuccess('video');
@@ -135,7 +163,10 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig',
+        selector: 'video',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig',
       });
       expect(cache.bumpFailure('video')).toBe(false);
       expect(cache.bumpFailure('video')).toBe(false);
@@ -147,7 +178,10 @@ describe('SelectorCache', () => {
       const { adapter, cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig',
+        selector: 'video',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig',
       });
       cache.purge('video');
       expect(cache.get('video')).toBe(null);
@@ -160,7 +194,10 @@ describe('SelectorCache', () => {
       const { adapter, cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig',
+        selector: 'video',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig',
       });
       await cache.purgeAll();
       expect(cache.get('video')).toBe(null);
@@ -179,7 +216,10 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video', source: 'exact', confidence: 0.9, signature: 'sig-A',
+        selector: 'video',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-A',
       });
       expect(cache.tryRestoreBackup('video')).toBe(null);
     });
@@ -188,10 +228,16 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+        selector: 'video.v1',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-A',
       });
       cache.set('video', {
-        selector: 'video.v2', source: 'exact', confidence: 0.9, signature: 'sig-B',
+        selector: 'video.v2',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-B',
       });
       expect(cache.tryRestoreBackup('video')?.selector).toBe('video.v1');
       expect(cache.tryRestoreBackup('video')?.signature).toBe('sig-A');
@@ -201,10 +247,16 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+        selector: 'video.v1',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-A',
       });
       cache.set('video', {
-        selector: 'video.v1-bumped', source: 'exact', confidence: 0.9, signature: 'sig-A',
+        selector: 'video.v1-bumped',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-A',
       });
       expect(cache.tryRestoreBackup('video')).toBe(null);
     });
@@ -213,10 +265,16 @@ describe('SelectorCache', () => {
       const { adapter, cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+        selector: 'video.v1',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-A',
       });
       cache.set('video', {
-        selector: 'video.v2', source: 'exact', confidence: 0.9, signature: 'sig-B',
+        selector: 'video.v2',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-B',
       });
       await flushPending(adapter);
 
@@ -229,10 +287,16 @@ describe('SelectorCache', () => {
       const { cache } = makeCache();
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video.v1', source: 'exact', confidence: 0.9, signature: 'sig-A',
+        selector: 'video.v1',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-A',
       });
       cache.set('video', {
-        selector: 'video.v2', source: 'exact', confidence: 0.9, signature: 'sig-B',
+        selector: 'video.v2',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'sig-B',
       });
       cache.purge('video');
       expect(cache.tryRestoreBackup('video')).toBe(null);

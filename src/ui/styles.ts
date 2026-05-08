@@ -11,8 +11,8 @@
  * SPA re-attach.
  */
 
-import type { Site } from '../app/ports';
 import type { AppContext } from '../app/context';
+import type { Site } from '../app/ports';
 
 const STYLE_ID = 'vs-styles';
 
@@ -59,9 +59,10 @@ export function detectAndApplyTheme(
       theme = preferredColorScheme(container) ?? 'light';
     }
   } else if (site === 'rutube') {
-    theme = detectByLuminance(referenceEl ?? container.body, container)
-      ?? preferredColorScheme(container)
-      ?? 'dark';
+    theme =
+      detectByLuminance(referenceEl ?? container.body, container) ??
+      preferredColorScheme(container) ??
+      'dark';
   }
   root.dataset.vsTheme = theme;
 }
@@ -70,11 +71,18 @@ function preferredColorScheme(container: Document): 'dark' | 'light' | null {
   try {
     const mql = container.defaultView?.matchMedia?.('(prefers-color-scheme: dark)');
     if (mql) return mql.matches ? 'dark' : 'light';
-  } catch { /* swallow */ }
+  } catch {
+    /* swallow */
+  }
   return null;
 }
 
-interface RGBA { r: number; g: number; b: number; a: number }
+interface RGBA {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
 
 function parseRgb(s: string | null | undefined): RGBA | null {
   if (!s) return null;
@@ -101,9 +109,16 @@ function detectByLuminance(start: Element | null, container: Document): 'dark' |
   let bg: RGBA | null = null;
   for (let el: Element | null = start; el; el = el.parentElement) {
     let cs: CSSStyleDeclaration;
-    try { cs = win.getComputedStyle(el); } catch { continue; }
+    try {
+      cs = win.getComputedStyle(el);
+    } catch {
+      continue;
+    }
     const parsed = parseRgb(cs.backgroundColor);
-    if (parsed && parsed.a >= 0.1) { bg = parsed; break; }
+    if (parsed && parsed.a >= 0.1) {
+      bg = parsed;
+      break;
+    }
   }
   if (!bg && container.body) {
     const bodyBg = parseRgb(win.getComputedStyle(container.body).backgroundColor);
@@ -152,9 +167,15 @@ export function installThemeWatcher(
       const handler = (): void => reapply();
       mql.addEventListener('change', handler);
       ctx.cleanup.add(() => {
-        try { mql.removeEventListener('change', handler); } catch { /* swallow */ }
+        try {
+          mql.removeEventListener('change', handler);
+        } catch {
+          /* swallow */
+        }
       });
-    } catch { /* swallow -- ancient browser */ }
+    } catch {
+      /* swallow -- ancient browser */
+    }
   }
 
   const themeObserver = new MutationObserver(() => reapply());

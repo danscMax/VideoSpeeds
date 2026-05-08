@@ -30,19 +30,9 @@ const SELECTORS: Record<Site, SelectorMap> = {
       'ytd-watch-metadata #above-the-fold',
     ],
     video: ['video.html5-main-video', 'video'],
-    leftControls: [
-      '.ytp-chrome-controls .ytp-left-controls',
-      '.ytp-left-controls',
-    ],
-    rightControls: [
-      '.ytp-right-controls',
-      '.ytp-chrome-controls .ytp-right-controls',
-    ],
-    playerContainer: [
-      '#player-container',
-      '#movie_player',
-      '.html5-video-container',
-    ],
+    leftControls: ['.ytp-chrome-controls .ytp-left-controls', '.ytp-left-controls'],
+    rightControls: ['.ytp-right-controls', '.ytp-chrome-controls .ytp-right-controls'],
+    playerContainer: ['#player-container', '#movie_player', '.html5-video-container'],
   },
   rutube: {
     infoElem: [
@@ -63,12 +53,8 @@ const SELECTORS: Record<Site, SelectorMap> = {
       'section.video-player',
       '[class*="video-player"]',
     ],
-    controlsContainer: [
-      '[class*="desktop-controls-layout-module__wrapper"]',
-    ],
-    leftControls: [
-      '[class*="desktop-controls-layout-module__column"][class*="left"]',
-    ],
+    controlsContainer: ['[class*="desktop-controls-layout-module__wrapper"]'],
+    leftControls: ['[class*="desktop-controls-layout-module__column"][class*="left"]'],
     rightControls: [
       '[class*="desktop-controls-layout-module__column"][class*="right"]',
       '[class*="desktopButtonsBlockRight"]',

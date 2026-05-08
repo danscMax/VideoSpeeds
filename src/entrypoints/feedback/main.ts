@@ -11,24 +11,23 @@
  */
 
 import { browser } from 'wxt/browser';
-import { h } from '../../ui/dom-h';
-import { vsIcon } from '../../ui/icons';
-import { detectBrowserLang } from '../../i18n/detect';
-import { createTranslator } from '../../i18n/translator';
 import type { Translator } from '../../app/ports';
-import { createBrowserStorageAdapter } from '../../storage/adapter';
 import {
-  storageKeysFor,
-  FEEDBACK_WORKER_URL,
   FALLBACK_CONTACT_EMAIL,
   FEEDBACK_APP_ID,
+  FEEDBACK_WORKER_URL,
+  storageKeysFor,
 } from '../../config';
-import type { Settings } from '../../storage/types';
+import { detectBrowserLang } from '../../i18n/detect';
 import type { Lang } from '../../i18n/dict';
+import { createTranslator } from '../../i18n/translator';
+import { createBrowserStorageAdapter } from '../../storage/adapter';
+import type { Settings } from '../../storage/types';
+import { h } from '../../ui/dom-h';
+import { vsIcon } from '../../ui/icons';
 
 declare const __VS_VERSION__: string | undefined;
-const SCRIPT_VERSION =
-  typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
+const SCRIPT_VERSION = typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
 
 type Rating = 'positive' | 'neutral' | 'negative';
 
@@ -61,8 +60,7 @@ async function bootstrap(host: HTMLElement): Promise<void> {
   // Adopt the persisted theme so the form matches whatever the user
   // last saw on the host page.
   const theme = stored?.lastSeenTheme;
-  document.documentElement.dataset.vsTheme =
-    theme === 'light' || theme === 'dark' ? theme : 'dark';
+  document.documentElement.dataset.vsTheme = theme === 'light' || theme === 'dark' ? theme : 'dark';
 
   const translator = createTranslator(lang);
   document.title = translator.t('feedback.title');
@@ -106,7 +104,9 @@ function renderForm(host: HTMLElement, t: Translator): void {
     placeholder: t.t('feedback.message.placeholder'),
     maxlength: '4000',
   }) as HTMLTextAreaElement;
-  messageEl.addEventListener('input', () => { state.message = messageEl.value; });
+  messageEl.addEventListener('input', () => {
+    state.message = messageEl.value;
+  });
 
   const contactEl = h('input', {
     type: 'text',
@@ -115,7 +115,9 @@ function renderForm(host: HTMLElement, t: Translator): void {
     maxlength: '200',
     autocomplete: 'off',
   }) as HTMLInputElement;
-  contactEl.addEventListener('input', () => { state.contact = contactEl.value.trim(); });
+  contactEl.addEventListener('input', () => {
+    state.contact = contactEl.value.trim();
+  });
 
   const diagCheckbox = h('input', {
     type: 'checkbox',
@@ -143,7 +145,7 @@ function renderForm(host: HTMLElement, t: Translator): void {
         'div',
         { class: 'fb-rating', role: 'radiogroup' },
         ratingBtn('positive', '😊', 'feedback.rating.positive'),
-        ratingBtn('neutral',  '😐', 'feedback.rating.neutral'),
+        ratingBtn('neutral', '😐', 'feedback.rating.neutral'),
         ratingBtn('negative', '😞', 'feedback.rating.negative'),
       ),
     ),
@@ -175,11 +177,7 @@ function renderForm(host: HTMLElement, t: Translator): void {
         ),
       ),
     ),
-    h(
-      'div',
-      { class: 'fb-privacy' },
-      t.t('feedback.privacy'),
-    ),
+    h('div', { class: 'fb-privacy' }, t.t('feedback.privacy')),
     h(
       'div',
       { class: 'fb-actions' },
@@ -247,30 +245,17 @@ function renderSuccess(host: HTMLElement, t: Translator): void {
   ) as HTMLButtonElement;
   closeBtn.addEventListener('click', () => window.close());
 
-  const againBtn = h(
-    'button',
-    {},
-    t.t('feedback.success.again'),
-  ) as HTMLButtonElement;
+  const againBtn = h('button', {}, t.t('feedback.success.again')) as HTMLButtonElement;
   againBtn.addEventListener('click', () => renderForm(host, t));
 
   host.replaceChildren(
     h(
       'div',
       { class: 'fb-form fb-success' },
-      h(
-        'div',
-        { class: 'fb-success-icon' },
-        vsIcon('check-circle', 32),
-      ),
+      h('div', { class: 'fb-success-icon' }, vsIcon('check-circle', 32)),
       h('h1', { class: 'fb-success-title' }, t.t('feedback.success.title')),
       h('p', { class: 'fb-success-body' }, t.t('feedback.success.body')),
-      h(
-        'div',
-        { class: 'fb-success-actions' },
-        closeBtn,
-        againBtn,
-      ),
+      h('div', { class: 'fb-success-actions' }, closeBtn, againBtn),
     ),
   );
 }
@@ -318,10 +303,14 @@ async function submit(state: FormState): Promise<void> {
 
 function errorMessageKey(code: string): string {
   switch (code) {
-    case 'rate_limit': return 'feedback.error.rate_limit';
-    case 'validation': return 'feedback.error.validation';
-    case 'server':     return 'feedback.error.server';
-    default:           return 'feedback.error.network';
+    case 'rate_limit':
+      return 'feedback.error.rate_limit';
+    case 'validation':
+      return 'feedback.error.validation';
+    case 'server':
+      return 'feedback.error.server';
+    default:
+      return 'feedback.error.network';
   }
 }
 
@@ -335,9 +324,13 @@ function errorMessageKey(code: string): string {
 async function collectDiagnostics(): Promise<string> {
   const adapter = createBrowserStorageAdapter();
   const ytSettings = await adapter.get<Partial<Settings> | null>(
-    storageKeysFor('youtube').settings, null);
+    storageKeysFor('youtube').settings,
+    null,
+  );
   const rtSettings = await adapter.get<Partial<Settings> | null>(
-    storageKeysFor('rutube').settings, null);
+    storageKeysFor('rutube').settings,
+    null,
+  );
   const ytSpeed = await adapter.get<unknown>(storageKeysFor('youtube').speed, null);
   const rtSpeed = await adapter.get<unknown>(storageKeysFor('rutube').speed, null);
 

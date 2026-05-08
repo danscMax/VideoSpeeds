@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  I18N_DICT,
-  SUPPORTED_LANGS,
   createTranslator,
+  type DictKey,
   detectBrowserLang,
   escHtml,
-  type DictKey,
+  I18N_DICT,
   type Lang,
+  SUPPORTED_LANGS,
 } from '../../src/i18n';
 
 const EN_KEYS = Object.keys(I18N_DICT.en) as DictKey[];
@@ -40,7 +40,7 @@ describe('I18N_DICT', () => {
         if (typeof value !== 'string') continue;
         // Disallow tag-like substrings. Quotation chars / ampersands inside
         // prose are fine because escHtml at injection time handles them.
-        if (/<[a-z!\/]/i.test(value)) {
+        if (/<[a-z!/]/i.test(value)) {
           offenders.push([key, value]);
         }
       }

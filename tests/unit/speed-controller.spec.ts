@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { speedBoundsFor } from '../../src/config';
 import {
   handleSpeedButtonClick,
   pickInitialSpeed,
@@ -6,7 +7,6 @@ import {
   setSpeed,
   setTemporary,
 } from '../../src/speed/controller';
-import { speedBoundsFor } from '../../src/config';
 import { createMockContext, createMockDiscovery } from '../helpers/mock-context';
 
 function makeVideo(): HTMLVideoElement {
@@ -57,8 +57,9 @@ describe('setSpeed', () => {
 
     await setSpeed(ctx, 1.5);
     // refreshButtons receives (speed, opts) — opts can be {} or { silent: true }.
-    expect((ui as { refreshButtons: ReturnType<typeof vi.fn> }).refreshButtons)
-      .toHaveBeenCalledWith(1.5, expect.any(Object));
+    expect(
+      (ui as { refreshButtons: ReturnType<typeof vi.fn> }).refreshButtons,
+    ).toHaveBeenCalledWith(1.5, expect.any(Object));
     expect(speedStore.current()).toBe(1.5);
   });
 });
@@ -95,8 +96,9 @@ describe('setGlobal', () => {
     expect(video.playbackRate).toBe(1.75);
     expect(speedStore.current()).toBe(1.75);
     expect(speedStore.smart()).toBe(null);
-    expect((ui as { showNotification: ReturnType<typeof vi.fn> }).showNotification)
-      .toHaveBeenCalledWith(expect.stringContaining('1.75'), 'success');
+    expect(
+      (ui as { showNotification: ReturnType<typeof vi.fn> }).showNotification,
+    ).toHaveBeenCalledWith(expect.stringContaining('1.75'), 'success');
   });
 
   it('force-enables rememberSpeed if it was off', async () => {

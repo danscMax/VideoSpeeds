@@ -25,7 +25,7 @@ describe('createLogger', () => {
     log.warn('w');
     log.error('e');
 
-    expect(logSpy).toHaveBeenCalledTimes(2);   // debug + info
+    expect(logSpy).toHaveBeenCalledTimes(2); // debug + info
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledTimes(1);
   });

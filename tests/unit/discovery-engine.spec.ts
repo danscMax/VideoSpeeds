@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryStorageAdapter } from '../../src/storage/adapter';
 import { createSelectorCache } from '../../src/discovery/cache';
 import { createDiscoveryEngine } from '../../src/discovery/engine';
 import { Validators } from '../../src/discovery/validators';
+import { createMemoryStorageAdapter } from '../../src/storage/adapter';
 
 const VERSION = '1.0.0';
 
@@ -26,8 +26,15 @@ beforeEach(() => {
   document.body.innerHTML = '';
   // Default: stub generous geometry so validators don't reject by size.
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
-    width: 800, height: 450, top: 0, left: 0, right: 800, bottom: 450,
-    x: 0, y: 0, toJSON: () => ({}),
+    width: 800,
+    height: 450,
+    top: 0,
+    left: 0,
+    right: 800,
+    bottom: 450,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
   } as DOMRect);
 });
 
@@ -82,13 +89,18 @@ describe('DiscoveryEngine.resolve', () => {
       const cache = createSelectorCache(adapter, { scriptVersion: VERSION, host: 'test.host' });
       await cache.hydrate();
       cache.set('video', {
-        selector: 'video.does-not-exist', source: 'exact', confidence: 0.9, signature: 'old',
+        selector: 'video.does-not-exist',
+        source: 'exact',
+        confidence: 0.9,
+        signature: 'old',
       });
       const v = document.createElement('video');
       v.className = 'html5-main-video';
       document.body.appendChild(v);
       const engine = createDiscoveryEngine({
-        site: 'youtube', cache, validators: Validators,
+        site: 'youtube',
+        cache,
+        validators: Validators,
       });
 
       const result = engine.resolve('video');
@@ -127,15 +139,29 @@ describe('DiscoveryEngine.resolve', () => {
       small.muted = true;
       small.loop = true;
       vi.spyOn(small, 'getBoundingClientRect').mockReturnValue({
-        width: 200, height: 113, top: 0, left: 0, right: 200, bottom: 113,
-        x: 0, y: 0, toJSON: () => ({}),
+        width: 200,
+        height: 113,
+        top: 0,
+        left: 0,
+        right: 200,
+        bottom: 113,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
       } as DOMRect);
 
       const big = document.createElement('video');
       big.src = 'blob:b';
       vi.spyOn(big, 'getBoundingClientRect').mockReturnValue({
-        width: 1280, height: 720, top: 0, left: 0, right: 1280, bottom: 720,
-        x: 0, y: 0, toJSON: () => ({}),
+        width: 1280,
+        height: 720,
+        top: 0,
+        left: 0,
+        right: 1280,
+        bottom: 720,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
       } as DOMRect);
 
       const wrapSmall = document.createElement('aside');

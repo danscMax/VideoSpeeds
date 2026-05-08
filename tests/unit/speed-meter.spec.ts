@@ -12,7 +12,7 @@ describe('RatechangeMeter', () => {
     const m = createRatechangeMeter();
     m.tick(1, 1.5);
     m.tick('2', '2.5'); // string coercion
-    m.tick(null, 3);    // null -> null
+    m.tick(null, 3); // null -> null
 
     const t = m.tail();
     expect(t).toHaveLength(3);
@@ -31,9 +31,11 @@ describe('RatechangeMeter', () => {
     let now = 0;
     const m = createRatechangeMeter(() => now);
 
-    now = 0;        m.tick(1, 1.5);
-    now = 30_000;   m.tick(1.5, 2);
-    now = 70_000;   // first tick is now > 60s old
+    now = 0;
+    m.tick(1, 1.5);
+    now = 30_000;
+    m.tick(1.5, 2);
+    now = 70_000; // first tick is now > 60s old
 
     expect(m.perMinute()).toBe(1);
 

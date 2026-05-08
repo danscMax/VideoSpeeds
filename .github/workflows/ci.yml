@@ -10,10 +10,34 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Default permission set for the workflow's GITHUB_TOKEN. Individual jobs
+# can widen via `permissions:` if needed.
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '22'
 
 jobs:
+  # Lint + format check via Biome. Fast (Rust binary), runs in parallel
+  # with build matrix on every PR.
+  lint:
+    name: lint (biome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Biome ci
+        run: npm run lint:ci
+
   # Per-browser build + typecheck + unit tests + bundle-size budget + zip artifact.
   # Matrix keeps Chrome and Firefox honest on every PR.
   build:

@@ -9,7 +9,11 @@ import type { Site } from '../app/ports';
 
 export function detectSite(host: string = safeHostname()): Site | null {
   const h = host.toLowerCase();
-  if (h.includes('youtube.com')) return 'youtube';
+  // Anchored regex on both sides — `includes('youtube.com')` would match
+  // `youtube.com.evil.tld`, `evil-youtube.com.example.org`, `myyoutube.community`.
+  // The manifest filters content-script injection but `detectSite` is also
+  // called from the popup for arbitrary tab URLs (audit 2026-05-09).
+  if (/(?:^|\.)youtube\.com$/.test(h)) return 'youtube';
   if (/(?:^|\.)rutube\.ru$/.test(h)) return 'rutube';
   return null;
 }

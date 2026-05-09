@@ -34,8 +34,11 @@ export function isBridgeMessage(value: unknown): value is BridgeMessage {
 }
 
 /**
- * RFC4122 v4 generator using crypto.getRandomValues; falls back to Math.random
- * when in environments without web crypto (extremely rare, but defensive).
+ * RFC4122 v4 generator. Tries crypto.randomUUID() first (Chrome 92+, Firefox 95+),
+ * then crypto.getRandomValues() as a strong fallback. The Math.random() leg
+ * is a last-resort defensive branch — the security model uses sessionId
+ * primarily as an envelope-routing key, with origin + literal-'page' guards
+ * being the actual security boundaries (see sites/rutube.ts message handler).
  */
 export function generateSessionId(): string {
   try {
@@ -44,6 +47,20 @@ export function generateSessionId(): string {
   } catch {
     /* swallow */
   }
-  // Fallback -- not cryptographically strong but unique per content-script load.
+  try {
+    const c = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } })
+      .crypto;
+    if (c?.getRandomValues) {
+      const buf = new Uint8Array(16);
+      c.getRandomValues(buf);
+      // RFC4122 §4.4 v4 layout
+      buf[6] = (buf[6] & 0x0f) | 0x40;
+      buf[8] = (buf[8] & 0x3f) | 0x80;
+      const hex = Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+  } catch {
+    /* swallow */
+  }
   return `vs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }

@@ -95,15 +95,26 @@ export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
 
   ctx.cleanup.addEventListener(window, 'message', (event) => {
     const ev = event as MessageEvent;
-    // Same-origin only; we never trust cross-origin messages.
+    // Defence in depth (audit 2026-05-09 sec C2/C3):
+    //  1. ev.source === window  — this rejects messages dispatched from any
+    //     other window object, including same-origin iframes (parent.postMessage
+    //     from an ad iframe makes ev.source === iframe.contentWindow, not us).
+    //  2. ev.origin === location.origin — additionally rejects cross-origin
+    //     iframes that some browsers attribute to the parent window in
+    //     unusual edge cases (e.g. about:srcdoc with inheritance), and
+    //     blocks any future top-frame embedded in a cross-origin shell.
+    //  3. Strict sessionId === 'page' — page-world.content.ts broadcasts
+    //     navigation events with the literal sentinel 'page'. Any other
+    //     value indicates a malicious in-page script forging the envelope
+    //     (formerly we accepted arbitrary sessionId values, allowing a
+    //     reattach-spam DoS primitive).
     if (ev.source !== window) return;
+    if (ev.origin !== window.location.origin) return;
     if (!isBridgeMessage(ev.data)) return;
 
     const msg = ev.data as BridgeMessage;
-    // sessionId is informational here (page-world broadcasts to all
-    // subscribers); we accept any bridged message regardless because the
-    // page-world side only patches once per page load.
     if (msg.type === 'history-changed' || msg.type === 'navigated') {
+      if (msg.sessionId !== 'page') return;
       ctx.logger.debug('site:rutube nav via bridge', msg.payload);
       for (const fn of subscribers) {
         try {

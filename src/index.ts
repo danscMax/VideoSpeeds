@@ -31,7 +31,6 @@ import type { AppContext } from './app/context';
 import type {
   DiagnosticsPort,
   Logger as LoggerPort,
-  NotificationKind,
   Translator,
   UiPort,
 } from './app/ports';
@@ -533,9 +532,22 @@ export async function bootstrap(
   //     asks the active tab (us) to run the diagnostic and stream the
   //     result back. This lets the popup show a LIVE status instead of
   //     a static "Not checked yet" placeholder.
+  let ourRuntimeId: string | null = null;
   const onPopupMessage = async (
     msg: unknown,
+    sender?: { id?: string; tab?: { id?: number } },
   ): Promise<{ ok: boolean; report?: DiagnosticReport; error?: string }> => {
+    // Sender validation (audit 2026-05-09 sec C4): reject messages from
+    // foreign extensions and from in-page content scripts. The intended
+    // caller is our own popup (an extension page → sender.tab is
+    // undefined) sharing our runtime id. ourRuntimeId is captured below
+    // when the listener is installed (after the dynamic browser import).
+    if (sender?.id && ourRuntimeId && sender.id !== ourRuntimeId) {
+      return { ok: false, error: 'foreign_sender' };
+    }
+    if (sender?.tab !== undefined) {
+      return { ok: false, error: 'tab_sender_blocked' };
+    }
     const m = msg as { type?: string } | null | undefined;
     if (!m || typeof m.type !== 'string') {
       return Promise.resolve({ ok: false, error: 'no_type' });
@@ -567,8 +579,14 @@ export async function bootstrap(
       });
     }
   };
+  // Dynamic import keeps wxt/browser out of the userscript bundle (the
+  // userscript build aliases it to a throwing shim). isDisposed guard
+  // (audit 2026-05-09 C7): without it, a fast HMR/cleanup-before-resolve
+  // race would call `cleanup.add()` after dispose and throw via assertLive.
   void import('wxt/browser').then(({ browser: br }) => {
+    if (cleanup.isDisposed) return;
     try {
+      ourRuntimeId = br.runtime.id ?? null;
       br.runtime.onMessage.addListener(onPopupMessage);
       cleanup.add(() => {
         try {
@@ -583,12 +601,7 @@ export async function bootstrap(
   });
 
   logger.info('bootstrap complete');
-  void NotificationKindCheck;
 }
-
-// Type-only check to keep NotificationKind import used. Kept here so
-// future "copy report" handler can read kind from settings.
-const NotificationKindCheck: NotificationKind = 'info';
 
 /**
  * Try to insert the panel; retry with exponential backoff (audit B4.3)

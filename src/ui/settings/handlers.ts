@@ -308,7 +308,15 @@ export function attachSettingsHandlers(
       input.classList.remove('capturing');
     });
 
-    ctx.cleanup.addEventListener(input, 'keydown', async (event) => {
+    // Audit 2026-05-09 sec C15: avoid concurrent hotkey writes. The
+    // previous async handler `await`ed update() while the input was
+    // still focused; if the user pressed another key during the
+    // in-flight write, both keydowns sliced from a stale snapshot of
+    // `hotkeys` and the second await clobbered the first capture
+    // (silent loss). The `dataset.busy` guard short-circuits re-entry
+    // and the input is blurred synchronously so further keys go to
+    // the page until the persist settles.
+    ctx.cleanup.addEventListener(input, 'keydown', (event) => {
       const ev = event as KeyboardEvent;
       if (ev.key === 'Escape' || ev.key === 'Tab') {
         input.blur();
@@ -316,17 +324,29 @@ export function attachSettingsHandlers(
       }
       ev.preventDefault();
       ev.stopPropagation();
+      if (input.dataset.vsBusy === '1') return;
       const hk = captureHotkey(ev);
       // Skip pure-modifier presses ("ControlLeft" etc.).
       if (/^(Control|Shift|Alt|Meta)/.test(hk.key)) return;
-      const arr = ctx.settingsStore.getKey('hotkeys')[action].slice();
-      arr[slotIndex] = hk;
-      await ctx.settingsStore.update({
-        hotkeys: { ...ctx.settingsStore.getKey('hotkeys'), [action]: arr },
-      });
+      input.dataset.vsBusy = '1';
+      // Capture and update the input synchronously so the user sees
+      // the result immediately even if the persist is slow.
       input.value = formatHotkey(hk);
       input.classList.remove('capturing');
-      deps.rerender();
+      input.blur();
+      const liveHotkeys = ctx.settingsStore.getKey('hotkeys');
+      const arr = liveHotkeys[action].slice();
+      arr[slotIndex] = hk;
+      ctx.settingsStore
+        .update({ hotkeys: { ...liveHotkeys, [action]: arr } })
+        .catch((e) => {
+          ctx.logger.error('handlers: hotkey persist failed', e);
+        })
+        .finally(() => {
+          delete input.dataset.vsBusy;
+          // Rerender after settle so any other store-driven UI catches up.
+          deps.rerender();
+        });
     });
   }
 

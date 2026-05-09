@@ -121,6 +121,15 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
 
     if (report.healthy) {
       consecutiveFailures = 0;
+      // Audit 2026-05-09 MAJOR: clear the auto-trip latch after sustained
+      // recovery so a second wave of failures can trip again. Previously
+      // autoTripped was a one-shot for the entire page lifetime — once
+      // tripped, the user could re-enable health-check in settings but
+      // the trip would never fire again on the next breakage.
+      if (autoTripped) {
+        autoTripped = false;
+        ctx.logger.info('HealthChecker: auto-trip latch cleared after recovery');
+      }
     } else {
       consecutiveFailures++;
       if (consecutiveFailures >= AUTO_TRIP_AFTER_N_FAILURES && !autoTripped) {
@@ -144,11 +153,16 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
    *  notify subscribers and does NOT trigger auto-recovery. The settings
    *  modal's diag tab calls this on every rerender; if it ran the full
    *  pipeline it would notify the panel.rerenderSettings subscriber and
-   *  recurse back into rerender, freezing the page. */
+   *  recurse back into rerender, freezing the page.
+   *
+   *  Audit 2026-05-09 MAJOR-races: do NOT mutate `lastHealthy`. The
+   *  previous version overwrote it, which killed the next transition
+   *  detection inside `run()` (the unhealthy → healthy / healthy →
+   *  unhealthy edge that drives auto-recovery + the "purge bad heuristic"
+   *  branch). Strictly read-only now. */
   function runOnce(): DiagnosticReport {
     const report = buildReport(deps);
     lastReport = report;
-    lastHealthy = report.healthy;
     return report;
   }
 

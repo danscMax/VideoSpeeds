@@ -27,7 +27,13 @@ const CLICK_DEBOUNCE_MS = 400;
 
 /** Per-context click-debounce state. Keyed by AppContext so multiple
  *  initialised tabs (popup vs in-player) don't share counters. */
-const clickState = new WeakMap<AppContext, { count: number; timer: number | null }>();
+interface ClickState {
+  count: number;
+  timer: number | null;
+  /** A setGlobal/setTemporary promotion is in flight; ignore re-entry until settle. */
+  pending: boolean;
+}
+const clickState = new WeakMap<AppContext, ClickState>();
 
 /**
  * Window in ms during which a `ratechange` event is treated as our own
@@ -188,21 +194,48 @@ export async function setGlobal(
  * Click router: 1st click within debounce -> setTemporary; 2nd click ->
  * setGlobal. State is per-AppContext so each tab/popup keeps its own
  * counter.
+ *
+ * Audit 2026-05-09 sec C13/C14: setGlobal/setTemporary are async (storage
+ * writes). The previous code reset `state.count = 0` before kicking off
+ * the await, so a click arriving during the in-flight promise would
+ * re-enter `handleSpeedButtonClick` with count=0 and be treated as a
+ * fresh single-click — silently downgrading the just-applied global to
+ * a temporary. We now mark the state as "promotion in flight" via a
+ * `pending` flag and short-circuit re-entry while it's set, only
+ * resetting count after the promotion settles. Promise rejections are
+ * surfaced via .catch (was: `void` swallowed silent storage failures).
  */
 export function handleSpeedButtonClick(ctx: AppContext, speed: number): void {
-  const state = clickState.get(ctx) ?? { count: 0, timer: null };
+  const state = clickState.get(ctx) ?? {
+    count: 0,
+    timer: null as number | null,
+    pending: false,
+  };
+  if (state.pending) {
+    // A previous click is still being applied; ignore the burst until it
+    // settles. The user's intent is clear from the in-flight promotion.
+    return;
+  }
   state.count += 1;
   if (state.timer !== null) {
     clearTimeout(state.timer);
   }
   state.timer = window.setTimeout(() => {
     const finalCount = state.count;
-    state.count = 0;
     state.timer = null;
+    state.pending = true;
+    const settle = (): void => {
+      state.count = 0;
+      state.pending = false;
+    };
+    const onError = (e: unknown): void => {
+      ctx.logger.error('controller: click promotion failed', e);
+      settle();
+    };
     if (finalCount >= 2) {
-      void setGlobal(ctx, speed);
+      setGlobal(ctx, speed).then(settle, onError);
     } else {
-      void setTemporary(ctx, speed);
+      setTemporary(ctx, speed).then(settle, onError);
     }
   }, CLICK_DEBOUNCE_MS);
   clickState.set(ctx, state);

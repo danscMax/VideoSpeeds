@@ -57,6 +57,7 @@ import { matchesHotkeyArray } from './speed/hotkeys';
 import { createRatechangeMeter } from './speed/meter';
 import { createBrowserStorageAdapter, type StorageAdapter } from './storage/adapter';
 import { runTmMigration } from './storage/migration-tm';
+import { createCoalescingAdapter } from './storage/adapter-coalescing';
 import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { createPanel, createUiPort, injectStyles, insertPanel, installThemeWatcher } from './ui';
@@ -113,7 +114,13 @@ export async function bootstrap(
   //    here so the same wiring runs inside Tampermonkey unchanged.
   const adapter = options.adapter ?? createBrowserStorageAdapter();
   const settingsStore = createSettingsStore(adapter);
-  const speedStore = createSpeedStore(adapter);
+  // Audit 2026-05-09 perf O1: speedStore is the only high-volume write
+  // path (hotkey repeat at ~30/sec, slider drag bursts). Wrap its
+  // adapter in a 200ms coalescer so a held key doesn't blow Chrome's
+  // 120-writes-per-minute quota. settingsStore stays uncoalesced so
+  // its rollback-on-failure path (audit C9) sees real adapter rejects
+  // synchronously.
+  const speedStore = createSpeedStore(createCoalescingAdapter(adapter, { flushMs: 200 }));
   await settingsStore.init(site);
   await speedStore.init(site);
 

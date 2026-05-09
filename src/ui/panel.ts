@@ -16,6 +16,8 @@ import { defaultPresetsFor, speedBoundsFor } from '../config';
 import { applyTransient, handleSpeedButtonClick, setSpeed } from '../speed/controller';
 import { refreshActiveButton, refreshPinnedButton, renderButtonsRow } from './buttons';
 import { vsFilledGearIcon } from './icons';
+import { disposeNotificationStack } from './notifications';
+import { disposeSpeedPopup } from './popup';
 import { refreshDiagnosticStatus } from './settings/diag-status';
 import { attachSettingsHandlers } from './settings/handlers';
 import { type ActiveTab, renderSettingsMenu } from './settings/modal';
@@ -375,6 +377,24 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     event.stopPropagation();
   });
 
+  // Audit 2026-05-09 MAJOR-UI: Escape closes the menu (a11y / standard
+  // dialog convention). Capture phase so it wins over host-page handlers.
+  ctx.cleanup.addEventListener(
+    document,
+    'keydown',
+    (event) => {
+      if (!isMenuOpen()) return;
+      const ev = event as KeyboardEvent;
+      if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        ev.preventDefault();
+        closeMenu();
+        gearBtn.focus();
+      }
+    },
+    { capture: true },
+  );
+
   // Click outside the gear-wrapper closes the menu.
   ctx.cleanup.addEventListener(document, 'click', (event) => {
     if (!isMenuOpen()) return;
@@ -585,6 +605,20 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       gearBtn.classList.toggle('has-warning', on);
     },
     dispose() {
+      // Audit 2026-05-09 sec C16: also remove orphan notification stack
+      // and speed popup that live OUTSIDE root (anchored on the player
+      // container / fullscreen element). Without this, after a teardown
+      // the next ensureStack/ensurePopup reuses the detached node.
+      try {
+        disposeNotificationStack();
+      } catch {
+        /* swallow */
+      }
+      try {
+        disposeSpeedPopup();
+      } catch {
+        /* swallow */
+      }
       root.remove();
       sliderContainer.remove();
     },

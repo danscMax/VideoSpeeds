@@ -118,6 +118,12 @@ export async function bootstrap(
   await speedStore.init(site);
 
   // 3. Discovery.
+  // killSwitch is declared early (TDZ guard, audit 2026-05-09 sec C6) so
+  // the closure inside isFullChainEnabled below can safely reference it
+  // even if a future change in createDiscoveryEngine starts evaluating
+  // the closure synchronously during construction. The actual handle is
+  // assigned after AppContext is built.
+  let killSwitch!: ReturnType<typeof createKillSwitch>;
   const cache = createSelectorCache(adapter, {
     scriptVersion: SCRIPT_VERSION,
   });
@@ -126,7 +132,7 @@ export async function bootstrap(
     site,
     cache,
     validators: Validators,
-    isFullChainEnabled: () => killSwitch.isDiscoveryEnabled(),
+    isFullChainEnabled: () => killSwitch?.isDiscoveryEnabled() ?? true,
     logger,
   });
   const discoveryPort = {
@@ -176,7 +182,7 @@ export async function bootstrap(
   };
 
   // 6. KillSwitch + HealthChecker (need ctx).
-  const killSwitch = createKillSwitch(ctx);
+  killSwitch = createKillSwitch(ctx);
   const healthChecker = createHealthChecker({
     ctx,
     scriptVersion: SCRIPT_VERSION,
@@ -258,11 +264,19 @@ export async function bootstrap(
   ctx.ui = realUi;
   cleanup.add(() => panel.dispose());
 
-  // Re-create translator on language change.
+  // Re-create translator on language change. Audit 2026-05-09 MAJOR-bootstrap:
+  // also force a rerender of the live panel/settings menu so on-screen
+  // strings update immediately instead of staying stale until the next
+  // SPA navigation.
   const offSettingsSub = settingsStore.subscribe((next) => {
     if (next.language !== lang) {
       lang = next.language;
       ctx.i18n = createTranslator(next.language);
+      try {
+        panel.rerenderSettings();
+      } catch {
+        /* swallow — rerender is best-effort */
+      }
     }
   });
   cleanup.add(offSettingsSub);
@@ -382,6 +396,12 @@ export async function bootstrap(
   // we register fresh ones. Without this we double-fire ratechange on
   // every nav after the first (audit S15).
   const reattach = (): void => {
+    // Audit 2026-05-09 sec C8: bail out immediately if the outer
+    // bootstrap cleanup has already disposed. Without this guard, a
+    // late-arriving navigation event (after content-script teardown
+    // started) creates a fresh attachCleanup registry that never gets
+    // tracked or disposed, leaking listeners.
+    if (cleanup.isDisposed) return;
     if (ctx.site === 'rutube') {
       const path = location.pathname;
       if (path === lastRutubePath) {
@@ -409,9 +429,15 @@ export async function bootstrap(
     // entire `.video-page-layout-module__left` column on each nav,
     // leaving our panel orphaned in a torn-down branch where the
     // idempotent guard mistakes "still in old parent" for "still
-    // visible". Mirrors .user.js:2253-2254 ("Удаляем старый UI, если
-    // он остался от предыдущей страницы").
-    panel.element.parentElement?.removeChild(panel.element);
+    // visible".
+    //
+    // YouTube DOES NOT swap the column — `ytd-watch-metadata` is stable
+    // across yt-navigate-finish — so unconditionally detaching here
+    // races with the displacement observer that immediately re-inserts.
+    // Detach only on RuTube (audit 2026-05-09 MAJOR-bootstrap).
+    if (ctx.site === 'rutube') {
+      panel.element.parentElement?.removeChild(panel.element);
+    }
 
     // RuTube React re-renders the page column AFTER the
     // history.pushState that triggers our reattach. Querying the DOM

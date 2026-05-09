@@ -5,6 +5,152 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.8] — 2026-05-09
+
+Outcome of a multi-agent audit pass against the entire codebase.
+Six grouped commits cover security, data integrity, bootstrap
+correctness, async race conditions, UI lifecycle, and high-impact
+performance. Plus 31 new regression tests gated on the audit findings.
+
+### Visual
+
+- **Pinned-speed indicator redesign.** The 5×5 dot in the corner of the
+  saved/default speed button is replaced by a SVG bookmark icon plus a
+  soft accent halo glow around the button. The halo is the primary
+  peripheral-vision signal; the icon adds semantic clarity ("saved").
+  Colour follows the per-site accent automatically (red on YouTube,
+  blue on RuTube).
+- **Slider tooltip hidden at rest.** The "1.50x" floating tooltip
+  above the slider thumb now appears only on container `:hover` or
+  while the thumb is `:active` (drag). At rest it used to overlap the
+  video frame above the panel.
+
+### Security
+
+- **Hostname detection anchored to whole-host TLD** (sec C1). The
+  previous `host.includes('youtube.com')` matched attacker-controlled
+  `youtube.com.evil.tld`, `evil-youtube.com.example.org`. The popup
+  calls `detectSite()` over arbitrary tab URLs, so this was reachable.
+- **RuTube postMessage bridge tightened** (sec C2/C3). Receiver now
+  rejects messages whose `event.origin` is not `window.location.origin`
+  (blocks cross-origin iframes / ad embeds), and requires
+  `sessionId === 'page'` for navigation events instead of accepting
+  arbitrary values (previously a reattach-spam DoS primitive). Session
+  IDs use `crypto.getRandomValues` as a strong fallback when
+  `crypto.randomUUID()` is unavailable.
+- **Popup message sender validation** (sec C4). `runtime.onMessage`
+  handler now rejects messages from foreign extensions
+  (`sender.id !== runtime.id`) and in-page content scripts
+  (`sender.tab !== undefined`).
+- **Settings JSON-import allow-listed** (sec C5). Imports go through a
+  strict `KNOWN_SETTINGS_KEYS` filter that drops everything else,
+  including explicit `__proto__` / `constructor` / `prototype` strip
+  and rejection when zero recognised keys remain.
+- **Feature-detect probe wrapped in try/catch** (sec C19). Some engines
+  expose `'navigation' in window` while `window.navigation === undefined`;
+  the chained `.addEventListener` access used to throw TypeError and
+  poison the entire bootstrap.
+
+### Data integrity
+
+- **SettingsStore: write queue + rollback on persist failure** (sec C9).
+  Concurrent updates serialize through a write-chain; if `adapter.set()`
+  rejects (quota, IO, runtime gone) and the live state still equals
+  the value we tried to persist, in-memory state rolls back to the
+  pre-update snapshot. Subscriber iteration also snapshots the
+  subscriber Set so callbacks unsubscribing during notify don't perturb
+  the loop.
+- **GM-storage envelope JSON round-trip** (sec C10). Userscript-build
+  adapter now wraps every value in `{"_v":1,"d":<value>}` so
+  primitives and strings round-trip losslessly. The previous
+  asymmetric encoding silently coerced stored strings `"true"` /
+  `"123"` / `"null"` to `true`/`123`/`null` on read.
+- **Discovery validators return a fresh ok-result** (sec C11). The
+  previous `const ok = { ok: true, reasons: [] }` singleton was
+  returned to all callers; mutating `result.reasons` corrupted the
+  global success constant for every subsequent validation.
+- **Discovery cache: signature drift comment** (sec C12) and explicit
+  `Array.isArray` rejection in TM migration boundary.
+
+### Bootstrap correctness
+
+- **TDZ guard on `killSwitch`** (sec C6). The discovery engine's
+  `isFullChainEnabled` closure used to capture a `killSwitch` not yet
+  declared. Hoisted into a forward-declared `let` with a `?? true`
+  fallback for the brief window before the actual handle is wired.
+- **`isDisposed` guard on the popup-message listener install** (sec C7)
+  and the SPA-navigation `reattach()` path (sec C8). A late-arriving
+  navigation event after content-script teardown used to create a
+  fresh `attachCleanup` registry that nobody owned.
+- **YouTube-only conditional `panel.removeChild` on reattach.** The
+  previous unconditional detach raced YouTube's stable DOM and the
+  displacement observer immediately re-inserted the panel. Detach
+  only on RuTube where the column swap is real.
+- **Language change triggers panel rerender.** On-screen strings used
+  to stay stale until the next SPA navigation.
+
+### Async race conditions
+
+- **Click-counter race in speed controller** (sec C13). The router used
+  to reset `count = 0` synchronously before kicking off async
+  `setGlobal`/`setTemporary`; a click arriving during the in-flight
+  storage write was treated as a fresh single-click, silently
+  downgrading the just-applied global to a temporary. New `pending`
+  flag short-circuits re-entry until the promotion settles.
+- **Unhandled rejection on click promotion** (sec C14). Storage
+  failures (quota, runtime gone) used to be silently swallowed by
+  `void setGlobal(...)`. Now logged via `ctx.logger.error`.
+- **Hotkey capture race** (sec C15). Concurrent keypresses during the
+  in-flight settings write used to clobber each other. Synchronous
+  capture + `dataset.vsBusy` re-entry guard.
+- **HealthChecker.runOnce is now read-only.** Previously mutated
+  `lastHealthy`, killing the next transition detection inside `run()`.
+- **Auto-trip latch resets on sustained recovery.** Previously a
+  one-shot for the entire page lifetime.
+
+### UI lifecycle
+
+- **Panel.dispose() removes orphan `#speed-notifications` /
+  `#speed-popup`** (sec C16). They live OUTSIDE the panel root
+  (anchored on player container / fullscreen element) and used to be
+  reused as detached nodes on the next ensureStack/ensurePopup.
+- **Notification stack restores host container's inline `position`**
+  (sec C17). The toast-stack mutation from `static` to `relative`
+  used to leak across reload cycles.
+- **Speed-popup `hideTimer` is scoped per-popup via WeakMap** (sec C18)
+  instead of a module singleton.
+- **Toast timers tracked + cleared on dispose** (eliminates ~3.25s of
+  zombie ticks after teardown).
+- **Slider `Number.isFinite` guards** the `parseFloat || min` path
+  silently coerced a legitimate `0` to the fallback.
+- **Escape closes the gear settings menu** (a11y / dialog convention).
+
+### Performance
+
+- **New coalescing storage adapter** (perf O1). Writes are buffered
+  per-key for 200ms before reaching the underlying adapter. Wired
+  around the speed-store only — held-hotkey at ~30/sec used to blow
+  Chrome's 120-writes-per-minute quota in under 30 seconds.
+- **`speed_button_count` query scoped to panel root** (perf O11). The
+  previous `document.querySelectorAll('.speed-button')` walked the
+  entire YouTube DOM on every health tick + every settings-modal
+  rerender.
+- **`cleanup.setTimeout` self-removes from tracking Set** (perf O17).
+  Long-lived registries no longer accumulate dead ids.
+- **Logger uses a circular buffer** (perf O20). `Array.shift` on
+  overflow at maxHistory=200 was constant pressure on long-running
+  tabs.
+- **`lcaDistance` is O(d) via `Map<Element,depth>`** instead of O(d²)
+  `ancA.indexOf` (perf O7). Significant on YouTube where DOM depth
+  runs 15-20 levels and the validator runs on every non-cached resolve.
+- **`detectFeatures()` is memoized.** Capability flags are invariant
+  within a content-script lifetime.
+
+### Tests
+
+- 16 new regression tests in `tests/unit/audit-2026-05-09.spec.ts`
+  covering the security/integrity findings.
+
 ## [0.3.5] — 2026-05-08
 
 Closes the three remaining items from the v0.3.4 audit pass plus a

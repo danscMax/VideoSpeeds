@@ -450,7 +450,7 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
 
 /* Hint shown next to the 'Right' option in Settings when the viewport
    is too narrow for that layout. Always rendered into the DOM; CSS
-   gates visibility. The selector tests `data-vs-slider-position="right"`
+   gates visibility. The selector tests data-vs-slider-position="right"
    on the parent panel so the hint disappears the moment the user
    switches to Bottom or Video manually. */
 .vs-pos-hint-narrow {

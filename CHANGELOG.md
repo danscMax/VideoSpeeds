@@ -5,6 +5,91 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.9] — 2026-05-10
+
+Continuation of the audit-driven cleanup that started in 0.3.8. Three
+grouped commits cover quick a11y/UX wins, real-but-edge-case bugs, and
+high-impact performance optimizations.
+
+### Visual
+
+- **Pluralized "issues found" headline.** EN diagnostic tab now renders
+  "1 issue found" instead of "1 issues found" when only one issue is
+  detected. RU phrasing was already count-agnostic ("Найдено
+  проблем: N").
+
+### Accessibility / UX
+
+- **Settings menu announced as `dialog`.** Gear button now exposes
+  `aria-haspopup="dialog"` and `aria-expanded` state; the menu itself
+  carries `role="dialog"` + `aria-modal="false"` + `aria-label`.
+  Screen readers used to announce a "menu" role even though the popup
+  is a tabbed dialog with form inputs.
+- **Detached anchor for JSON-export.** No more host-page DOM mutation
+  on every Settings → Export click.
+- **Production console hygiene.** `console.info` lines from the content
+  script and page-world bootstrap are now gated behind `import.meta
+  .env.DEV`. Production users no longer see "content script loaded"
+  / "page-world script loaded" / "history hook installed" /
+  "Navigation API hook installed" in their devtools.
+
+### Bug fixes
+
+- **KillSwitch propagation across instances.** The KillSwitch now
+  subscribes to SettingsStore so external writes (popup, future
+  options page) propagate into the live content-script's cached state.
+  Toggling discovery / health-check from the popup used to require a
+  page reload to take effect.
+- **HealthChecker re-arm without reload.** When health-check is OFF at
+  bootstrap, the checker now arms a `subscribe()` watcher and starts
+  itself the moment the user toggles it back ON.
+- **Cache `persist()` chain bounded.** The previous unconditional
+  `(pendingWrite ?? resolve()).then(...)` built an ever-growing
+  promise chain on tight `bumpSuccess` loops — a memory leak on
+  long-running tabs. Replaced with a one-in-flight + one-trailing
+  pattern.
+- **Firefox clipboard fallback.** Donate-section "Copy address" now
+  falls back to `document.execCommand('copy')` via a hidden textarea
+  when `navigator.clipboard.writeText()` rejects (Firefox MV3 / strict
+  Edge configs without recent user gesture).
+- **Welcome page ResizeObserver disconnect.** Language-switch path now
+  disconnects observers from the previous render before
+  `host.replaceChildren()`. Previously each EN→RU→EN round leaked 2
+  observers on stages the host had since replaced.
+- **Defensive `try/catch` around `isHealthy()` in diag-status update.**
+  A thrown call (e.g. healthChecker not yet initialised) used to
+  crash the entire status update, leaving the panel showing stale info.
+
+### Performance
+
+- **`adjustMenuPosition` reads/writes batched** (perf P1). Eliminates
+  up to 4 forced synchronous reflows per call. The settings-modal
+  rerender chain calls this on every settings change; the jank was
+  visible on mobile.
+- **`heuristicScan` for `playerContainer` is now an ancestor walk**
+  (perf P2). The previous
+  `Array.from(doc.querySelectorAll('div, section, article'))
+  .filter(el => el.querySelector('video'))` was O(n_elements) ×
+  O(subtree-query). On YouTube this iterated 800-2000+ outer nodes
+  with a nested querySelector each, causing a CPU spike during cold
+  load. New implementation is O(depth), bounded at 32 levels.
+- **Settings handlers no longer double-rerender** (perf P3). 11
+  redundant `deps.rerender()` calls after `settingsStore.update()`
+  removed — the panel's settingsStore subscriber already triggers
+  `rerenderSettings()` when the menu is open. Each click in the gear
+  used to fire two full-modal rebuilds.
+- **`translator.t()` uses `split().join()` instead of `new RegExp()`**
+  (perf P4) for placeholder substitution. Saves the regex compile on
+  every `t(key, vars)` call (~10 compilations per modal rerender).
+- **Single shared `formatSpeed()`** in `ui/format.ts` (perf Q6) —
+  buttons and slider used to have two near-identical formatters.
+
+### Tests
+
+- All 31 audit regression tests from 0.3.8 still pass; no new tests
+  added for this round (changes covered by existing suite + browser
+  smoke).
+
 ## [0.3.8] — 2026-05-09
 
 Outcome of a multi-agent audit pass against the entire codebase.

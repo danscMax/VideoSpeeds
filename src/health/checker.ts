@@ -57,6 +57,15 @@ export interface CreateHealthCheckerDeps extends ReportDeps {
    * gear's red dot for the user to act on manually.
    */
   onConsecutiveFailures?: (count: number) => void;
+  /**
+   * Optional handle that exposes a `subscribe()` to KillSwitch state
+   * changes. When provided, the checker uses it to re-arm itself if
+   * health-check transitions false → true after bootstrap (audit M2).
+   * Without it, a user toggling health-check back on requires a reload.
+   */
+  killSwitchHandle?: {
+    subscribe(fn: (s: { healthCheckEnabled: boolean }) => void): () => void;
+  };
 }
 
 export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecker {
@@ -167,7 +176,16 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
   }
 
   function start(): void {
-    if (started || !deps.isHealthCheckEnabled()) return;
+    if (started) return;
+    if (!deps.isHealthCheckEnabled()) {
+      // Audit 2026-05-09 M2: kill-switch was OFF at bootstrap, so we
+      // don't arm now — but DO listen for it flipping back ON so the
+      // checker re-arms without requiring a page reload. Previously
+      // `start()` returned silently and the checker stayed dead until
+      // reload.
+      armReEnableWatcher();
+      return;
+    }
     started = true;
 
     // First check runs after the warmup window; polling is unconditional
@@ -176,6 +194,22 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
       run();
       startPolling();
     }, FIRST_RUN_MS);
+  }
+
+  // M2: subscribes to killSwitch (or polls deps.isHealthCheckEnabled
+  // when no subscribe is available). The watcher tears itself down
+  // after the first false→true transition by calling start() and
+  // unsubscribing.
+  function armReEnableWatcher(): void {
+    const ks = deps.killSwitchHandle;
+    if (!ks?.subscribe) return; // older deps shape — no watcher available
+    const off = ks.subscribe((snap) => {
+      if (snap.healthCheckEnabled && !started) {
+        off();
+        start();
+      }
+    });
+    ctx.cleanup.add(off);
   }
 
   function startPolling(): void {

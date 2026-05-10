@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.20] — 2026-05-10
+
+### Bug fixes
+
+- **Settings modal showed RED accent on RuTube** (should be RuTube
+  cyan/blue). The bug was visible on the active "Right" tab, every
+  selected speed-preset pill, the "+ Add" button, the toggle switches
+  and the "Russian" language pill — all showed YouTube red even
+  though the panel correctly applied the per-site palette.
+
+  Root cause was a CSS-variable indirection trap. `--vs-menu-active-bg`
+  (and the glow shadows / `--vs-toggle-on`) were declared at `:root`
+  with values like `linear-gradient(135deg, var(--vs-accent-dark) 0%,
+  var(--vs-accent-darker) 100%)`. Chrome substitutes nested `var()`
+  inside a custom-property value at the **declaring element's**
+  cascade, NOT at the consuming descendant's. So at `:root` the
+  gradient froze with the default `--vs-accent-dark` (#cc0000 red),
+  and descendants of `.vs-panel[data-vs-site="rutube"]` inherited
+  the already-resolved-with-red gradient as a string — never seeing
+  their panel-scoped blue override.
+
+  Fix: re-declare every aggregate token inside the per-site selector
+  itself, alongside the `--vs-accent-*` overrides. Substitution then
+  happens at the panel's own cascade where `--vs-accent-dark` is the
+  site colour, and inheritance carries the right gradient down.
+
 ## [0.3.19] — 2026-05-10
 
 ### Visual

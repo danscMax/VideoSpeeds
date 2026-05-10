@@ -299,10 +299,39 @@ html[data-vs-theme="light"] {
    at BOTH .vs-panel scope (in-player UI) and html scope (popup, where
    no panel exists — popup main.ts writes data-vs-site onto the html
    element based on the active tab). */
+/* Per-site palette. Each rule MUST also re-declare every aggregate
+   token that references --vs-accent-* (--vs-menu-active-bg, the
+   glow shadows, --vs-toggle-on). Why: Chrome substitutes var()
+   inside a custom property's value at the DECLARING element, not
+   at the consuming descendant. So if --vs-menu-active-bg is only
+   declared on :root, its computed value freezes with :root's
+   default --vs-accent-dark (red) and descendants inherit the
+   red-resolved string even when their own --vs-accent-dark is
+   overridden. By restating the aggregates inside the per-site
+   selector — same scope as the override — we get a fresh
+   substitution that picks up the site's accent. */
 .vs-panel[data-vs-site="rutube"],
-html[data-vs-site="rutube"]  { --vs-accent: #00A1E7; --vs-accent-dark: #0086c4; --vs-accent-darker: #005f8a; --vs-accent-rgb: 0,161,231; }
+html[data-vs-site="rutube"] {
+  --vs-accent: #00A1E7;
+  --vs-accent-dark: #0086c4;
+  --vs-accent-darker: #005f8a;
+  --vs-accent-rgb: 0, 161, 231;
+  --vs-menu-active-bg: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker) 100%);
+  --vs-menu-active-glow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+  --vs-menu-active-glow-hover: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
+  --vs-toggle-on: var(--vs-accent-dark);
+}
 .vs-panel[data-vs-site="youtube"],
-html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; --vs-accent-darker: #990000; --vs-accent-rgb: 255,0,0; }
+html[data-vs-site="youtube"] {
+  --vs-accent: #ff0000;
+  --vs-accent-dark: #cc0000;
+  --vs-accent-darker: #990000;
+  --vs-accent-rgb: 255, 0, 0;
+  --vs-menu-active-bg: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker) 100%);
+  --vs-menu-active-glow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+  --vs-menu-active-glow-hover: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
+  --vs-toggle-on: var(--vs-accent-dark);
+}
 
 /* The panel: TRANSPARENT flex row attached just below the player. No
    capsule background -- buttons and the gear handle their own visual

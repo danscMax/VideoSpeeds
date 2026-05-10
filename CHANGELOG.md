@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.10] — 2026-05-10
+
+### Layout
+
+- **Auto-wrap on narrow viewports.** The panel + speed-buttons row now
+  wrap to multiple lines when the available width is too small for the
+  user's chosen `sliderPosition` to fit on one line. Previously the
+  buttons + slider + gear group overflowed past the column boundary
+  into YouTube's `#secondary` recommendations / filter chips, visibly
+  overlapping. The user's chosen `sliderPosition` is preserved (no
+  silent layout switch); the panel just wraps within that mode.
+
 ## [0.3.9] — 2026-05-10
 
 Continuation of the audit-driven cleanup that started in 0.3.8. Three

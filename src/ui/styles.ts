@@ -335,7 +335,16 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
 .vs-panel {
   display: flex;
   align-items: center;
+  /* Audit 2026-05-10: allow the panel to wrap on narrow viewports
+     instead of overflowing into YouTube's #secondary column. With 9
+     preset buttons + slider + gear, the default 'right' layout simply
+     doesn't fit some narrow desktop / split-screen widths. Wrap keeps
+     the user's chosen sliderPosition intact — slider+gear naturally
+     flow to a second row only when the first row is full. row-gap
+     adds breathing room when wrap kicks in. */
+  flex-wrap: wrap;
   gap: 16px;
+  row-gap: 8px;
   padding: 0;
   /* Auto horizontal margins center the panel within its parent column. On
      YouTube's narrow-viewport layout (parent retains a desktop min-width
@@ -496,8 +505,17 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
+  /* Audit 2026-05-10: allow buttons themselves to wrap when even the
+     buttons-only row exceeds available width. With 9+ presets on a
+     500px wide column that does happen — without wrap, the row
+     overflows past the panel container into YouTube's #secondary
+     column (visible as buttons "наступают" on the recommendation
+     filter chips). row-gap matches the panel's wrap row-gap for
+     visual consistency. */
+  flex-wrap: wrap;
+  row-gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
   /* Subtle surface so the pill row reads as a unit rather than as
      pills "floating in the air" on host backgrounds (audit MAJ-13). */
   background: rgba(0, 0, 0, 0.22);

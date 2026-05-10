@@ -13,9 +13,14 @@
 import { CleanupRegistry } from '../app/cleanup';
 import type { AppContext } from '../app/context';
 import { defaultPresetsFor, speedBoundsFor } from '../config';
-import { applyTransient, handleSpeedButtonClick, setSpeed } from '../speed/controller';
+import {
+  applyTransient,
+  handleSpeedButtonClick,
+  setGlobal,
+  setTemporary,
+} from '../speed/controller';
 import { refreshActiveButton, refreshPinnedButton, renderButtonsRow } from './buttons';
-import { vsFilledGearIcon } from './icons';
+import { vsFilledGearIcon, vsIcon } from './icons';
 import { disposeNotificationStack } from './notifications';
 import { disposeSpeedPopup } from './popup';
 import { refreshDiagnosticStatus } from './settings/diag-status';
@@ -160,14 +165,34 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   gearWrapper.appendChild(gearBtn);
   gearWrapper.appendChild(settingsMenu);
 
-  // Brand marker removed in 0.3.7 — the chevrons-up icon was a purely
-  // decorative "this is the extension" identity hint that users found
-  // confusing and inert (no click target, no meaning). The gear button
-  // is identity enough; users who want to verify which extension drew
-  // the panel can hover the gear (its title attribute names the
-  // extension).
+  // Audit 2026-05-10: explicit "save as default" pin button. Until now
+  // the only way to lock a speed as the new-video default was to
+  // double-click on a preset — undocumented and not present in any
+  // canonical media-player UI. Users dragging the slider also
+  // unintentionally saved the dragged value as the default (slider
+  // release used to call setSpeed = persist; now it calls
+  // setTemporary, see slider 'change' handler above). This button
+  // makes the explicit "save current as default" action discoverable
+  // and one click away from anywhere in the panel. Click → setGlobal,
+  // which writes speedStore.current + force-enables rememberSpeed +
+  // toasts the user. The bookmark icon mirrors the in-button
+  // saved-speed indicator for visual consistency.
+  const pinBtn = document.createElement('button');
+  pinBtn.type = 'button';
+  pinBtn.className = 'vs-pin-button';
+  pinBtn.setAttribute('aria-label', ctx.i18n.t('panel.pin.aria'));
+  pinBtn.title = ctx.i18n.t('panel.pin.tooltip');
+  pinBtn.appendChild(vsIcon('bookmark', 14));
+  ctx.cleanup.addEventListener(pinBtn, 'click', () => {
+    const speed = ctx.speedStore.current();
+    if (Number.isFinite(speed)) {
+      void setGlobal(ctx, speed);
+    }
+  });
+
   root.appendChild(buttonsRow);
   root.appendChild(sliderContainer);
+  root.appendChild(pinBtn);
   root.appendChild(gearWrapper);
 
   // ----- Tab state preserved across rerenders -----
@@ -224,7 +249,17 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
       pendingSpeed = null;
       const value = parseFloat(sliderInput.value);
       if (Number.isFinite(value)) {
-        void setSpeed(ctx, value);
+        // Audit 2026-05-10: slider release now applies as a TEMPORARY
+        // (one-shot) speed for the current video — same semantics as
+        // a single button click. Previously this called setSpeed()
+        // which, when rememberSpeed was on, persisted the dragged
+        // value as the global default. Users complained: dragging the
+        // slider mid-video silently locked their default to that value
+        // forever (next video started at the dragged speed). Setting
+        // the global default is now an EXPLICIT action — either
+        // double-click on a preset, or the new "save as default"
+        // pin button next to the gear (see panel mounting below).
+        void setTemporary(ctx, value);
       }
     });
     // Mobile: stop the page from scrolling while the user drags the slider

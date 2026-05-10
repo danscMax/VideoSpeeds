@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.15] — 2026-05-10
+
+### Behaviour change
+
+- **Slider release no longer locks the dragged value as the new-video
+  default.** Dragging the slider mid-video now applies the speed as a
+  TEMPORARY (one-shot) — same semantics as a single button click. The
+  next video starts at the user's saved default, not at the dragged
+  value. Previously the slider's `change` event called `setSpeed()`
+  which, with `rememberSpeed: true` (the install default), persisted
+  the dragged value as the default for ALL future videos — a silent
+  side-effect with no visual confirmation. Setting the new-video
+  default is now an EXPLICIT action — either double-click on a preset
+  (existing power-user shortcut) or the new pin button below.
+
+### Added
+
+- **Pin button — "Save current speed as default".** New circular
+  button between the slider and the gear, bookmark-icon (matches the
+  in-button saved-speed indicator). Click → applies `setGlobal()`:
+  saves the currently-playing speed to `speedStore.current` + force-
+  enables `rememberSpeed` + toasts confirmation. Discoverable
+  alternative to the undocumented double-click-on-preset shortcut.
+  Hover surfaces the same accent halo we use for the saved-speed
+  indicator, signalling persistence.
+
 ## [0.3.14] — 2026-05-10
 
 ### Bug fixes (the actual root cause this time)

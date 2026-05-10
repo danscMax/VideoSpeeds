@@ -289,26 +289,29 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     // recalc; on every settings-modal rerender that's noticeable jank,
     // especially on mobile.
 
-    // ----- READS (batch 1) -----
-    // The previous geometry from any earlier adjustMenuPosition call
-    // is fine to read directly — we only need accurate values for the
-    // current state of the menu.
+    // ----- RESET (clear stale inline overrides BEFORE measuring) -----
+    // Audit 2026-05-10 root-cause: settingsMenu.scrollHeight reflects
+    // the CURRENT layout state — including any inline max-height we
+    // wrote on a previous call. Reading naturalH without first clearing
+    // max-height meant it returned the *clamped* value, not the
+    // *natural* value. Subsequent comparisons (`naturalH > room`)
+    // misfired, leading to alternating clamp/no-clamp on each call —
+    // visually the menu would lose its top portion (header + tabs
+    // pushed above viewport) and then "self-recover" on the next call.
+    // Fix: clear all inline overrides upfront, take a single honest
+    // measurement, then write the new computed values.
+    settingsMenu.removeAttribute('data-vs-flip');
+    settingsMenu.removeAttribute('data-vs-flip-y');
+    settingsMenu.style.removeProperty('max-height');
+    settingsMenu.style.removeProperty('left');
+    settingsMenu.style.removeProperty('right');
+
+    // ----- READS (batch 1, all post-reset) -----
     const PAD = 8;
     const wrapperRect = gearWrapper.getBoundingClientRect();
     const gearRect = gearBtn.getBoundingClientRect();
     const viewportW = window.innerWidth;
     const viewportH = window.innerHeight;
-    // Pre-clear data-vs-flip-y ONLY when we still need to decide flip-y;
-    // otherwise we keep the frozen flip during the read so menuRect
-    // reflects the post-flip geometry.
-    let needFreezeFlip = frozenFlipY === null;
-    if (needFreezeFlip) {
-      // We need an honest natural-height measurement to decide flip-y.
-      // Cleanest path: clear flip-y temporarily, measure, decide, then
-      // batch the write below. This is the one unavoidable interleaved
-      // read in the function.
-      settingsMenu.removeAttribute('data-vs-flip-y');
-    }
     const menuRect = settingsMenu.getBoundingClientRect();
     const menuW = settingsMenu.offsetWidth || menuRect.width;
     const naturalH = settingsMenu.scrollHeight;
@@ -326,31 +329,34 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
         absLeft = Math.max(PAD, viewportW - menuW - PAD);
       }
     }
-    if (needFreezeFlip) {
+    // Decide flip-y based on the natural (unclamped) menu height.
+    // If we still don't have a frozen decision (initial open), use
+    // the just-measured menuRect.bottom against the viewport bottom +
+    // compare available spaces.
+    if (frozenFlipY === null) {
+      // menuRect at this point reflects natural menu height (max-height
+      // and flip-y attribute were both cleared above).
       if (menuRect.bottom > viewportH - 4 && spaceAbove > spaceBelow) {
         frozenFlipY = 'up';
       } else {
         frozenFlipY = 'down';
       }
-      needFreezeFlip = false;
     }
     const room = frozenFlipY === 'up' ? spaceAbove : spaceBelow;
     const needsMaxHeight = naturalH > room && room > 0;
 
     // ----- WRITES (batch 2) -----
-    settingsMenu.removeAttribute('data-vs-flip');
     settingsMenu.style.left = `${absLeft - wrapperRect.left}px`;
     settingsMenu.style.right = 'auto';
     if (frozenFlipY === 'up') {
       settingsMenu.setAttribute('data-vs-flip-y', 'up');
-    } else {
-      settingsMenu.removeAttribute('data-vs-flip-y');
     }
+    // 'down' = default; no flip-y attr needed (cleared in RESET above).
     if (needsMaxHeight) {
       settingsMenu.style.maxHeight = `${room}px`;
-    } else {
-      settingsMenu.style.removeProperty('max-height');
     }
+    // No max-height = use the CSS default `calc(100vh - 80px)` ceiling
+    // (no inline override needed; cleared in RESET above).
   }
 
   function closeMenu(): void {

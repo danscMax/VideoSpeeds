@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.14] — 2026-05-10
+
+### Bug fixes (the actual root cause this time)
+
+- **Settings menu: clear inline overrides BEFORE measuring.** The bug
+  that v0.3.11/12/13 chased was caused by `adjustMenuPosition()`
+  reading `settingsMenu.scrollHeight` while a stale inline `max-height`
+  was still set from the previous call. `scrollHeight` reflects the
+  CURRENT layout state — so what we thought was the "natural" height
+  was actually the previous-call's clamp. The `naturalH > room` check
+  then misfired (often comparing the clamp value to `room` and
+  deciding "no clamp needed"), the inline `max-height` got removed,
+  and the menu expanded past the viewport — header + tabs scrolled
+  off as a side-effect. The next call would measure correctly,
+  re-clamp, and the menu would "self-recover". Hence the alternating
+  bug on every layout switch.
+
+  Fixed by clearing all inline overrides (`max-height`, `data-vs-flip-y`,
+  `data-vs-flip`, `left`, `right`) at the very top of
+  `adjustMenuPosition()`, BEFORE any measurement. Then a single honest
+  read informs flip-y + max-height decisions, and the writes go in
+  one batch at the end. No oscillation.
+
 ## [0.3.13] — 2026-05-10
 
 ### Bug fixes (root-cause)

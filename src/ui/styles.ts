@@ -920,8 +920,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   top: calc(100% + 6px);
   right: 0;
   /* Surface adapts to the host page theme via --vs-menu-* tokens defined
-     at html[data-vs-theme="dark|light"]. No local hardcoded values so the
-     modal matches whichever YouTube theme the user has chosen. */
+     at html[data-vs-theme="dark|light"]. */
   background: var(--vs-menu-bg);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
@@ -935,21 +934,15 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   box-shadow: var(--vs-menu-shadow-1), var(--vs-menu-shadow-2);
   z-index: 999999;
   display: none;
-  /* Internal vertical scroll engages once panel.ts caps max-height for a
-     viewport that can't fit the natural modal height. Horizontal stays
-     clipped so a wide row never escapes the rounded corners. */
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--vs-menu-scrollbar) transparent;
+  /* Audit 2026-05-10: scroll moved to .vs-menu-body. The settings-menu
+     itself is the OUTER container — flex column with header + tabs
+     pinned to the top (flex-shrink:0) and the body scrolling internally.
+     Without this split, on tall tabs the header + tabs scrolled out of
+     view together with the body, leaving the user unable to find them
+     until they closed and reopened the menu. Horizontal stays hidden
+     so wide rows never escape the rounded corners. */
+  overflow: hidden;
   font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-.settings-menu::-webkit-scrollbar {
-  width: 6px;
-}
-.settings-menu::-webkit-scrollbar-thumb {
-  background: var(--vs-menu-scrollbar);
-  border-radius: 3px;
 }
 .settings-menu.show {
   display: flex;
@@ -1007,6 +1000,26 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 /* Header bar: padded + bottom border separating it from the tabs
    container (parity .user.js:3084-3114). */
+/* Audit 2026-05-10: scroll container that owns overflow-y instead of the
+   parent .settings-menu. Header + tabs stay pinned at the top via the
+   flex-shrink:0 declarations on those elements; this element flex-grows
+   to fill remaining space and scrolls internally. min-height:0 is
+   required for flex children to shrink below their content min-height. */
+.vs-menu-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vs-menu-scrollbar) transparent;
+}
+.vs-menu-body::-webkit-scrollbar {
+  width: 6px;
+}
+.vs-menu-body::-webkit-scrollbar-thumb {
+  background: var(--vs-menu-scrollbar);
+  border-radius: 3px;
+}
 .vs-menu-header {
   display: flex;
   align-items: center;

@@ -634,12 +634,22 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
     ),
   );
 
-  return fragment(
-    header,
-    tabs,
+  // Audit 2026-05-10: wrap tab panels in a dedicated scroll container
+  // so the header + tabs stay sticky at the top regardless of how tall
+  // the active tab grows. The previous flat fragment let the WHOLE
+  // modal scroll, so on tall tabs the header and tab-strip scrolled
+  // off the top of the viewport — and after a settings.update rerender
+  // the user sometimes ended up viewing the middle of the body with
+  // no visible way back to the tabs. Now: settingsMenu handles the
+  // outer max-height + flex column, vs-menu-body owns overflow-y:auto.
+  const body = h(
+    'div',
+    { class: 'vs-menu-body' },
     generalTab(opts, activeTab !== 'general'),
     hotkeysTab(opts, activeTab !== 'hotkeys'),
     diagTab(opts, activeTab !== 'diag'),
     donateTab(opts, activeTab !== 'donate'),
   );
+
+  return fragment(header, tabs, body);
 }

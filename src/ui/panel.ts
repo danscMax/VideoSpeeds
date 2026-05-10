@@ -419,14 +419,6 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     menuRegistry = new CleanupRegistry();
     const menuCtx: AppContext = { ...ctx, cleanup: menuRegistry };
 
-    // Audit 2026-05-10 bug: replaceChildren preserves scrollTop in
-    // some browsers. After a settings-driven rerender the user could
-    // end up viewing the bottom half of a freshly-rebuilt menu (e.g.
-    // header + tabs scrolled off the top). Reset scroll on every
-    // rerender so the user always sees the menu from the top of the
-    // active tab.
-    settingsMenu.scrollTop = 0;
-
     settingsMenu.replaceChildren(
       renderSettingsMenu({
         settings: ctx.settingsStore.get(),

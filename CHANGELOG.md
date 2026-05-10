@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.12] — 2026-05-10
+
+### Bug fixes
+
+- **Settings menu architecture: header + tabs are now sticky.** The
+  previous v0.3.11 fix patched the symptom (resetting scrollTop on
+  rerender), but the underlying issue was structural — the entire
+  modal was a single scroll container, so on tall tabs the header
+  and tabs scrolled out of view together with the body. Switching
+  layouts repeatedly could leave the user viewing the middle of the
+  menu with no visible way back to the tabs (the menu would
+  eventually self-recover only when its content shrunk back).
+  Now: a dedicated `.vs-menu-body` element owns `overflow-y: auto`,
+  while `.vs-menu-header` and `.vs-tabs` stay pinned at the top of
+  the modal via `flex-shrink: 0`. Header + tabs are ALWAYS visible
+  regardless of how tall the active tab grows.
+
 ## [0.3.11] — 2026-05-10
 
 ### Bug fixes

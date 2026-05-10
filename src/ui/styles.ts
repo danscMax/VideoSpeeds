@@ -592,16 +592,12 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
   row-gap: 4px;
   flex-shrink: 1;
   min-width: 0;
-  /* Subtle surface so the pill row reads as a unit rather than as
-     pills "floating in the air" on host backgrounds (audit MAJ-13). */
-  background: rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 18px;
-  padding: 4px 6px;
-}
-html[data-vs-theme="light"] .speed-buttons-row {
-  background: rgba(255, 255, 255, 0.55);
+  /* No surface around the pill row -- original userscript inserted
+     the buttons directly into the host page without a wrapper, and
+     the wrapper background read as a foreign dark band against the
+     host's surrounding canvas (very visible on dark themes). Each
+     pill carries its own translucent surface (.speed-button) so they
+     still read as a unit. (Reverts audit MAJ-13's surface.) */
 }
 /* Pinned (saved/default) speed indicator: bookmark icon top-right +
    soft accent halo glow around the button. Replaces the earlier 5×5

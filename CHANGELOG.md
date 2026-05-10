@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.19] — 2026-05-10
+
+### Visual
+
+- **Removed dark surface around the speed pills.** The `.speed-buttons-row`
+  wrapper had a translucent dark/light surface (added in audit MAJ-13)
+  meant to make the pill row read as a unit on near-black hosts. In
+  practice it rendered as a foreign band that didn't match the host
+  page's surrounding canvas — particularly visible on HDRezka where
+  the page is uniformly dark and the wrapper produced a slightly
+  different dark shade right around our buttons. Reverted to the
+  original userscript look: each pill carries its own translucent
+  surface, the row itself is fully transparent.
+
 ## [0.3.18] — 2026-05-10
 
 ### Bug fixes

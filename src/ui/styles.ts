@@ -380,14 +380,15 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
    children for easy detach in 'video' mode. */
 .vs-panel[data-vs-slider-position="bottom"] {
   display: grid;
-  grid-template-columns: auto auto 1fr;
-  /* Slider spans only the first 2 columns (buttons + gear). The 3rd
-     1fr column soaks up trailing space and the slider intentionally
-     does NOT extend into it — keeps the second-row width visually
-     aligned with the buttons-and-gear group above it. */
+  /* Audit 2026-05-10: pin button (v0.3.15) added as an explicit grid
+     area. Without an explicit assignment, the browser auto-placed it
+     into the first empty cell — usually before the trailing 1fr
+     spacer — which produced a "panel looks truncated" first frame on
+     slow connections (slider rendered briefly in a wrong column). */
+  grid-template-columns: auto auto auto 1fr;
   grid-template-areas:
-    "buttons gear   ."
-    "slider  slider .";
+    "buttons pin    gear   ."
+    "slider  slider slider .";
   align-items: center;
   gap: 12px 12px;
 }
@@ -395,10 +396,14 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
   grid-area: buttons;
   flex-wrap: wrap;
 }
-/* gear sits flush against the buttons (column 2). Column 3 = 1fr soaks
-   up the remaining horizontal space — without it, justify-self: end
-   would push the gear to the far right edge of the panel and leave a
-   visual chasm between the buttons and the gear. */
+.vs-panel[data-vs-slider-position="bottom"] .vs-pin-button {
+  grid-area: pin;
+  justify-self: start;
+}
+/* gear sits flush against the pin/buttons cluster. The trailing 1fr
+   column soaks up remaining horizontal space — without it,
+   justify-self: end would push the controls to the far right edge
+   and leave a visual chasm between the buttons and the gear. */
 .vs-panel[data-vs-slider-position="bottom"] .vs-gear-wrapper {
   grid-area: gear;
   justify-self: start;
@@ -425,16 +430,20 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
 @media (max-width: 1100px) {
   .vs-panel[data-vs-slider-position="right"] {
     display: grid;
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: auto auto auto 1fr;
     grid-template-areas:
-      "buttons gear   ."
-      "slider  slider .";
+      "buttons pin    gear   ."
+      "slider  slider slider .";
     align-items: center;
     gap: 12px 12px;
   }
   .vs-panel[data-vs-slider-position="right"] .speed-buttons-row {
     grid-area: buttons;
     flex-wrap: wrap;
+  }
+  .vs-panel[data-vs-slider-position="right"] .vs-pin-button {
+    grid-area: pin;
+    justify-self: start;
   }
   .vs-panel[data-vs-slider-position="right"] .vs-gear-wrapper {
     grid-area: gear;

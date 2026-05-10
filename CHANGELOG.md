@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.16] — 2026-05-10
+
+### Bug fixes
+
+- **Panel ordering with the new pin button.** v0.3.15 added a pin
+  button between the slider and the gear, but `applyLayoutImpl()` and
+  the CSS grid templates for `sliderPosition='bottom'` (and the
+  narrow-viewport auto-collapse `sliderPosition='right'`) still
+  assumed the pre-pin two-control layout. On every layout call the JS
+  would reorder children to `[buttons, pin, slider, gear]`, and the
+  grid auto-placed pin into a random unfilled cell. On slow loads the
+  result was a visible "panel looks truncated" first frame — slider
+  briefly missing or in the wrong column — that recovered once the
+  next applyLayout pass settled.
+
+  Fixed by:
+  - `applyLayoutImpl()` anchors `slider.nextSibling` against `pinBtn`
+    instead of `gearWrapper` so the [buttons, slider, pin, gear]
+    ordering is stable.
+  - Grid templates for `sliderPosition='bottom'` and the narrow auto-
+    collapse rule now declare `pin` as an explicit area:
+    `"buttons pin gear ." / "slider slider slider ."`.
+
 ## [0.3.15] — 2026-05-10
 
 ### Behaviour change

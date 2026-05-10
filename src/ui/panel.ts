@@ -566,10 +566,19 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
         }
       }
     } else {
+      // Audit 2026-05-10: panel children in 'right'/'bottom' modes are
+      // [buttons, slider, pin, gear]. v0.3.15 added the pin button —
+      // before that the assumption was [buttons, slider, gear]. The
+      // old check `sliderContainer.nextSibling !== gearWrapper` would
+      // re-fire on every applyLayout call (because slider's real
+      // next sibling is now pinBtn, not gearWrapper) and reorder the
+      // children wrong: [buttons, pin, slider, gear]. Fix: anchor the
+      // slider's expected next sibling to pinBtn, which is its true
+      // neighbour in the desired layout.
       sliderContainer.classList.remove('vs-slider-in-chrome');
-      if (sliderContainer.parentElement !== root || sliderContainer.nextSibling !== gearWrapper) {
+      if (sliderContainer.parentElement !== root || sliderContainer.nextSibling !== pinBtn) {
         try {
-          root.insertBefore(sliderContainer, gearWrapper);
+          root.insertBefore(sliderContainer, pinBtn);
           ctx.logger.info('panel.applyLayout: slider restored into panel');
         } catch (e) {
           ctx.logger.warn('panel.applyLayout: root insert failed', e);

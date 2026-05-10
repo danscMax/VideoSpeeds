@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.18] — 2026-05-10
+
+### Bug fixes
+
+- **Cropped buttons during YT load — second pass.** v0.3.17 added the
+  visibility-deferred reveal but the `window.load` + 100 ms fallback
+  was firing BEFORE YouTube's metadata column finished hydrating.
+  YouTube is an SPA — `load` fires when the initial document and its
+  static resources are done, but the metadata API call (which triggers
+  the actual skeleton-end and the column's final layout) typically
+  resolves later. So the panel was being un-hidden mid-skeleton,
+  exactly into the cropped state v0.3.17 was meant to avoid.
+
+  Changes:
+  - Removed the `window.load` reveal trigger entirely. Reveal now
+    fires only on (a) `ytd-watch-metadata h1` having non-empty text
+    (observed via MutationObserver) or (b) the hard timeout.
+  - Hard timeout raised from 1500 ms → 3000 ms. On slow connections
+    YT's metadata response can exceed 1.5 s, and the previous timeout
+    was firing before skeleton-end on those.
+  - Reveal logic is now gated by `ctx.site === 'youtube'`. RuTube and
+    other sites reveal the panel immediately (the cropping artifact
+    is YT-specific — caused by the skeleton state's overflow:hidden
+    on `#primary-inner`).
+
 ## [0.3.17] — 2026-05-10
 
 ### Bug fixes

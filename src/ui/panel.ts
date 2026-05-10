@@ -83,11 +83,34 @@ export interface CreatePanelOptions {
  * cropped until the skeleton ends. Audit 2026-05-10.
  *
  * Reveal whichever fires first:
- *   - host signal: ytd-watch-metadata h1 has non-empty text (YouTube)
- *   - window.load + 100 ms grace
- *   - hard 1500 ms timeout (so we never leave the panel hidden)
+ *   - host signal: site-specific "metadata column hydrated" check
+ *     • YouTube: ytd-watch-metadata is rendered AND its h1 has text
+ *       AND the skeleton loader is gone
+ *     • RuTube/other: reveal immediately — the cropping issue is
+ *       YouTube-specific (skeleton overflow:hidden on parent column)
+ *   - hard 3000 ms timeout (worst-case fallback — never permanently
+ *     hidden, but long enough to wait out a slow YT hydration)
+ *
+ * Audit 2026-05-10b: removed the window.load + 100 ms fallback. On
+ * YouTube `load` fires BEFORE the SPA finishes hydrating the metadata
+ * column (it's an SPA — initial document is mostly empty), so the
+ * 100 ms grace was triggering reveal while the column was still in
+ * skeleton state, exactly when our pill buttons get clipped. Now we
+ * trust only the title-element-has-text signal (observed via
+ * MutationObserver) plus a hard ceiling so we don't lock the panel
+ * away forever if the title heuristic fails.
  */
 function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
+  // Non-YouTube sites: the cropping artifact is YouTube-specific
+  // (caused by YT's loading-skeleton overflow:hidden on #primary-inner
+  // during SPA hydration). RuTube renders its layout synchronously
+  // and doesn't exhibit the issue, so deferring would only delay a
+  // fully-correct render. Reveal immediately.
+  if (ctx.site !== 'youtube') {
+    root.classList.remove('vs-panel--pending');
+    return;
+  }
+
   let revealed = false;
   const reveal = (): void => {
     if (revealed) return;
@@ -95,8 +118,13 @@ function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
     root.classList.remove('vs-panel--pending');
   };
 
-  const checkYtTitle = (): boolean => {
+  const checkYtHydrated = (): boolean => {
     try {
+      // YT renders ytd-watch-metadata's h1 only AFTER its metadata
+      // API call resolves — this is the same moment the skeleton
+      // shimmer placeholders disappear. textContent is empty during
+      // skeleton, populated when the column lays out for real, so
+      // a single text-content check is sufficient and version-stable.
       const t = document.querySelector('ytd-watch-metadata h1');
       if (t && (t.textContent ?? '').trim().length > 0) {
         reveal();
@@ -108,16 +136,14 @@ function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
     return false;
   };
 
-  if (checkYtTitle()) return;
+  if (checkYtHydrated()) return;
 
-  // Probe the title area on every relevant DOM mutation. We attach a
-  // single observer scoped to <body> with subtree:true — cheap on YT
-  // since #primary-inner is the main mutation source during hydration
-  // and we disconnect on first reveal.
+  // Probe on every relevant DOM mutation. We attach a single observer
+  // scoped to <body> with subtree:true — disconnect on first reveal.
   let mo: MutationObserver | null = null;
   try {
     mo = new MutationObserver(() => {
-      if (checkYtTitle()) {
+      if (checkYtHydrated()) {
         mo?.disconnect();
         mo = null;
       }
@@ -134,36 +160,17 @@ function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
     /* swallow — observer unavailable in unit-test env, fall through to timer */
   }
 
-  // Fallback A: window.load + 100 ms.
-  const onLoad = (): void => {
-    setTimeout(() => {
-      reveal();
-      mo?.disconnect();
-      mo = null;
-    }, 100);
-  };
-  if (document.readyState === 'complete') {
-    onLoad();
-  } else {
-    window.addEventListener('load', onLoad, { once: true });
-    ctx.cleanup.add(() => {
-      try {
-        window.removeEventListener('load', onLoad);
-      } catch {
-        /* swallow */
-      }
-    });
-  }
-
-  // Fallback B: hard timeout. Even if everything above fails (host page
-  // never reaches a "loaded" state we can detect), the panel becomes
-  // visible after 1500 ms — slightly later than ideal but never
-  // permanently hidden.
+  // Hard ceiling. Even if both heuristics above fail to fire, the
+  // panel becomes visible after 3000 ms — slightly later than ideal
+  // but never permanently hidden. 3 s is a deliberate raise from
+  // 1.5 s: on slow connections YT's metadata API can take longer
+  // than 1.5 s, and the previous timeout was firing before the
+  // skeleton ended on those.
   ctx.cleanup.setTimeout(() => {
     reveal();
     mo?.disconnect();
     mo = null;
-  }, 1500);
+  }, 3000);
 }
 
 export function createPanel(opts: CreatePanelOptions): PanelHandle {

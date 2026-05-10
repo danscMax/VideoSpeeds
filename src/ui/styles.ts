@@ -346,6 +346,13 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
   gap: 16px;
   row-gap: 8px;
   padding: 0;
+  /* Audit 2026-05-10: while the host page is still rendering its
+     loading skeleton (YouTube #primary-inner can briefly clip
+     children's bottom edge with skeleton CSS), keep the panel
+     invisible. panel.ts removes vs-panel--pending after host
+     hydration via MutationObserver (ytd-watch-metadata h1 has text)
+     OR window.load + 100ms OR a 1500ms hard timeout. SPA-nav
+     re-renders skip the class entirely. */
   /* Auto horizontal margins center the panel within its parent column. On
      YouTube's narrow-viewport layout (parent retains a desktop min-width
      wider than the visual viewport) this lets the spare horizontal room
@@ -370,6 +377,12 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
      can anchor to it. */
   position: static;
   animation: vs-fade-in 0.3s ease;
+}
+.vs-panel.vs-panel--pending {
+  visibility: hidden;
+  /* Reserve layout space anyway so removing the class doesn't shift
+     the page below by the panel height (which would itself look
+     jarring). visibility:hidden keeps the box in flow. */
 }
 
 /* sliderPosition='bottom' -- buttons + gear share the top row; slider

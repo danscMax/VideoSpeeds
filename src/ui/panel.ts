@@ -75,6 +75,97 @@ export interface CreatePanelOptions {
   diagActions?: DiagActions;
 }
 
+/**
+ * Reveal the panel after the host page finishes its initial loading
+ * skeleton. YouTube/RuTube render placeholder boxes during the first
+ * few hundred ms with CSS that occasionally clips children of the
+ * column we mount into — visually the bottom of our pill buttons gets
+ * cropped until the skeleton ends. Audit 2026-05-10.
+ *
+ * Reveal whichever fires first:
+ *   - host signal: ytd-watch-metadata h1 has non-empty text (YouTube)
+ *   - window.load + 100 ms grace
+ *   - hard 1500 ms timeout (so we never leave the panel hidden)
+ */
+function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
+  let revealed = false;
+  const reveal = (): void => {
+    if (revealed) return;
+    revealed = true;
+    root.classList.remove('vs-panel--pending');
+  };
+
+  const checkYtTitle = (): boolean => {
+    try {
+      const t = document.querySelector('ytd-watch-metadata h1');
+      if (t && (t.textContent ?? '').trim().length > 0) {
+        reveal();
+        return true;
+      }
+    } catch {
+      /* swallow */
+    }
+    return false;
+  };
+
+  if (checkYtTitle()) return;
+
+  // Probe the title area on every relevant DOM mutation. We attach a
+  // single observer scoped to <body> with subtree:true — cheap on YT
+  // since #primary-inner is the main mutation source during hydration
+  // and we disconnect on first reveal.
+  let mo: MutationObserver | null = null;
+  try {
+    mo = new MutationObserver(() => {
+      if (checkYtTitle()) {
+        mo?.disconnect();
+        mo = null;
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+    ctx.cleanup.add(() => {
+      try {
+        mo?.disconnect();
+      } catch {
+        /* swallow */
+      }
+    });
+  } catch {
+    /* swallow — observer unavailable in unit-test env, fall through to timer */
+  }
+
+  // Fallback A: window.load + 100 ms.
+  const onLoad = (): void => {
+    setTimeout(() => {
+      reveal();
+      mo?.disconnect();
+      mo = null;
+    }, 100);
+  };
+  if (document.readyState === 'complete') {
+    onLoad();
+  } else {
+    window.addEventListener('load', onLoad, { once: true });
+    ctx.cleanup.add(() => {
+      try {
+        window.removeEventListener('load', onLoad);
+      } catch {
+        /* swallow */
+      }
+    });
+  }
+
+  // Fallback B: hard timeout. Even if everything above fails (host page
+  // never reaches a "loaded" state we can detect), the panel becomes
+  // visible after 1500 ms — slightly later than ideal but never
+  // permanently hidden.
+  ctx.cleanup.setTimeout(() => {
+    reveal();
+    mo?.disconnect();
+    mo = null;
+  }, 1500);
+}
+
 export function createPanel(opts: CreatePanelOptions): PanelHandle {
   const { ctx, scriptVersion } = opts;
   const bounds = speedBoundsFor(ctx.site);
@@ -96,8 +187,15 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   };
 
   const root = document.createElement('div');
-  root.className = 'vs-panel';
+  // Audit 2026-05-10: vs-panel--pending hides the panel until the host
+  // page finishes its initial hydration. YouTube renders a skeleton
+  // state for ~500-1500ms on cold load with CSS that occasionally
+  // clips/compresses children of #primary-inner — the bottom of our
+  // pill buttons gets cut off until the skeleton state ends. Hiding
+  // until then avoids the transient visual.
+  root.className = 'vs-panel vs-panel--pending';
   root.dataset.vsSite = ctx.site;
+  scheduleHostHydrationReveal(root, ctx);
 
   // Pinned = the saved/default speed when rememberSpeed is on. Used
   // to decorate that button with a small dot so the user sees which

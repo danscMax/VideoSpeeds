@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.17] — 2026-05-10
+
+### Bug fixes
+
+- **Buttons visually cropped at the bottom during page load.** On
+  YouTube the panel is appended to `#primary-inner > #below`, but
+  during the loading-skeleton state YouTube briefly applies tight
+  layout/clip rules to that subtree. Children inserted before the
+  host has hydrated would render with their bottom third sliced off
+  for a few hundred ms — visible until the SPA finishes its initial
+  paint. We cannot influence YouTube's CSS, so the root-cause fix is
+  to defer the panel's visibility until host hydration is observable.
+
+  New mechanism (`scheduleHostHydrationReveal` in `panel.ts`):
+  - Panel is created with `vs-panel--pending` (CSS:
+    `visibility: hidden`).
+  - Reveal triggers as soon as ANY of the following fires:
+    1. `ytd-watch-metadata h1` (or generic `h1` on HDRezka) has
+       non-empty text — the host's primary content has rendered.
+    2. `MutationObserver` on `document.body` detects the same
+       transition.
+    3. `window.load` + 100 ms grace.
+    4. A 1500 ms hard timeout (worst-case fallback, never longer).
+  - All listeners are wired through the global cleanup so SPA-nav and
+    teardown release them. Class is removed exactly once.
+
+  `visibility: hidden` (not `display: none`) is intentional: the
+  panel still reserves layout space, so removing the class doesn't
+  reflow the page below by the panel's height.
+
 ## [0.3.16] — 2026-05-10
 
 ### Bug fixes

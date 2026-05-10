@@ -413,6 +413,60 @@ html[data-vs-site="youtube"] { --vs-accent: #ff0000; --vs-accent-dark: #cc0000; 
   flex: 0 0 auto;
 }
 
+/* Audit 2026-05-10: auto-collapse 'right' layout to 'bottom'-style grid
+   when the viewport (and therefore the YouTube primary column) is too
+   narrow to fit buttons + slider + gear in one row. The user's stored
+   sliderPosition stays 'right' — we only override the visual rendering.
+   When the viewport widens back, the panel returns to single-row 'right'
+   layout automatically. A hint inside the Settings modal explains why
+   (.vs-pos-hint-narrow rule below). Threshold tuned for YouTube where
+   #primary-inner is ~viewportW × 0.66 with secondary visible, full
+   viewport in single-column mode. 1100px viewport ≈ 720px primary. */
+@media (max-width: 1100px) {
+  .vs-panel[data-vs-slider-position="right"] {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    grid-template-areas:
+      "buttons gear   ."
+      "slider  slider .";
+    align-items: center;
+    gap: 12px 12px;
+  }
+  .vs-panel[data-vs-slider-position="right"] .speed-buttons-row {
+    grid-area: buttons;
+    flex-wrap: wrap;
+  }
+  .vs-panel[data-vs-slider-position="right"] .vs-gear-wrapper {
+    grid-area: gear;
+    justify-self: start;
+  }
+  .vs-panel[data-vs-slider-position="right"] .speed-slider-container {
+    grid-area: slider;
+    width: auto;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+}
+
+/* Hint shown next to the 'Right' option in Settings when the viewport
+   is too narrow for that layout. Always rendered into the DOM; CSS
+   gates visibility. The selector tests `data-vs-slider-position="right"`
+   on the parent panel so the hint disappears the moment the user
+   switches to Bottom or Video manually. */
+.vs-pos-hint-narrow {
+  display: none;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--vs-text-dim);
+  margin-top: 6px;
+  font-style: italic;
+}
+@media (max-width: 1100px) {
+  .vs-panel[data-vs-slider-position="right"] .vs-pos-hint-narrow {
+    display: block;
+  }
+}
+
 /* sliderPosition='video' -- ONLY the slider container is detached from
    the panel and re-parented into player chrome (.ytp-right-controls on
    YouTube, the desktop-controls column on RuTube). Mirrors original

@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.11] — 2026-05-10
+
+### Bug fixes
+
+- **Settings menu no longer breaks on layout switch.** When the user
+  toggled `sliderPosition` from "Right" → "Bottom" → "Right", the
+  modal kept its previous `scrollTop` and the frozen flip-y decision
+  from before the switch — the user could end up viewing the bottom
+  half of a freshly-rebuilt menu (header + tabs scrolled off the top)
+  with no visible way to scroll back up. Now: scrollTop is reset on
+  every rerender, and frozen flip-y is invalidated when sliderPosition
+  changes so `adjustMenuPosition` recalculates from the new geometry.
+
+### Layout
+
+- **Auto-collapse "Right" to grid layout on narrow viewports.** When
+  the viewport is below 1100px (YouTube primary column ≤ ~720px),
+  buttons + slider + gear cannot fit in one row even with auto-wrap.
+  We now apply a Bottom-style grid layout regardless of the user's
+  saved choice. The saved `sliderPosition` is unchanged — when the
+  viewport widens back, the panel returns to single-row "Right"
+  layout automatically.
+- **Settings hint** explains the auto-collapse next to the "Right"
+  radio: «Авто: на узком экране ползунок переносится вниз. Ваш выбор
+  сохранён и вернётся, когда места будет достаточно.» / "Auto: on
+  narrow screens the slider wraps below — your choice is kept and
+  restored when there is enough room." Visible only when the auto
+  rule is currently firing (CSS-gated, no JS).
+
 ## [0.3.10] — 2026-05-10
 
 ### Layout

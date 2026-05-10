@@ -143,6 +143,11 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
           )
         : null,
     ),
+    // Audit 2026-05-10: explain the auto-collapse behaviour. CSS gates
+    // visibility — only shown when (viewport narrow + sliderPosition='right'),
+    // matching the @media block in styles.ts that forces the visual
+    // grid layout for the user's "Right" choice on narrow viewports.
+    h('p', { class: 'vs-pos-hint-narrow' }, t('general.pos.narrow_hint')),
   );
 
   const presetSet = new Set<number>(settings.speedPresets ?? []);

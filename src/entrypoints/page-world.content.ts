@@ -50,7 +50,9 @@ export default defineContentScript({
     // can coexist without crossed wires.
     const w = window as unknown as { [INSTALL_FLAG]?: boolean };
     if (w[INSTALL_FLAG]) {
-      console.info('[VIDEO-SPEEDS] page-world: history hook already installed, skipping');
+      if (import.meta.env.DEV) {
+        console.info('[VIDEO-SPEEDS] page-world: history hook already installed, skipping');
+      }
       return;
     }
     w[INSTALL_FLAG] = true;
@@ -80,7 +82,9 @@ export default defineContentScript({
         nav.addEventListener('navigate', () => {
           Promise.resolve().then(() => broadcast('navigated', 'nav-api'));
         });
-        console.info('[VIDEO-SPEEDS] page-world: Navigation API hook installed');
+        if (import.meta.env.DEV) {
+          console.info('[VIDEO-SPEEDS] page-world: Navigation API hook installed');
+        }
       } catch {
         /* swallow — fallback to history-patch below */
       }
@@ -101,6 +105,8 @@ export default defineContentScript({
     }
     window.addEventListener('popstate', () => broadcast('navigated', 'popstate'));
 
-    console.info('[VIDEO-SPEEDS] page-world script loaded on', location.hostname);
+    if (import.meta.env.DEV) {
+      console.info('[VIDEO-SPEEDS] page-world script loaded on', location.hostname);
+    }
   },
 });

@@ -13,7 +13,12 @@ export default defineContentScript({
   runAt: 'document_idle',
   allFrames: false,
   async main(ctx) {
-    console.info('[VIDEO-SPEEDS] content script loaded on', location.hostname);
+    // Audit 2026-05-09 Q5: gate noisy info logs behind DEV. Production
+    // builds shouldn't pollute end-user devtools console; the bootstrap
+    // logger has its own info() lines for diagnostics.
+    if (import.meta.env.DEV) {
+      console.info('[VIDEO-SPEEDS] content script loaded on', location.hostname);
+    }
     // Backstop: when the extension is reloaded/disabled, in-flight chrome.*
     // calls in the OLD content-script instance reject with "Extension
     // context invalidated" -- these surface in the chrome://extensions

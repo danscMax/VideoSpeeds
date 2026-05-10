@@ -206,7 +206,8 @@ export const I18N_DICT = {
     'diag.status.ok': 'Everything is working',
     'diag.status.last_check': 'Last check: {time}',
     'diag.status.issue_single': 'Issue: {issue}',
-    'diag.status.issues_count': '{count} issues found',
+    'diag.status.issues_count.one': '1 issue found',
+    'diag.status.issues_count.other': '{count} issues found',
     'diag.status.try_again':
       'Try "Clear cache" or "Run check" again. Copy the report if it persists.',
     'diag.status.waiting': 'Waiting for video playback',
@@ -483,7 +484,11 @@ export const I18N_DICT = {
     'diag.status.ok': 'Всё работает',
     'diag.status.last_check': 'Последняя проверка: {time}',
     'diag.status.issue_single': 'Проблема: {issue}',
-    'diag.status.issues_count': 'Найдено проблем: {count}',
+    // RU phrasing is impersonal ("Found issues: N") so it's grammatically
+    // correct for any count; we keep just `.other` here. Translator falls
+    // back to `.other` when a more specific form (e.g. `.one`) isn't present.
+    'diag.status.issues_count.one': 'Найдено проблем: {count}',
+    'diag.status.issues_count.other': 'Найдено проблем: {count}',
     'diag.status.try_again':
       'Попробуйте «Очистить кеш» или «Проверить» ещё раз. Скопируйте отчёт, если проблема сохраняется.',
     'diag.status.waiting': 'Ожидание запуска видео',

@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.3.13] — 2026-05-10
+
+### Bug fixes (root-cause)
+
+- **Settings menu: single-source-of-scroll fix.** v0.3.12 introduced a
+  `.vs-menu-body` scroll container so the header + tabs would stay
+  pinned. But `.vs-tab-panel` retained its own `max-height: 60vh +
+  overflow-y: auto`, creating a NESTED scroll container inside the
+  body's scroll. The two competed: `settingsMenu.scrollHeight` read in
+  `adjustMenuPosition()` sometimes saw the inner-tab-panel ceiling
+  instead of the actual content height, breaking the max-height +
+  flip-y math and positioning the menu's top above the viewport —
+  header + tabs scrolled off as a side effect of the misposition.
+  Fixed by making `.vs-tab-panel` a flow-only container — single
+  scroll source lives on `.vs-menu-body` only.
+
 ## [0.3.12] — 2026-05-10
 
 ### Bug fixes

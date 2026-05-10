@@ -1117,20 +1117,19 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
    pushes past the menu fixed 340px frame (e.g. a long crypto address
    that the wrapping logic has not applied yet). Without it, the menu
    would grow a horizontal scrollbar mid-tab-switch. */
+/* Audit 2026-05-10: tab-panel is a flow container only — NO max-height,
+   NO overflow. The single source of scroll lives on .vs-menu-body
+   above, which owns overflow-y:auto. Previously tab-panel had its own
+   max-height:60vh + overflow-y:auto, creating a NESTED scroll
+   container inside body's scroll. The two competed: when JS computed
+   scrollHeight on .settings-menu it sometimes saw the inner-tab-panel
+   ceiling (60vh) instead of the actual tab content height, causing
+   max-height + flip-y math to misposition the menu so its TOP went
+   above viewport — header + tabs scrolled out of view as a
+   side-effect. Single scroll source eliminates this whole class of bug. */
 .vs-tab-panel {
   padding: 10px 16px 14px;
-  max-height: 60vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--vs-menu-scrollbar) transparent;
   animation: vs-panel-in 160ms ease-out;
-}
-.vs-tab-panel::-webkit-scrollbar { width: 6px; }
-.vs-tab-panel::-webkit-scrollbar-track { background: transparent; }
-.vs-tab-panel::-webkit-scrollbar-thumb {
-  background: var(--vs-menu-scrollbar);
-  border-radius: 3px;
 }
 .vs-tab-panel[aria-hidden="true"] { display: none; }
 

@@ -29,7 +29,12 @@
  */
 import { defineContentScript } from 'wxt/utils/define-content-script';
 
-const SOURCE = 'video-speeds';
+// Audit 2026-05-11 W5.2 (PLAT-003): versioned envelope. Must match
+// bridge-protocol.ts SOURCE. Bump together when the envelope shape
+// changes — the isolated side rejects mismatched versions so stale
+// page-world closures from a previous protocol can't feed bad data
+// into the new schema.
+const SOURCE = 'video-speeds@1';
 const INSTALL_FLAG = '__vs_historyHookInstalled';
 
 export default defineContentScript({
@@ -38,11 +43,13 @@ export default defineContentScript({
   world: 'MAIN',
   registration: 'manifest',
   main() {
-    try {
-      (window as unknown as { __VS_PAGE_WORLD?: string }).__VS_PAGE_WORLD = `loaded@${Date.now()}`;
-    } catch {
-      /* readonly window -- swallow */
-    }
+    // Audit 2026-05-11 W5.1 (PLAT-002): removed `__VS_PAGE_WORLD =
+    // "loaded@<timestamp>"` global. It was a passive fingerprint
+    // surface — any in-page script (RuTube analytics, ads, widgets)
+    // could read it to detect the extension AND get a tab-stable
+    // timestamp suitable as a fingerprinting key. INSTALL_FLAG (a
+    // boolean private property) is sufficient for idempotency
+    // without leaking the timestamp.
 
     // Install the history hook exactly once per page, regardless of how many
     // isolated content scripts mount/unmount. Audit H3: idempotency flag on

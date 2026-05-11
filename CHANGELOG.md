@@ -5,6 +5,93 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.4.1] — 2026-05-11
+
+Wave 5 — deferred Mediums from the 2026-05-11 tech-debt audit plus a
+user-reported pin-button regression.
+
+### Bug fixes
+
+- **Pin button ("Save current as default") restored old global instead of
+  saving the current speed.** Reproduction: global = 2.75x. User drags
+  slider to 2.5x. User clicks the bookmark pin. Result: video snapped
+  back to 2.75x and 2.75x was re-confirmed as the global. Cause: the
+  pin handler read `ctx.speedStore.current()` — which is the
+  PERSISTED global, not the actually-playing speed. The temporary-
+  speed channel (`smart`) and the live `video.playbackRate` were
+  ignored. Fix: read order is now `video.playbackRate` →
+  `speedStore.smart()` → `speedStore.current()` (most-effective →
+  most-conservative).
+
+### Security / Platform
+
+- **PLAT-002 — removed `__VS_PAGE_WORLD` fingerprint global.** The
+  page-world bootstrap used to assign `window.__VS_PAGE_WORLD =
+  "loaded@<timestamp>"` for idempotency. The timestamp was a passive
+  fingerprint surface readable by any in-page script (RuTube ads /
+  analytics / widgets). The existing `__vs_historyHookInstalled`
+  boolean is sufficient for idempotency without leaking time-of-load.
+
+- **PLAT-003 — versioned bridge envelope.** Bumped the `source`
+  literal from `"video-speeds"` to `"video-speeds@1"` in both the
+  isolated content script and the page-world script. The page-world
+  history-hook is installed permanently on first page load — its
+  closure can survive an extension HMR / future protocol bump. The
+  versioned envelope lets the isolated side reject envelopes from a
+  pre-bump page-world closure rather than silently mis-parsing a new
+  schema. Bump together on every breaking envelope change.
+
+- **V-F20 — documented TM-coexist DoS limitation.** The
+  `document.documentElement.dataset.vsTmActive` marker we use for
+  Tampermonkey coexist coordination is settable by the host page,
+  so a hostile site can suppress our injection. This is functional
+  denial only (no data exfiltration) and the marker design is
+  load-bearing for actual TM coordination. Documented as a known
+  limitation in `utils/tm-coexist.ts`; if a real user reports the
+  extension dead on a specific site, check for `vsTmActive` first.
+
+### Performance / Reliability
+
+- **REL-009 — discovery cache now enforces TTL.** Cache entries
+  carried `valid_until` since the original implementation but the
+  field was never read on `get()`. Stale entries lived forever
+  unless `bumpFailure` purged them. Now `cache.get()` checks
+  `Date.now() > valid_until` and treats expired entries as a miss —
+  next resolve falls through to the selector tables / heuristics
+  and rebuilds a fresh entry.
+
+- **PERF-005 — slider drag visual fill batched into rAF.**
+  `updateSliderFill` was called synchronously on every `input` event
+  (~120Hz on high-DPI mice / touchpads) for ~5 DOM mutations each.
+  Now bundled inside the existing rAF callback alongside
+  `applyTransient`, capping DOM ops at the repaint rate (60Hz) for
+  identical perceived smoothness.
+
+- **PERF-009 (VS only) — RuTube `applyHides` skips when unchanged.**
+  The subscriber for `hidePlayerTitle` / `hidePremium` toggles fired
+  on EVERY `settings.update()` (language switch, hotkey edit, slider
+  position, etc.). Now tracks last applied values and skips the
+  `getElementById` + style-tag toggle work when nothing changed.
+
+- **PERF-012 — coalescing adapter `remove()` no longer flushes
+  unrelated pending writes.** The previous implementation awaited
+  `Promise.allSettled(...all pending...)` to flush everything
+  alongside the remove, turning unrelated fire-and-forget speedStore
+  writes into blocking writes whenever a remove happened to overlap
+  them. Now `remove()` simply drops any queued write for its key and
+  forwards directly to the inner adapter; other pending writes
+  continue on the next flush.
+
+### Documentation
+
+- **PLAT-007 — corrected "120-writes-per-minute" comments.** The
+  coalescing adapter's header docstring and the slider-drag comment
+  in `panel.ts` cited Chrome's `MAX_WRITE_OPERATIONS_PER_MINUTE = 120`
+  quota as the motivation for coalescing. That quota applies to
+  `chrome.storage.sync` only — `.local` (what we use) has a size
+  cap but no rate limit. Coalescing remains valuable for IPC + disk
+  amortization; the docs now say so accurately.
+
 ## [0.4.0] — 2026-05-11
 
 Full-cycle tech-debt audit (7 parallel auditors + DA validation + lead

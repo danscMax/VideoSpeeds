@@ -79,12 +79,31 @@ export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
   // Initial application of hide-title / hide-Premium toggles + reactive
   // re-application on settings change. Mirrors .user.js:2199-2204 (bootstrap)
   // and the change handlers wired into the modal toggles in the original.
+  //
+  // Audit 2026-05-11 W5.6 (PERF-009): track last applied values so a
+  // settings.update() unrelated to these two toggles (language switch,
+  // slider position, hotkey edit, etc.) doesn't re-run the
+  // getElementById + style toggle work. settings.update is N-times-
+  // per-session common; hide-toggles are rare clicks.
+  let lastHideTitle = ctx.settingsStore.getKey('hidePlayerTitle') === true;
+  let lastHidePremium = ctx.settingsStore.getKey('hidePremium') === true;
   const applyHides = (): void => {
     const s = ctx.settingsStore.get();
-    setStyleEnabled(HIDE_TITLE_STYLE_ID, HIDE_TITLE_CSS, !!s.hidePlayerTitle);
-    setStyleEnabled(HIDE_PREMIUM_STYLE_ID, HIDE_PREMIUM_CSS, !!s.hidePremium);
+    const t = !!s.hidePlayerTitle;
+    const p = !!s.hidePremium;
+    if (t !== lastHideTitle) {
+      setStyleEnabled(HIDE_TITLE_STYLE_ID, HIDE_TITLE_CSS, t);
+      lastHideTitle = t;
+    }
+    if (p !== lastHidePremium) {
+      setStyleEnabled(HIDE_PREMIUM_STYLE_ID, HIDE_PREMIUM_CSS, p);
+      lastHidePremium = p;
+    }
   };
-  applyHides();
+  // Force initial application bypassing the equality guard so the
+  // first paint reflects persisted user choice.
+  setStyleEnabled(HIDE_TITLE_STYLE_ID, HIDE_TITLE_CSS, lastHideTitle);
+  setStyleEnabled(HIDE_PREMIUM_STYLE_ID, HIDE_PREMIUM_CSS, lastHidePremium);
   const offSettings = ctx.settingsStore.subscribe(applyHides);
   ctx.cleanup.add(offSettings);
   ctx.cleanup.add(() => {

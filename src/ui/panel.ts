@@ -300,7 +300,23 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   pinBtn.title = ctx.i18n.t('panel.pin.tooltip');
   pinBtn.appendChild(vsIcon('bookmark', 14));
   ctx.cleanup.addEventListener(pinBtn, 'click', () => {
-    const speed = ctx.speedStore.current();
+    // Audit 2026-05-11 (post-0.4.0): pin must save the EFFECTIVE
+    // playing speed, not the persisted global. Read order:
+    //   1. video.playbackRate — the source of truth for "what's
+    //      playing right now" (covers slider drag, hotkey, pill
+    //      temp-click). Previously we read speedStore.current(),
+    //      which is the persisted global — so e.g. global=2.75,
+    //      user drags slider to 2.5, clicks pin → video reverted
+    //      to 2.75 and 2.75 stayed as global. User reported.
+    //   2. speedStore.smart() — temp-store fallback if video isn't
+    //      resolved yet (rare race; pin appears after panel insert).
+    //   3. speedStore.current() — last-ditch fallback.
+    const video = ctx.discovery.resolve('video');
+    const vRate =
+      video instanceof HTMLVideoElement && Number.isFinite(video.playbackRate)
+        ? video.playbackRate
+        : null;
+    const speed = vRate ?? ctx.speedStore.smart() ?? ctx.speedStore.current();
     if (Number.isFinite(speed)) {
       void setGlobal(ctx, speed);
     }
@@ -337,21 +353,30 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
   if (sliderInput) {
     // Drag is rAF-coalesced applyTransient (no storage write per pixel),
     // and persistence happens once on `change` (release). Before this
-    // split, every `input` event triggered setSpeed → 2 storage writes,
-    // and a 2-second drag at 60–120 events/sec blew through Chrome's
-    // 120-writes-per-minute storage quota in under 1.5s.
+    // split, every `input` event triggered setSpeed → 2 storage writes;
+    // a 2-second drag at 60–120 events/sec was hundreds of pointless
+    // IPC round-trips to the service worker plus disk-IO. (Audit
+    // 2026-05-11 W5.8: previous comment cited Chrome's 120-writes-per-
+    // minute quota — that's chrome.storage.sync only, not .local. The
+    // real benefit is IPC + disk amortization, which is still
+    // material.)
     let pendingRaf: number | null = null;
     let pendingSpeed: number | null = null;
     ctx.cleanup.addEventListener(sliderInput, 'input', () => {
       const value = parseFloat(sliderInput.value);
       if (!Number.isFinite(value)) return;
-      // Visual fill is cheap; do it every event for buttery feedback.
-      updateSliderFill(sliderInput);
       pendingSpeed = value;
       if (pendingRaf !== null) return;
       pendingRaf = requestAnimationFrame(() => {
         pendingRaf = null;
         if (pendingSpeed !== null) {
+          // Audit 2026-05-11 W5.5 (PERF-005): updateSliderFill moved
+          // into the rAF callback alongside applyTransient. Was
+          // firing synchronously on every `input` (~120Hz on
+          // high-DPI mice / touchpads) for 5 DOM mutations each =
+          // ~600 DOM ops/sec where 60Hz repaint can absorb at most
+          // 60×5=300. Same buttery feedback at half the cost.
+          updateSliderFill(sliderInput);
           applyTransient(ctx, pendingSpeed);
           pendingSpeed = null;
         }

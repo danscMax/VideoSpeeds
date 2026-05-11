@@ -14,7 +14,16 @@
  * from a previous content-script load are dropped automatically.
  */
 
-const SOURCE = 'video-speeds';
+// Audit 2026-05-11 W5.2 (PLAT-003): versioned envelope source.
+// The page-world history-hook is installed permanently on first page
+// load — its bound `original`/`broadcast` closures stick around even
+// across extension HMR / future protocol bumps. Bumping the version
+// suffix here makes the isolated side reject envelopes from a
+// previous protocol generation (those keep emitting `video-speeds`
+// with no version suffix from the old page-world closure), so a
+// schema change like adding a new payload field can't be silently
+// mis-parsed. Bump on every breaking envelope change.
+const SOURCE = 'video-speeds@1';
 
 // Audit 2026-05-11 W2.2: narrowed to the two types the isolated world
 // actually receives. The previous 'dispose' | 'pong' write-only entries
@@ -34,6 +43,9 @@ export const BRIDGE_SOURCE = SOURCE;
 export function isBridgeMessage(value: unknown): value is BridgeMessage {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
+  // Strict match — `video-speeds@N` only. Old `video-speeds` from a
+  // pre-W5.2 page-world closure is rejected, so a protocol bump is
+  // safe even when long-lived RuTube tabs survive an extension reload.
   return v.source === SOURCE && typeof v.sessionId === 'string' && typeof v.type === 'string';
 }
 

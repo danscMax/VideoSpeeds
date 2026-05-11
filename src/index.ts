@@ -116,11 +116,19 @@ export async function bootstrap(
   const settingsStore = createSettingsStore(adapter);
   // Audit 2026-05-09 perf O1: speedStore is the only high-volume write
   // path (hotkey repeat at ~30/sec, slider drag bursts). Wrap its
-  // adapter in a 200ms coalescer so a held key doesn't blow Chrome's
-  // 120-writes-per-minute quota. settingsStore stays uncoalesced so
-  // its rollback-on-failure path (audit C9) sees real adapter rejects
-  // synchronously.
-  const speedStore = createSpeedStore(createCoalescingAdapter(adapter, { flushMs: 200 }));
+  // adapter in a 200ms coalescer to amortize disk-IO and IPC. Audit
+  // 2026-05-11 W2.1 (REL-004): surface coalesced write errors through
+  // logger.warn so quota-exceeded / runtime-invalidated failures don't
+  // disappear silently — previously speedStore reported success while
+  // disk diverged.
+  const speedStore = createSpeedStore(
+    createCoalescingAdapter(adapter, {
+      flushMs: 200,
+      onWriteError: (key, err) => {
+        logger.warn(`speedStore coalesced write failed for ${key}`, err);
+      },
+    }),
+  );
   await settingsStore.init(site);
   await speedStore.init(site);
 
@@ -376,15 +384,24 @@ export async function bootstrap(
       const ev = event as KeyboardEvent;
       if (shouldSkipHotkey(ev)) return;
       const hk = settingsStore.getKey('hotkeys');
+      // Audit 2026-05-11 W2.6 (PERF-004): match the hotkey BEFORE
+      // resolving <video>. discovery.resolve() walks the parent chain
+      // and (via the validator) calls getBoundingClientRect() — every
+      // keystroke on a YT page used to pay that cost even when the
+      // user was typing in the search bar. Reordering keeps the
+      // resolve in the matched branch only.
+      const speedUp = matchesHotkeyArray(ev, hk.speedUp);
+      const speedDown = !speedUp && matchesHotkeyArray(ev, hk.speedDown);
+      if (!speedUp && !speedDown) return;
       // Configurable since 0.1.43 — read live from settings every keypress
       // so changes from the welcome page / settings menu apply without
       // reload. SPEED_STEP retained as the constant default.
       const step = settingsStore.getKey('speedStep') ?? SPEED_STEP;
       const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
-      if (matchesHotkeyArray(ev, hk.speedUp)) {
+      if (speedUp) {
         ev.preventDefault();
         if (v) void setTemporary(ctx, v.playbackRate + step);
-      } else if (matchesHotkeyArray(ev, hk.speedDown)) {
+      } else if (speedDown) {
         ev.preventDefault();
         if (v) void setTemporary(ctx, v.playbackRate - step);
       }

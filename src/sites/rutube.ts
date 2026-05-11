@@ -10,7 +10,6 @@
 
 import type { AppContext } from '../app/context';
 import {
-  BRIDGE_SOURCE,
   type BridgeMessage,
   generateSessionId,
   isBridgeMessage,
@@ -126,37 +125,14 @@ export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
     }
   });
 
-  // Tell the page-world side we're listening (handshake). Any pending
-  // batched events from before the listener attached can be replayed.
-  try {
-    window.postMessage(
-      {
-        source: BRIDGE_SOURCE,
-        sessionId,
-        type: 'pong',
-      } satisfies BridgeMessage,
-      window.location.origin,
-    );
-  } catch {
-    /* swallow */
-  }
-
-  // Tell page-world to dispose this session on cleanup so it can release
-  // any per-session state it held.
-  ctx.cleanup.add(() => {
-    try {
-      window.postMessage(
-        {
-          source: BRIDGE_SOURCE,
-          sessionId,
-          type: 'dispose',
-        } satisfies BridgeMessage,
-        window.location.origin,
-      );
-    } catch {
-      /* swallow */
-    }
-  });
+  // Audit 2026-05-11 W2.2 (REL-005 + PLAT-001 + SEC-004): removed
+  // pong/dispose postMessage broadcasts. The page-world side never
+  // installed a receiver — these envelopes vanished into the void
+  // while exposing the per-bootstrap sessionId to any in-page
+  // listener (passive fingerprint surface on RuTube). The "replay
+  // pending events" comment was aspirational; no buffer existed in
+  // page-world.content.ts. Bridge is now strictly one-way
+  // (page → isolated). See bridge-protocol.ts BridgeMessageType.
 
   return {
     onNavigation(fn) {

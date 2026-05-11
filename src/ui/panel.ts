@@ -138,8 +138,19 @@ function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
 
   if (checkYtHydrated()) return;
 
-  // Probe on every relevant DOM mutation. We attach a single observer
-  // scoped to <body> with subtree:true — disconnect on first reveal.
+  // Audit 2026-05-11 W2.5 (PERF-003 + REL-007): scope the observer to
+  // the metadata column when present (ytd-watch-metadata or
+  // #primary-inner). YouTube fires thousands of mutations during cold
+  // load across the body subtree (recommendations cards, ad slots,
+  // comments hydrating, polymer reactions); previously every one of
+  // them triggered our checkYtHydrated() with its querySelector +
+  // textContent read. Narrowing to the metadata container leaves
+  // <body> as fallback for the early-bootstrap window where neither
+  // container exists yet.
+  const observeTarget =
+    document.querySelector('ytd-watch-metadata') ??
+    document.getElementById('primary-inner') ??
+    document.body;
   let mo: MutationObserver | null = null;
   try {
     mo = new MutationObserver(() => {
@@ -148,7 +159,7 @@ function scheduleHostHydrationReveal(root: HTMLElement, ctx: AppContext): void {
         mo = null;
       }
     });
-    mo.observe(document.body, { childList: true, subtree: true });
+    mo.observe(observeTarget, { childList: true, subtree: true });
     ctx.cleanup.add(() => {
       try {
         mo?.disconnect();

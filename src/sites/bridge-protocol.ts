@@ -16,7 +16,11 @@
 
 const SOURCE = 'video-speeds';
 
-export type BridgeMessageType = 'history-changed' | 'navigated' | 'dispose' | 'pong';
+// Audit 2026-05-11 W2.2: narrowed to the two types the isolated world
+// actually receives. The previous 'dispose' | 'pong' write-only entries
+// were removed (rutube.ts no longer broadcasts them — they leaked the
+// sessionId to in-page listeners with no functional benefit).
+export type BridgeMessageType = 'history-changed' | 'navigated';
 
 export interface BridgeMessage<P = unknown> {
   source: typeof SOURCE;

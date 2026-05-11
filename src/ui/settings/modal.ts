@@ -636,20 +636,26 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
 
   // Audit 2026-05-10: wrap tab panels in a dedicated scroll container
   // so the header + tabs stay sticky at the top regardless of how tall
-  // the active tab grows. The previous flat fragment let the WHOLE
-  // modal scroll, so on tall tabs the header and tab-strip scrolled
-  // off the top of the viewport — and after a settings.update rerender
-  // the user sometimes ended up viewing the middle of the body with
-  // no visible way back to the tabs. Now: settingsMenu handles the
-  // outer max-height + flex column, vs-menu-body owns overflow-y:auto.
-  const body = h(
-    'div',
-    { class: 'vs-menu-body' },
-    generalTab(opts, activeTab !== 'general'),
-    hotkeysTab(opts, activeTab !== 'hotkeys'),
-    diagTab(opts, activeTab !== 'diag'),
-    donateTab(opts, activeTab !== 'donate'),
-  );
+  // the active tab grows. settingsMenu handles the outer max-height +
+  // flex column, vs-menu-body owns overflow-y:auto.
+  //
+  // Audit 2026-05-11 W2.4 (PERF-001 + PERF-002): only render the
+  // ACTIVE tab. Previously all four tab panels were built every render
+  // (with `aria-hidden` toggles), inflating DOM construction 4× and
+  // forcing attachSettingsHandlers to walk 4× more nodes per
+  // querySelectorAll. Tab switch already calls setActiveTab() which
+  // re-runs rerenderSettings(), so this is a pure cost reduction with
+  // no behavior change: the new active panel renders on switch and
+  // the old one is dropped.
+  const activePanel =
+    activeTab === 'general'
+      ? generalTab(opts, false)
+      : activeTab === 'hotkeys'
+        ? hotkeysTab(opts, false)
+        : activeTab === 'diag'
+          ? diagTab(opts, false)
+          : donateTab(opts, false);
+  const body = h('div', { class: 'vs-menu-body' }, activePanel);
 
   return fragment(header, tabs, body);
 }

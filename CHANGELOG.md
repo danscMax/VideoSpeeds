@@ -5,6 +5,69 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.4.2] — 2026-05-11
+
+Wave 6 — remaining Low-priority items from the 2026-05-11 audit.
+Closes the audit cycle: every item from `verified-findings.md` is
+now either fixed, documented as known limitation, or deferred with
+explicit justification.
+
+### Reliability
+
+- **REL-012 — `attachToVideo` retry cap.** Previously looped every
+  500 ms forever on pages where the video never appears. Now: max
+  20 attempts with exponential backoff (`500 ms × 1.2^attempt`,
+  capped at 5 s). The orchestrator re-arms attachToVideo on every
+  SPA navigation, so giving up here is bounded — the next nav gets
+  a fresh try.
+
+- **REL-013 — fullscreen reparent fallback.** On exit-fullscreen,
+  if the original parent was detached during fullscreen (SPA
+  navigation while fullscreen), restoring would silently orphan the
+  panel — its sibling-watcher's parent is the same detached node so
+  it wouldn't re-trigger. Now: `document.contains(panelOrigParent)`
+  check; on failure, fall back to `scheduleInsertWithRetry` which
+  re-resolves the anchor against the current DOM.
+
+- **REL-014 + PERF-008 — theme observer debounce.** Theme-persist
+  observer now debounces by 500 ms with re-check at fire time.
+  YouTube's class-shuffle storms (cinema mode, theater toggle,
+  sidebar collapse) all coalesce into a single (or zero) actual
+  storage write. Plus: `detectAndApplyTheme` now writes
+  `dataset.vsTheme` only when the value actually changed —
+  eliminating redundant observer fires entirely.
+
+### Performance
+
+- **PERF-005 — slider drag visual fill batched into rAF** (shipped
+  in 0.4.1; documentation note).
+
+- **PERF-007 — logger history doesn't pin live refs.** The
+  diagnostic-history circular buffer was holding original detail
+  refs (`logger.debug('matched', el)` patterns kept detached DOM
+  nodes alive for ~2-4 min until the buffer wrapped). Now each
+  detail arg is snapshotted to a string at capture time
+  (`<tag#id.cls>` for Elements, message+stack for Errors,
+  `JSON.stringify` with circular-ref guard for objects).
+  Live console still gets original refs (DevTools can inspect),
+  only the export buffer holds GC-safe snapshots.
+
+- **PERF-010 — buttons row no-op refresh short-circuit.** Both
+  `refreshActiveButton` and `refreshPinnedButton` now cache the
+  last-applied value on the row element itself; same-value calls
+  return immediately without touching the DOM. The walk that does
+  fire iterates direct children (not a full querySelectorAll
+  subtree walk). Ratechange events (HLS quality switches,
+  self-write echoes, modal-open rerenders) all hit these
+  refresh functions repeatedly — most calls are now O(1).
+
+- **PERF-013 — health checker pauses on hidden tabs.** The 30 s
+  poll interval used to fire even when the tab was hidden (Chrome
+  throttles to 1 Hz so the cost is small, but multiplied across
+  hundreds of background tabs it adds up). Now: a
+  `visibilitychange` listener pauses the interval when the tab
+  hides and resumes when it returns to foreground.
+
 ## [0.4.1] — 2026-05-11
 
 Wave 5 — deferred Mediums from the 2026-05-11 tech-debt audit plus a

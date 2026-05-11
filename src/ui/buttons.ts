@@ -65,16 +65,34 @@ export function renderButtonsRow(opts: ButtonsRowOptions): HTMLElement {
   );
 }
 
+// Audit 2026-05-11 W6.5 (PERF-010): cache the previously-active /
+// previously-pinned values on the row element itself so a no-op
+// refresh (which happens on every ratechange — HLS quality switches,
+// self-write echoes) short-circuits before any DOM mutation. The
+// classes are toggled by walking the row's direct children once
+// instead of a fresh querySelectorAll per call — modal-open settings
+// rerenders, ratechange events, and refreshButtons all hit this.
+type RowState = Element & {
+  __vsLastCurrent?: number;
+  __vsLastPinned?: number | null;
+};
+
 /**
  * Toggle the `.active` class to whichever button matches `current`. No
  * re-render -- expects the row from `renderButtonsRow` is already in DOM.
  */
 export function refreshActiveButton(row: Element, current: number): void {
-  const buttons = row.querySelectorAll<HTMLButtonElement>(`.${BTN_CLASS}`);
-  for (const btn of Array.from(buttons)) {
-    const speedAttr = btn.getAttribute('data-vs-speed');
+  const rowState = row as RowState;
+  if (rowState.__vsLastCurrent !== undefined && isSameSpeed(rowState.__vsLastCurrent, current)) {
+    return;
+  }
+  rowState.__vsLastCurrent = current;
+  // Walk direct children (not querySelectorAll over the whole subtree).
+  for (const child of Array.from(row.children)) {
+    if (!child.classList.contains(BTN_CLASS)) continue;
+    const speedAttr = child.getAttribute('data-vs-speed');
     const speed = speedAttr ? parseFloat(speedAttr) : NaN;
-    btn.classList.toggle(ACTIVE_CLASS, isSameSpeed(speed, current));
+    child.classList.toggle(ACTIVE_CLASS, isSameSpeed(speed, current));
   }
 }
 
@@ -83,11 +101,19 @@ export function refreshActiveButton(row: Element, current: number): void {
  * `null` to clear all pin markers (e.g. rememberSpeed got turned off).
  */
 export function refreshPinnedButton(row: Element, pinned: number | null): void {
-  const buttons = row.querySelectorAll<HTMLButtonElement>(`.${BTN_CLASS}`);
-  for (const btn of Array.from(buttons)) {
-    const speedAttr = btn.getAttribute('data-vs-speed');
+  const rowState = row as RowState;
+  const prev = rowState.__vsLastPinned;
+  if (prev !== undefined) {
+    // No-change short-circuit covers both null↔null and same-value cases.
+    if (prev === null && pinned === null) return;
+    if (prev !== null && pinned !== null && isSameSpeed(prev, pinned)) return;
+  }
+  rowState.__vsLastPinned = pinned;
+  for (const child of Array.from(row.children)) {
+    if (!child.classList.contains(BTN_CLASS)) continue;
+    const speedAttr = child.getAttribute('data-vs-speed');
     const speed = speedAttr ? parseFloat(speedAttr) : NaN;
-    btn.classList.toggle(PINNED_CLASS, pinned != null && isSameSpeed(speed, pinned));
+    child.classList.toggle(PINNED_CLASS, pinned != null && isSameSpeed(speed, pinned));
   }
 }
 

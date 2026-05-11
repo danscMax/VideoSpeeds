@@ -64,7 +64,14 @@ export function detectAndApplyTheme(
       preferredColorScheme(container) ??
       'dark';
   }
-  root.dataset.vsTheme = theme;
+  // Audit 2026-05-11 W6.3 (PERF-008): idempotent write. Without
+  // this guard every detectAndApplyTheme run mutates the attribute
+  // and triggers the themePersistObserver downstream — wasted work
+  // on the common "theme didn't actually change" path (host-page
+  // class shuffle, SPA navigation reapply).
+  if (root.dataset.vsTheme !== theme) {
+    root.dataset.vsTheme = theme;
+  }
 }
 
 function preferredColorScheme(container: Document): 'dark' | 'light' | null {

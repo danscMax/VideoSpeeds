@@ -326,14 +326,39 @@ export async function bootstrap(
   //     OS prefers-color-scheme (which doesn't follow YouTube's in-page
   //     theme toggle). Watch <html> data-vs-theme changes — the in-script
   //     watcher above writes that attribute on every detect/reapply.
+  // Audit 2026-05-11 W6.3 (REL-014 + PERF-008): debounce by 500 ms.
+  // YouTube can flip data-vs-theme rapidly (cinema mode, theater
+  // toggle, sidebar collapse all retrigger our reapply). Without
+  // debounce, an a/b/a/b oscillation could blow through Chrome's
+  // chrome.storage.sync 120-writes/min quota IF settings-store were
+  // ever migrated off .local. (Current code uses .local so the
+  // quota isn't reachable, but the observer storm is still IPC
+  // waste.) 500 ms is well above the typical YT mutation burst
+  // window (~50-200 ms) so all transitional theme changes coalesce.
+  let persistThemeTimer: ReturnType<typeof setTimeout> | null = null;
   const persistTheme = (): void => {
     const theme = document.documentElement.dataset.vsTheme;
     if (theme !== 'dark' && theme !== 'light') return;
     if (settingsStore.getKey('lastSeenTheme') === theme) return;
-    void settingsStore.update({ lastSeenTheme: theme }).catch(() => {
-      /* fire-and-forget */
-    });
+    if (persistThemeTimer !== null) clearTimeout(persistThemeTimer);
+    persistThemeTimer = setTimeout(() => {
+      persistThemeTimer = null;
+      // Re-read at fire time — debounce window may have flipped back
+      // to the previously-saved value.
+      const liveTheme = document.documentElement.dataset.vsTheme;
+      if (liveTheme !== 'dark' && liveTheme !== 'light') return;
+      if (settingsStore.getKey('lastSeenTheme') === liveTheme) return;
+      void settingsStore.update({ lastSeenTheme: liveTheme }).catch(() => {
+        /* fire-and-forget */
+      });
+    }, 500);
   };
+  cleanup.add(() => {
+    if (persistThemeTimer !== null) {
+      clearTimeout(persistThemeTimer);
+      persistThemeTimer = null;
+    }
+  });
   persistTheme();
   const themePersistObserver = new MutationObserver(persistTheme);
   themePersistObserver.observe(document.documentElement, {
@@ -546,14 +571,25 @@ export async function bootstrap(
         ctx.logger.warn('fullscreen: panel reparent failed', e);
       }
     } else if (!fs && panelOrigParent) {
+      // Audit 2026-05-11 W6.2 (REL-013): if the original parent was
+      // detached during fullscreen (SPA navigation while fullscreen),
+      // restoring would silently orphan the panel — its sibling
+      // watcher's parent is the same detached node so it wouldn't
+      // re-trigger. Fall back to scheduleInsertWithRetry which
+      // re-resolves the anchor.
+      const origStillLive = document.contains(panelOrigParent);
       try {
-        if (panelOrigNext && panelOrigNext.parentNode === panelOrigParent) {
+        if (origStillLive && panelOrigNext && panelOrigNext.parentNode === panelOrigParent) {
           panelOrigParent.insertBefore(panelEl, panelOrigNext);
-        } else {
+        } else if (origStillLive) {
           panelOrigParent.appendChild(panelEl);
+        } else {
+          ctx.logger.warn('fullscreen: original parent detached, rescheduling insert');
+          scheduleInsertWithRetry(panelEl, ctx);
         }
       } catch (e) {
-        ctx.logger.warn('fullscreen: panel restore failed', e);
+        ctx.logger.warn('fullscreen: panel restore failed, rescheduling insert', e);
+        scheduleInsertWithRetry(panelEl, ctx);
       }
       panelOrigParent = null;
       panelOrigNext = null;
@@ -855,10 +891,23 @@ function attachToVideo(
   ctx: AppContext,
   meter: ReturnType<typeof createRatechangeMeter>,
   cleanup: CleanupRegistry,
+  attempt = 0,
 ): void {
   const v = ctx.discovery.resolve('video');
   if (!(v instanceof HTMLVideoElement)) {
-    cleanup.setTimeout(() => attachToVideo(ctx, meter, cleanup), 500);
+    // Audit 2026-05-11 W6.1 (REL-012): cap retries with exponential
+    // backoff. Previously this looped forever at 500 ms intervals on
+    // pages where the video never appears (host-page glitch,
+    // unsupported subpath). Now: 20 attempts, 500 ms × 1.2^attempt,
+    // capped at 5 s. The orchestrator re-arms attachToVideo on every
+    // SPA navigation, so giving up here just means the next nav
+    // gets a fresh try.
+    if (attempt >= 20) {
+      ctx.logger.warn('attachToVideo: gave up after 20 attempts; will re-arm on next SPA nav');
+      return;
+    }
+    const delay = Math.min(5000, Math.round(500 * 1.2 ** attempt));
+    cleanup.setTimeout(() => attachToVideo(ctx, meter, cleanup, attempt + 1), delay);
     return;
   }
   type Branded = HTMLVideoElement & { __vsAttached?: boolean; __vsSelfWriteAt?: number };

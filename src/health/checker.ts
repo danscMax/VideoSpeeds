@@ -224,11 +224,6 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
         armReEnableWatcher();
         return;
       }
-      // Skip the tick when the tab is hidden. Background tabs don't need
-      // a fresh diagnostic — the user can't see the gear-warning dot, and
-      // the next visible tick (Chrome resumes intervals on tab show) will
-      // catch any degradation that happened while invisible.
-      if (typeof document !== 'undefined' && document.hidden) return;
       run();
     }, POLL_MS);
   }
@@ -243,6 +238,27 @@ export function createHealthChecker(deps: CreateHealthCheckerDeps): HealthChecke
   function stop(): void {
     started = false;
     stopPolling();
+  }
+
+  // Audit 2026-05-11 W6.6 (PERF-013): pause polling when the tab is
+  // hidden instead of firing the interval into a no-op every 30 s.
+  // Chrome throttles background intervals to 1 Hz so the cost is
+  // small, but multiplied across hundreds of background tabs (a
+  // typical heavy user) it adds up. Resume on visible. We don't
+  // start polling immediately on visible — the next user interaction
+  // or the natural poll interval picks up the work.
+  if (typeof document !== 'undefined') {
+    const onVisibility = (): void => {
+      if (!started) return; // checker isn't running anyway
+      if (document.hidden) {
+        // Pause: clear the interval but keep started=true so resume
+        // restarts polling without re-arming the watcher.
+        stopPolling();
+      } else if (deps.isHealthCheckEnabled()) {
+        startPolling();
+      }
+    };
+    ctx.cleanup.addEventListener(document, 'visibilitychange', onVisibility);
   }
 
   return {

@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.4.3] — 2026-05-11
+
+### Bug fix
+
+- **"Связаться с автором" CTA in the in-player Settings did nothing.**
+  Clicking the button under the gear icon (large red CTA at the
+  bottom of the General tab) silently failed; the same button in the
+  toolbar popup worked. Root cause: the handler did
+  `window.open(chrome-extension://feedback.html)` from content-script
+  context, where the page's own `window` (origin youtube.com /
+  rutube.ru) is treated as the navigation initiator. Since the
+  target URL isn't in `web_accessible_resources`, the browser
+  silently drops the open. The popup didn't see this because its
+  own origin matches the extension's.
+
+  Fix: route the open through the background SW via
+  `runtime.sendMessage({ type: 'open-extension-page', path: ... })`.
+  Background calls `browser.tabs.create` — SWs are allowed to open
+  extension URLs without the `tabs` permission. Background's handler
+  has a strict allow-list (`/feedback.html`, `/welcome.html`) so the
+  proxy can't be tricked into opening arbitrary internal pages.
+
 ## [0.4.2] — 2026-05-11
 
 Wave 6 — remaining Low-priority items from the 2026-05-11 audit.

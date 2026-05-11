@@ -23,20 +23,37 @@ import type { ActiveTab } from './modal';
 /**
  * Open the in-extension feedback page in a new tab.
  *
- * `runtime.getURL` resolves to the absolute moz-extension:// /
- * chrome-extension:// URL; `window.open` is used (rather than
- * `browser.tabs.create`) because the latter is NOT exposed in
- * content-script contexts. The user-gesture from the click that
- * triggered us carries through, so the popup-blocker doesn't
- * intervene.
+ * Audit 2026-05-11: route through the background SW. From content-
+ * script context, `window.open(chrome-extension://feedback.html)` is
+ * silently dropped — the page's window (origin youtube.com /
+ * rutube.ru) is the navigation initiator and the target URL is not
+ * in `web_accessible_resources`, so the browser refuses. Asking the
+ * background SW to call `browser.tabs.create` works because the SW
+ * owns chrome.tabs and is allowed to open extension URLs without
+ * the `tabs` permission.
+ *
+ * From the toolbar popup the same handler runs but the popup's own
+ * origin matches the extension's, so the message-then-tabs-create
+ * indirection is technically unnecessary there. We use it uniformly
+ * to keep one call path.
+ *
+ * The synchronous user-gesture is consumed by sendMessage; the
+ * background create-tab happens after the SW responds, which loses
+ * the gesture chain — but Chrome lets extension SWs open tabs
+ * unconditionally so the popup-blocker doesn't apply.
  */
 function openFeedbackPage(): void {
-  try {
-    const url = browser.runtime.getURL('/feedback.html');
-    window.open(url, '_blank');
-  } catch (e) {
-    console.warn('[VIDEO-SPEEDS] Failed to open feedback page', e);
-  }
+  void browser.runtime
+    .sendMessage({ type: 'open-extension-page', path: '/feedback.html' })
+    .then((res: unknown) => {
+      const ok = !!(res && typeof res === 'object' && (res as { ok?: boolean }).ok);
+      if (!ok) {
+        console.warn('[VIDEO-SPEEDS] background did not open feedback tab', res);
+      }
+    })
+    .catch((e: unknown) => {
+      console.warn('[VIDEO-SPEEDS] Failed to open feedback page', e);
+    });
 }
 
 export interface SettingsHandlersDeps {

@@ -4,7 +4,6 @@ import {
   handleSpeedButtonClick,
   pickInitialSpeed,
   setGlobal,
-  setSpeed,
   setTemporary,
 } from '../../src/speed/controller';
 import { createMockContext, createMockDiscovery } from '../helpers/mock-context';
@@ -25,44 +24,10 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('setSpeed', () => {
-  it('clamps within per-site bounds and persists', async () => {
-    const video = makeVideo();
-    const { ctx, speedStore } = await createMockContext({
-      site: 'rutube',
-      discovery: createMockDiscovery({ video }),
-    });
-
-    await setSpeed(ctx, 99);
-    expect(video.playbackRate).toBe(speedBoundsFor('rutube').max);
-    expect(speedStore.current()).toBe(speedBoundsFor('rutube').max);
-  });
-
-  it('falls back to default for NaN/Infinity', async () => {
-    const video = makeVideo();
-    const { ctx } = await createMockContext({
-      site: 'youtube',
-      discovery: createMockDiscovery({ video }),
-    });
-
-    await setSpeed(ctx, NaN);
-    expect(video.playbackRate).toBe(speedBoundsFor('youtube').defaultSpeed);
-  });
-
-  it('still updates UI even if video is missing', async () => {
-    const { ctx, ui, speedStore } = await createMockContext({
-      site: 'youtube',
-      discovery: createMockDiscovery({ video: null }),
-    });
-
-    await setSpeed(ctx, 1.5);
-    // refreshButtons receives (speed, opts) — opts can be {} or { silent: true }.
-    expect(
-      (ui as { refreshButtons: ReturnType<typeof vi.fn> }).refreshButtons,
-    ).toHaveBeenCalledWith(1.5, expect.any(Object));
-    expect(speedStore.current()).toBe(1.5);
-  });
-});
+// Audit 2026-05-11 W3.1: `setSpeed` was deleted as dead code. Callers
+// migrated to setTemporary / setGlobal / applyTransient. The clamping
+// + UI-refresh behavior covered by the old tests now lives on setGlobal
+// and is exercised below in the setGlobal block.
 
 describe('setTemporary', () => {
   it('updates smart store, not current', async () => {

@@ -591,21 +591,6 @@ html[data-vs-site="youtube"] {
 /* Speed-button row: pill buttons. min-width keeps every label centred
    even when the text varies (1x vs 1.25x); height fixed so the row is
    visually stable. Ported from .user.js:.speed-button. */
-.vs-brand {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-right: 2px;
-  opacity: 0.5;
-  color: var(--vs-accent, currentColor);
-  transition: opacity 0.15s ease;
-  flex-shrink: 0;
-  cursor: default;
-  pointer-events: auto;
-}
-.vs-brand:hover { opacity: 0.85; }
 .speed-buttons-row {
   display: inline-flex;
   align-items: center;

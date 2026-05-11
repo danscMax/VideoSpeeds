@@ -72,10 +72,6 @@ LANGUAGES
 
 English and Russian. UI language is auto-detected from your browser on
 first run; switch any time from the gear menu.
-
-LICENSE
-
-GPL-3.0-or-later (GNU General Public License version 3 or later).
 ```
 
 (Roughly 1,800 characters out of the 16,000 limit -- room to grow.)

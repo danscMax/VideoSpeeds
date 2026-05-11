@@ -5,6 +5,108 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.4.0] — 2026-05-11
+
+Full-cycle tech-debt audit (7 parallel auditors + DA validation + lead
+verification) followed by a 4-wave remediation sweep. Verified-findings
+report: `plans/tech-debt-video-extensions/2026-05-11/`.
+
+### Critical bug fixes
+
+- **Settings-store rollback corruption on concurrent updates (REL-001).**
+  Two overlapping `update()` calls could corrupt each other's rollback
+  target — when A's write rejected after B had advanced state, A's
+  rollback was a no-op while B's rollback restored A's never-persisted
+  pre-state. Memory and disk diverged silently. Fixed by capturing
+  `previous` INSIDE the writeChain queued closure, and deferring
+  notify() until adapter.set() succeeds. As a side effect this also
+  closes the double-notify-on-rollback flicker (REL-011 / V-F22).
+  **Trade-off:** callers must `await update()` before reading the new
+  value — corrected the regression test contract.
+
+- **HealthChecker dead-lock after auto-trip (REL-002).** When
+  `onConsecutiveFailures` flipped `healthCheckEnabled=false`, the
+  poll callback called `stopPolling()` but left `started=true` and
+  never re-armed the kill-switch watcher. User re-enable in Settings
+  then did nothing — checker stayed dead until page reload. Now the
+  auto-trip path calls `stop()` (resets `started`) plus
+  `armReEnableWatcher()` (listens for re-enable).
+
+### Security fixes (High)
+
+- **KillSwitch state silently dropped on persist (SEC2-001).**
+  `settingsStore.update({healing: ...})` was rejected by
+  `sanitizePatch`'s whitelist — `healing` wasn't a declared Settings
+  field. Defense-in-depth toggles (Discovery / Health-check) never
+  reached disk; toggles silently re-enabled on every page reload.
+  Comment in `kill-switch.ts` claiming "validator merges unknown
+  fields as-is" was false. Fixed by declaring `healing` as an
+  optional `{discoveryEnabled, healthCheckEnabled}` Settings field
+  with a typed sub-validator (booleans only, proto-pollution strip).
+
+- **TM migration unbounded inputs (SEC-001 + SEC-002).** Legacy-
+  userscript localStorage migration is attacker-controlled (any host
+  page script can pre-populate the migration key). Two issues:
+  `JSON.parse(rawSettings)` had no size guard (a 5 MB blob froze the
+  main thread on first install); `normalizeHotkeys` had no array
+  length cap (a 10k-element array of valid hotkey objects slipped
+  through and bloated stored settings). Fixed with a 256 KB pre-parse
+  size cap (logged + skipped on overflow) and `.slice(0, 16)` on the
+  hotkey array. Real settings are <2 KB, real users have ~5 hotkeys.
+
+### Performance / Reliability (High)
+
+- **Coalescing adapter swallowed all write errors silently (REL-004).**
+  speedStore writes (slider drag, hotkey repeat, ratechange restore)
+  used `.catch(() => {})`. Quota-exceeded was invisible. Added
+  `onWriteError` callback on `CoalescingOptions`; speedStore wires it
+  to `logger.warn`.
+
+- **Settings modal rendered ALL FOUR tab panels every open (PERF-001).**
+  Inactive tabs were built into the DOM and just `aria-hidden`-toggled
+  — 4× DOM construction and listener-attach cost per modal open. Now
+  only the active tab is rendered; tab switch re-runs the existing
+  `rerenderSettings()` so behavior is unchanged. As a side effect,
+  `attachSettingsHandlers`' 10 `querySelectorAll` walks (PERF-002)
+  now traverse 1/4 the nodes.
+
+- **Hydration observer watched whole `<body>` subtree (PERF-003).**
+  YouTube fires thousands of mutations during cold load; each
+  triggered our `checkYtHydrated()` `querySelector` + textContent
+  read. Now scoped to `ytd-watch-metadata` → `#primary-inner` →
+  `body` (in that order).
+
+- **Hotkey listener resolved `<video>` on every keydown (PERF-004).**
+  Every keystroke (including typing in the YouTube search bar) paid
+  for `discovery.resolve('video')` and its `getBoundingClientRect()`
+  validator call. Reordered: match the hotkey first, resolve only on
+  hit.
+
+- **RuTube bridge listener race + dead pong/dispose envelopes
+  (REL-005 + PLAT-001 + SEC-004).** `rutube.ts` posted `pong`
+  (handshake) and `dispose` (per-session cleanup) messages that
+  `page-world.content.ts` never received. Dead protocol entries on
+  paper; in practice they exposed `sessionId` to any in-page
+  listener. Removed both broadcasts; `BridgeMessageType` narrowed to
+  `'history-changed' | 'navigated'`. Bridge is now strictly one-way.
+
+### Code cleanup
+
+- **Deleted 8 dead barrel files** (`src/{app,discovery,health,i18n,sites,speed,storage,utils}/index.ts`).
+  None had import sites — all modules already exposed their public
+  API via direct sub-file imports. `ui/index.ts` stays (used by
+  popup). ~50% of `src/` `index.ts` files removed.
+- **Deleted `setSpeed`** — function existed but had zero call sites
+  since the click-router refactor split it into
+  `setTemporary`/`setGlobal`/`applyTransient`. Header JSDoc cleaned
+  up; stale comments in `panel.ts` updated to reference current API.
+- **Deleted dead exports**: `DEFAULT_PRESETS` in `ui/buttons.ts`
+  (live data is in `config.ts`), `safeStorage` + `feature-detect.ts`
+  whole files (unused).
+- **Deleted dead i18n keys**: `menu.version_tip`, `donate.crypto.copied`
+  (en + ru, both projects).
+- **Deleted dead CSS**: `.vs-brand` block in `styles.ts`.
+
 ## [0.3.20] — 2026-05-10
 
 ### Bug fixes

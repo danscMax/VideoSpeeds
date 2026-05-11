@@ -81,14 +81,34 @@ describe('SettingsStore', () => {
   });
 
   describe('update()', () => {
-    it('applies the patch to the in-memory state synchronously', async () => {
+    it('applies the patch to in-memory state after persist resolves', async () => {
+      // Audit 2026-05-11 W1.1 (REL-001): update() now defers state
+      // mutation + notify() until adapter.set() succeeds. This avoids
+      // the rollback-corruption race on concurrent updates and the
+      // double-notify on persist failure. The trade-off is: callers
+      // must await update() before reading the new value.
       const store = createSettingsStore(createMemoryStorageAdapter());
       await store.init('youtube');
 
-      const promise = store.update({ sliderPosition: 'video' });
-      // Sync read sees the new value before the promise resolves.
+      await store.update({ sliderPosition: 'video' });
       expect(store.getKey('sliderPosition')).toBe('video');
-      await promise;
+    });
+
+    it('rolls forward concurrent updates without state corruption', async () => {
+      // Audit 2026-05-11 W1.1 (REL-001): concurrent overlapping updates
+      // are serialized through writeChain. Each captures `previous` at
+      // write time, so neither's rollback target gets clobbered.
+      const store = createSettingsStore(createMemoryStorageAdapter());
+      await store.init('youtube');
+
+      const p1 = store.update({ sliderPosition: 'bottom' });
+      const p2 = store.update({ sliderPosition: 'video' });
+      await Promise.all([p1, p2]);
+
+      // Last write wins; previous-capture inside writeChain means
+      // intermediate state was visible briefly but the final state is
+      // coherent with disk.
+      expect(store.getKey('sliderPosition')).toBe('video');
     });
 
     it('persists the patch to the adapter', async () => {

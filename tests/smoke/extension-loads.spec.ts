@@ -26,7 +26,7 @@ test.describe('extension smoke', () => {
     `Build output missing at ${BUILD_DIR} — run "npx wxt build" first.`,
   );
 
-  test('content script logs init banner on youtube.com', async () => {
+  test('content script bootstraps on youtube.com (DOM markers)', async () => {
     const profileDir = mkdtempSync(join(tmpdir(), 'vs-pw-profile-'));
     const extDir = mkdtempSync(join(tmpdir(), 'vs-ext-'));
     cpSync(BUILD_DIR, extDir, { recursive: true });
@@ -50,16 +50,30 @@ test.describe('extension smoke', () => {
         waitUntil: 'domcontentloaded',
         timeout: 30_000,
       });
-      // content_scripts run at document_idle, which on a datacenter
-      // runner (403-blocked subresources slow the page) can land well
-      // past a fixed 4 s pause — poll for the banner instead.
-      const deadline = Date.now() + 25_000;
-      let initBanner: string | undefined;
-      while (!initBanner && Date.now() < deadline) {
-        initBanner = logs.find((l) => l.includes('[VIDEO-SPEEDS]'));
-        if (!initBanner) await page.waitForTimeout(500);
+      // Production builds gate logger.info behind DEV (utils/logger.ts
+      // minLevel='warn'), so there is NO console banner to wait for in a
+      // release build. The reliable prod signal that bootstrap ran is the
+      // DOM it mutates: injectStyles() writes data-vs-theme onto <html>
+      // and inserts <style id="vs-styles">. Poll for those instead —
+      // content_scripts run at document_idle, which on a slow page can
+      // land well past a fixed pause.
+      const deadline = Date.now() + 30_000;
+      let markers: { theme: string | null; styles: boolean } = { theme: null, styles: false };
+      while (!(markers.styles && markers.theme) && Date.now() < deadline) {
+        markers = await page
+          .evaluate(() => ({
+            theme: document.documentElement.dataset.vsTheme ?? null,
+            styles: !!document.getElementById('vs-styles'),
+          }))
+          .catch(() => ({ theme: null, styles: false }));
+        if (!(markers.styles && markers.theme)) await page.waitForTimeout(500);
       }
-      expect(initBanner, `expected [VIDEO-SPEEDS] log, saw:\n${logs.join('\n')}`).toBeDefined();
+      expect(
+        markers.styles && !!markers.theme,
+        `expected bootstrap DOM markers (vs-styles + data-vs-theme), got ${JSON.stringify(
+          markers,
+        )}; console:\n${logs.slice(0, 30).join('\n')}`,
+      ).toBe(true);
     } finally {
       await ctx.close();
       try {

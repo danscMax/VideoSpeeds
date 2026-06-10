@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.5.1] — 2026-06-10
+
+### Fixed
+
+- **Light theme polish** (mirror of HDRezkaSpeeds 0.5.1): button pills
+  barely read on white pages (fill 0.06 → 0.08, border 0.10 → 0.16),
+  and the pinned-speed halo bled into white backgrounds making the pill
+  look washed-out — glow tightened, inset accent ring added.
+
 ## [0.5.0] — 2026-06-10
 
 ### Added

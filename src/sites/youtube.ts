@@ -14,6 +14,30 @@ export interface YouTubeSiteHandle {
   onNavigation(fn: () => void): void;
 }
 
+/**
+ * FEAT-015: stable per-channel key for the speed-memory map. Reads the
+ * channel link from the watch-page metadata; YouTube renders it a beat
+ * after yt-navigate-finish, so callers retry with a small delay.
+ * Normalises both /@handle and /channel/UC… link shapes.
+ */
+export function extractYouTubeChannelKey(doc: Document = document): string | null {
+  const link = doc.querySelector<HTMLAnchorElement>(
+    'ytd-watch-metadata ytd-channel-name a[href], #owner #channel-name a[href]',
+  );
+  const href = link?.getAttribute('href') ?? '';
+  const m = /^\/(@[\w.-]+|channel\/[\w-]+)/.exec(href);
+  return m ? `yt:${m[1]}` : null;
+}
+
+/** FEAT-019/020: YouTube player state probes. */
+export function isYouTubeAdShowing(video: HTMLVideoElement): boolean {
+  return !!video.closest('.html5-video-player')?.classList.contains('ad-showing');
+}
+
+export function isYouTubeShortsPath(pathname: string = location.pathname): boolean {
+  return pathname.startsWith('/shorts');
+}
+
 export function bootstrapYouTubeSite(ctx: AppContext): YouTubeSiteHandle {
   const subscribers = new Set<() => void>();
 

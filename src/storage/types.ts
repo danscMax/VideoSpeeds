@@ -43,6 +43,16 @@ export interface Settings {
   hotkeys: {
     speedUp: Hotkey[];
     speedDown: Hotkey[];
+    /** FEAT-011: jump straight back to 1.0×. Optional — absent in
+     *  pre-0.5 stored settings; normalised to [] on load. */
+    resetSpeed?: Hotkey[];
+    /** FEAT-012: swap between the current speed and the one that was
+     *  active when the toggle was last pressed (VLC/mpv idiom). */
+    toggleLast?: Hotkey[];
+    /** FEAT-014: seek by ±seekSeconds. Unbound by default — Alt+←/→
+     *  belong to browser history, so the user picks their own combo. */
+    seekForward?: Hotkey[];
+    seekBack?: Hotkey[];
   };
   /**
    * The visible set of speed-preset buttons in the in-player panel.
@@ -70,6 +80,36 @@ export interface Settings {
    * (sliderMin, site.max].
    */
   sliderMax?: number;
+  /**
+   * UX-031: compact panel mode. When on, the panel collapses to just
+   * the current-speed button + gear (presets, slider and pin hidden via
+   * CSS) so the row stops competing with the page for attention.
+   */
+  compactMode?: boolean;
+  /**
+   * FEAT-015: remember the chosen speed per content item — per YouTube
+   * channel (RuTube has no equivalent key and ignores this). Opt-in:
+   * pickInitialSpeed consults the memory map only when this is true.
+   */
+  rememberPerVideo?: boolean;
+  /**
+   * FEAT-017: Web Audio gain multiplier, 1.0 (off) .. 3.0. Stays 1.0
+   * unless the user opts in — building the audio graph is irreversible
+   * per element and silences cross-origin media without CORS headers.
+   */
+  volumeBoost?: number;
+  /**
+   * FEAT-013: keep audio pitch constant while changing speed. Mirrors
+   * HTMLMediaElement.preservesPitch, which browsers default to true —
+   * so `undefined` means "preserve" and only an explicit false lets
+   * the pitch shift naturally ("vinyl mode").
+   */
+  preservePitch?: boolean;
+  /**
+   * FEAT-014: seconds jumped by the seekForward / seekBack hotkeys.
+   * Range 1–120, default 10.
+   */
+  seekSeconds?: number;
   /**
    * Last theme detected on the host page. Written by the content script's
    * theme watcher; read by the toolbar popup so it can match the host
@@ -128,6 +168,14 @@ export function defaultSettings(language: Lang, site?: Site): Settings {
         { ctrl: false, shift: false, alt: true, meta: false, key: 'Comma' },
         { ctrl: false, shift: true, alt: false, meta: false, key: 'Insert' },
       ],
+      // FEAT-011: Alt+0 — one keypress back to normal speed. Safe combo
+      // (browsers use Ctrl+0 for zoom-reset, not Alt+0).
+      resetSpeed: [{ ctrl: false, shift: false, alt: true, meta: false, key: 'Digit0' }],
+      // FEAT-012/014: unbound by default — power features the user opts
+      // into from Settings → Shortcuts.
+      toggleLast: [],
+      seekForward: [],
+      seekBack: [],
     },
     // Site-aware defaults so a fresh install on YouTube gets the YT
     // preset row (1.5x-3.5x), and a fresh install on RuTube gets the
@@ -135,5 +183,10 @@ export function defaultSettings(language: Lang, site?: Site): Settings {
     // back to a vanilla 1x-2x trio.
     speedPresets: site ? [...defaultPresetsFor(site)] : [1, 1.5, 2],
     speedStep: 0.1,
+    compactMode: false,
+    rememberPerVideo: false,
+    preservePitch: true,
+    seekSeconds: 10,
+    volumeBoost: 1,
   };
 }

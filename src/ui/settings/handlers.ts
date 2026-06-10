@@ -14,11 +14,36 @@ import { browser } from 'wxt/browser';
 import type { AppContext } from '../../app/context';
 import { defaultPresetsFor } from '../../config';
 import type { Lang } from '../../i18n/dict';
-import { captureHotkey, formatHotkey } from '../../speed/hotkeys';
+import { captureHotkey, formatHotkey, isBrowserReservedCombo } from '../../speed/hotkeys';
+import { applyVolumeBoost, clampBoost } from '../../speed/volume-boost';
 import { defaultSettings, type Hotkey, type SliderPosition } from '../../storage/types';
 import { refreshDiagnosticStatus } from './diag-status';
 import { exportSettingsToFile, openImportPicker } from './export-import';
+import type { HotkeyAction } from './hotkey-block';
 import type { ActiveTab } from './modal';
+
+/** All hotkey actions a settings row can address. Used to validate the
+ *  data-* attributes coming back from the DOM. */
+const HOTKEY_ACTIONS: readonly HotkeyAction[] = [
+  'speedUp',
+  'speedDown',
+  'resetSpeed',
+  'toggleLast',
+  'seekForward',
+  'seekBack',
+];
+
+function asHotkeyAction(raw: string | undefined): HotkeyAction | undefined {
+  return HOTKEY_ACTIONS.includes(raw as HotkeyAction) ? (raw as HotkeyAction) : undefined;
+}
+
+/** Live hotkeys with the optional actions normalised to arrays. */
+function hotkeyArrayOf(
+  hotkeys: { [K in HotkeyAction]?: readonly Hotkey[] },
+  action: HotkeyAction,
+): readonly Hotkey[] {
+  return hotkeys[action] ?? [];
+}
 
 /**
  * Open the in-extension feedback page in a new tab.
@@ -42,9 +67,12 @@ import type { ActiveTab } from './modal';
  * the gesture chain — but Chrome lets extension SWs open tabs
  * unconditionally so the popup-blocker doesn't apply.
  */
-function openFeedbackPage(): void {
+function openFeedbackPage(attachDiagnostics = false): void {
+  // UX-029: ?attach=1 tells feedback.html to pre-enable the
+  // "attach diagnostic report" checkbox.
+  const path = attachDiagnostics ? '/feedback.html?attach=1' : '/feedback.html';
   void browser.runtime
-    .sendMessage({ type: 'open-extension-page', path: '/feedback.html' })
+    .sendMessage({ type: 'open-extension-page', path })
     .then((res: unknown) => {
       const ok = !!(res && typeof res === 'object' && (res as { ok?: boolean }).ok);
       if (!ok) {
@@ -66,6 +94,15 @@ export interface SettingsHandlersDeps {
   /** Optional toggles for KillSwitch (Wave 1.9). */
   setDiscoveryEnabled?: (on: boolean) => void;
   setHealthCheckEnabled?: (on: boolean) => void;
+}
+
+/** UX-026: inline error state on a field — red ring via .vs-input-error
+ *  plus aria-invalid. Cleared as soon as the user edits the value. */
+function flagInvalid(el: HTMLElement | null | undefined, on: boolean): void {
+  if (!el) return;
+  el.classList.toggle('vs-input-error', on);
+  if (on) el.setAttribute('aria-invalid', 'true');
+  else el.removeAttribute('aria-invalid');
 }
 
 export function attachSettingsHandlers(
@@ -149,9 +186,15 @@ export function attachSettingsHandlers(
     ctx.cleanup.addEventListener(presetReset, 'click', async (event) => {
       event.preventDefault();
       event.stopPropagation();
-      await ctx.settingsStore.update({
-        speedPresets: [...defaultPresetsFor(ctx.site)],
-      });
+      // UX-025: confirm only when the click would actually discard a
+      // customised list — resetting an already-default list stays silent.
+      const defaults = [...defaultPresetsFor(ctx.site)];
+      const current = ctx.settingsStore.getKey('speedPresets') ?? [];
+      const differs = JSON.stringify([...current].sort()) !== JSON.stringify([...defaults].sort());
+      if (differs && typeof window.confirm === 'function') {
+        if (!window.confirm(ctx.i18n.t('confirm.reset_partial'))) return;
+      }
+      await ctx.settingsStore.update({ speedPresets: defaults });
     });
   }
 
@@ -175,10 +218,12 @@ export function attachSettingsHandlers(
     if (!raw) return; // empty submit — silent no-op
     const parsed = parseFloat(raw.replace(',', '.'));
     if (!Number.isFinite(parsed) || parsed <= 0) {
+      flagInvalid(presetInput, true);
       ctx.ui.showNotification(ctx.i18n.t('toast.preset_invalid'), 'error');
       return;
     }
     if (parsed < ABSOLUTE_MIN || parsed > ABSOLUTE_MAX) {
+      flagInvalid(presetInput, true);
       ctx.ui.showNotification(
         ctx.i18n.t('toast.preset_out_of_range', { min: ABSOLUTE_MIN, max: ABSOLUTE_MAX }),
         'error',
@@ -188,9 +233,11 @@ export function attachSettingsHandlers(
     const value = Math.round(parsed * 100) / 100;
     const current = ctx.settingsStore.getKey('speedPresets') ?? [];
     if (current.some((v) => Math.abs(v - value) < 0.005)) {
+      flagInvalid(presetInput, true);
       ctx.ui.showNotification(ctx.i18n.t('toast.preset_duplicate'), 'warn');
       return;
     }
+    flagInvalid(presetInput, false);
     const next = [...current, value].sort((a, b) => a - b);
     await ctx.settingsStore.update({ speedPresets: next });
     presetInput.value = '';
@@ -211,6 +258,10 @@ export function attachSettingsHandlers(
         ev.stopPropagation();
         await trySubmitCustom();
       }
+    });
+    // UX-026: editing clears the error ring immediately.
+    ctx.cleanup.addEventListener(presetInput, 'input', () => {
+      flagInvalid(presetInput, false);
     });
   }
 
@@ -245,9 +296,13 @@ export function attachSettingsHandlers(
     const max = parseSliderRangeValue(rawMax);
     // Cross-field: if both present and min >= max, drop both with a toast.
     if (typeof min === 'number' && typeof max === 'number' && min >= max) {
+      flagInvalid(sliderMinInput, true);
+      flagInvalid(sliderMaxInput, true);
       ctx.ui.showNotification(ctx.i18n.t('toast.slider_range_invalid'), 'error');
       return;
     }
+    flagInvalid(sliderMinInput, false);
+    flagInvalid(sliderMaxInput, false);
     await ctx.settingsStore.update({ sliderMin: min, sliderMax: max });
   }
 
@@ -255,10 +310,18 @@ export function attachSettingsHandlers(
     ctx.cleanup.addEventListener(sliderMinInput, 'change', () => {
       void commitSliderRange();
     });
+    ctx.cleanup.addEventListener(sliderMinInput, 'input', () => {
+      flagInvalid(sliderMinInput, false);
+      flagInvalid(sliderMaxInput, false);
+    });
   }
   if (sliderMaxInput) {
     ctx.cleanup.addEventListener(sliderMaxInput, 'change', () => {
       void commitSliderRange();
+    });
+    ctx.cleanup.addEventListener(sliderMaxInput, 'input', () => {
+      flagInvalid(sliderMinInput, false);
+      flagInvalid(sliderMaxInput, false);
     });
   }
   if (sliderRangeReset) {
@@ -283,6 +346,15 @@ export function attachSettingsHandlers(
 
   // ----- Behavior toggles -----
   attachToggle(menuRoot, ctx, 'remember-speed', 'rememberSpeed');
+  // UX-031: compact mode re-applies layout immediately so the panel
+  // collapses/expands without waiting for the next navigation.
+  attachToggle(menuRoot, ctx, 'compact-mode', 'compactMode', () => {
+    ctx.ui.applyLayout();
+  });
+  // FEAT-013: pitch preservation — applied on the next speed write.
+  attachToggle(menuRoot, ctx, 'preserve-pitch', 'preservePitch');
+  // FEAT-015: per-content speed memory.
+  attachToggle(menuRoot, ctx, 'remember-per-video', 'rememberPerVideo');
   attachToggle(menuRoot, ctx, 'hide-player-title', 'hidePlayerTitle');
   attachToggle(menuRoot, ctx, 'hide-premium', 'hidePremium');
 
@@ -312,18 +384,29 @@ export function attachSettingsHandlers(
   for (const input of Array.from(menuRoot.querySelectorAll<HTMLInputElement>('.vs-hotkey-input'))) {
     const row = input.closest<HTMLElement>('.vs-hotkey-row');
     if (!row) continue;
-    const action = row.dataset.hotkeyType as 'speedUp' | 'speedDown' | undefined;
+    const action = asHotkeyAction(row.dataset.hotkeyType);
     const slotIndex = Number(row.dataset.slotIndex);
     if (!action || Number.isNaN(slotIndex)) continue;
 
     // Visual capture cue (audit B3.2): toggle .capturing on focus so
     // the CSS pulse animation (vs-capture-pulse keyframe) fires while
     // the input is listening. Mirror .user.js:4421-4427.
+    // UX-006: while capturing, swap the value for a "Press keys…"
+    // placeholder — focus alone read as "selected", not "listening".
     ctx.cleanup.addEventListener(input, 'focus', () => {
       input.classList.add('capturing');
+      input.dataset.vsPrevValue = input.value;
+      input.value = '';
+      input.placeholder = ctx.i18n.t('hotkeys.listening');
     });
     ctx.cleanup.addEventListener(input, 'blur', () => {
       input.classList.remove('capturing');
+      // No capture happened (Esc/Tab/click-away) — restore the old combo.
+      if (input.value === '' && input.dataset.vsPrevValue) {
+        input.value = input.dataset.vsPrevValue;
+      }
+      delete input.dataset.vsPrevValue;
+      input.placeholder = ctx.i18n.t('hotkeys.placeholder');
     });
 
     // Audit 2026-05-09 sec C15: avoid concurrent hotkey writes. The
@@ -352,8 +435,17 @@ export function attachSettingsHandlers(
       input.value = formatHotkey(hk);
       input.classList.remove('capturing');
       input.blur();
+      // UX-024: warn (don't block) when the combo collides with a
+      // common browser/system shortcut — the binding still works, but
+      // the user should know they're giving up native copy/paste etc.
+      if (isBrowserReservedCombo(hk)) {
+        ctx.ui.showNotification(
+          ctx.i18n.t('toast.hotkey_reserved', { combo: formatHotkey(hk) }),
+          'warn',
+        );
+      }
       const liveHotkeys = ctx.settingsStore.getKey('hotkeys');
-      const arr = liveHotkeys[action].slice();
+      const arr = hotkeyArrayOf(liveHotkeys, action).slice();
       arr[slotIndex] = hk;
       ctx.settingsStore
         .update({ hotkeys: { ...liveHotkeys, [action]: arr } })
@@ -374,13 +466,13 @@ export function attachSettingsHandlers(
     menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-hotkey-add]'),
   )) {
     ctx.cleanup.addEventListener(btn, 'click', async () => {
-      const action = btn.dataset.vsHotkeyAdd as 'speedUp' | 'speedDown' | undefined;
+      const action = asHotkeyAction(btn.dataset.vsHotkeyAdd);
       if (!action) return;
       const live = ctx.settingsStore.getKey('hotkeys');
       const next = {
         ...live,
         [action]: [
-          ...live[action],
+          ...hotkeyArrayOf(live, action),
           // New empty slot — empty key string renders as a placeholder
           // input ("Кликните и нажмите клавиши..."), and never matches
           // a real keypress until the user fills it in. Auto-focus
@@ -408,15 +500,19 @@ export function attachSettingsHandlers(
     ctx.cleanup.addEventListener(btn, 'click', async () => {
       const row = btn.closest<HTMLElement>('.vs-hotkey-row');
       if (!row) return;
-      const action = row.dataset.hotkeyType as 'speedUp' | 'speedDown' | undefined;
+      const action = asHotkeyAction(row.dataset.hotkeyType);
       const slotIndex = Number(row.dataset.slotIndex);
       if (!action || Number.isNaN(slotIndex)) return;
       const live = ctx.settingsStore.getKey('hotkeys');
-      if (live[action].length <= 1) {
+      const existing = hotkeyArrayOf(live, action);
+      // The two core actions must keep at least one combo; the optional
+      // quick-actions (reset/toggle/seek) may be emptied entirely.
+      const isCore = action === 'speedUp' || action === 'speedDown';
+      if (isCore && existing.length <= 1) {
         ctx.ui.showNotification(ctx.i18n.t('toast.shortcut_min'), 'warn');
         return;
       }
-      const arr = live[action].slice();
+      const arr = existing.slice();
       arr.splice(slotIndex, 1);
       await ctx.settingsStore.update({ hotkeys: { ...live, [action]: arr } });
       // Audit 2026-05-09 perf P3: subscriber handles rerender.
@@ -427,14 +523,109 @@ export function attachSettingsHandlers(
     menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-hotkey-reset]'),
   )) {
     ctx.cleanup.addEventListener(btn, 'click', async () => {
-      const action = btn.dataset.vsHotkeyReset as 'speedUp' | 'speedDown' | undefined;
+      const action = asHotkeyAction(btn.dataset.vsHotkeyReset);
       if (!action) return;
       const fresh = defaultSettings(ctx.settingsStore.getKey('language')).hotkeys;
       const live = ctx.settingsStore.getKey('hotkeys');
+      const freshArr = hotkeyArrayOf(fresh, action);
+      // UX-025: confirm only when discarding actual customisation.
+      const differs = JSON.stringify(hotkeyArrayOf(live, action)) !== JSON.stringify(freshArr);
+      if (differs && typeof window.confirm === 'function') {
+        if (!window.confirm(ctx.i18n.t('confirm.reset_partial'))) return;
+      }
       await ctx.settingsStore.update({
-        hotkeys: { ...live, [action]: fresh[action] },
+        hotkeys: { ...live, [action]: [...freshArr] },
       });
       // Audit 2026-05-09 perf P3: subscriber handles rerender.
+    });
+  }
+
+  // ----- FEAT-022: one-click preset profiles -----
+  const PRESET_PROFILES: Record<string, number[]> = {
+    movies: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2],
+    lectures: [1, 1.5, 2, 2.5, 3],
+    minimal: [1, 1.5, 2],
+  };
+  for (const btn of Array.from(
+    menuRoot.querySelectorAll<HTMLButtonElement>('[data-vs-preset-profile]'),
+  )) {
+    ctx.cleanup.addEventListener(btn, 'click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const profile = PRESET_PROFILES[btn.dataset.vsPresetProfile ?? ''];
+      if (!profile) return;
+      const current = ctx.settingsStore.getKey('speedPresets') ?? [];
+      const differs = JSON.stringify([...current].sort()) !== JSON.stringify([...profile].sort());
+      if (!differs) return;
+      // Replacing a hand-customised list is destructive — confirm first.
+      if (typeof window.confirm === 'function') {
+        if (!window.confirm(ctx.i18n.t('confirm.reset_partial'))) return;
+      }
+      await ctx.settingsStore.update({ speedPresets: [...profile] });
+    });
+  }
+
+  // ----- FEAT-017: volume boost -----
+  const boostInput = menuRoot.querySelector<HTMLInputElement>('[data-vs-volume-boost]');
+  if (boostInput) {
+    ctx.cleanup.addEventListener(boostInput, 'change', async () => {
+      const parsed = parseFloat(boostInput.value.replace(',', '.'));
+      if (!Number.isFinite(parsed) || parsed < 100 || parsed > 300) {
+        flagInvalid(boostInput, true);
+        ctx.ui.showNotification(ctx.i18n.t('toast.preset_invalid'), 'error');
+        return;
+      }
+      flagInvalid(boostInput, false);
+      const gain = clampBoost(parsed / 100);
+      await ctx.settingsStore.update({ volumeBoost: gain });
+      // Apply immediately to the live video (the change-event IS the
+      // user gesture Web Audio needs to start).
+      const v = ctx.discovery.resolve('video');
+      if (v instanceof HTMLVideoElement) {
+        const ok = applyVolumeBoost(v, gain, ctx.logger);
+        if (!ok) {
+          ctx.ui.showNotification(ctx.i18n.t('toast.volume_boost_failed'), 'warn');
+        }
+      }
+    });
+    ctx.cleanup.addEventListener(boostInput, 'input', () => {
+      flagInvalid(boostInput, false);
+    });
+  }
+
+  // ----- FEAT-018: hotkey speed step -----
+  const stepInput = menuRoot.querySelector<HTMLInputElement>('[data-vs-speed-step]');
+  if (stepInput) {
+    ctx.cleanup.addEventListener(stepInput, 'change', async () => {
+      const parsed = parseFloat(stepInput.value.replace(',', '.'));
+      if (!Number.isFinite(parsed) || parsed < 0.01 || parsed > 1) {
+        flagInvalid(stepInput, true);
+        ctx.ui.showNotification(ctx.i18n.t('toast.preset_invalid'), 'error');
+        return;
+      }
+      flagInvalid(stepInput, false);
+      await ctx.settingsStore.update({ speedStep: Math.round(parsed * 100) / 100 });
+    });
+    ctx.cleanup.addEventListener(stepInput, 'input', () => {
+      flagInvalid(stepInput, false);
+    });
+  }
+
+  // ----- FEAT-014: seek step (seconds) -----
+  const seekInput = menuRoot.querySelector<HTMLInputElement>('[data-vs-seek-seconds]');
+  if (seekInput) {
+    ctx.cleanup.addEventListener(seekInput, 'change', async () => {
+      const parsed = parseFloat(seekInput.value.replace(',', '.'));
+      if (!Number.isFinite(parsed) || parsed < 1 || parsed > 120) {
+        flagInvalid(seekInput, true);
+        ctx.ui.showNotification(ctx.i18n.t('toast.preset_invalid'), 'error');
+        return;
+      }
+      flagInvalid(seekInput, false);
+      await ctx.settingsStore.update({ seekSeconds: Math.round(parsed) });
+    });
+    ctx.cleanup.addEventListener(seekInput, 'input', () => {
+      flagInvalid(seekInput, false);
     });
   }
 
@@ -443,7 +634,7 @@ export function attachSettingsHandlers(
     ctx.cleanup.addEventListener(btn, 'click', () => {
       const action = btn.dataset.vsDiag;
       if (action === 'feedback') {
-        openFeedbackPage();
+        openFeedbackPage(btn.dataset.vsFeedbackAttach === '1');
         return;
       }
       if (
@@ -471,6 +662,9 @@ export function attachSettingsHandlers(
         if (result.ok) {
           ctx.ui.showNotification(ctx.i18n.t('settings.import.success'), 'info');
           // Audit 2026-05-09 perf P3: subscriber handles rerender.
+        } else if (result.cancelled) {
+          // UX-032: user declined the preview — not an error.
+          ctx.ui.showNotification(ctx.i18n.t('toast.import_cancelled'), 'info');
         } else {
           ctx.ui.showNotification(
             ctx.i18n.t('settings.import.failure', { message: result.message ?? 'unknown' }),
@@ -486,12 +680,20 @@ function attachToggle(
   menuRoot: Element,
   ctx: AppContext,
   inputName: string,
-  settingKey: 'rememberSpeed' | 'hidePlayerTitle' | 'hidePremium',
+  settingKey:
+    | 'rememberSpeed'
+    | 'hidePlayerTitle'
+    | 'hidePremium'
+    | 'compactMode'
+    | 'preservePitch'
+    | 'rememberPerVideo',
+  onChanged?: () => void,
 ): void {
   const cb = menuRoot.querySelector<HTMLInputElement>(`input[name="${inputName}"]`);
   if (!cb) return;
   ctx.cleanup.addEventListener(cb, 'change', async () => {
     await ctx.settingsStore.update({ [settingKey]: cb.checked } as never);
+    onChanged?.();
     if (settingKey === 'hidePlayerTitle') {
       ctx.ui.showNotification(
         ctx.i18n.t(cb.checked ? 'toast.title_hidden' : 'toast.title_shown'),

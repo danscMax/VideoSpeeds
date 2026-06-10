@@ -28,12 +28,7 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { CleanupRegistry } from './app/cleanup';
 import type { AppContext } from './app/context';
-import type {
-  DiagnosticsPort,
-  Logger as LoggerPort,
-  Translator,
-  UiPort,
-} from './app/ports';
+import type { DiagnosticsPort, Logger as LoggerPort, Translator, UiPort } from './app/ports';
 import { SPEED_STEP, speedBoundsFor } from './config';
 import { createSelectorCache } from './discovery/cache';
 import { createDiscoveryEngine } from './discovery/engine';
@@ -46,7 +41,12 @@ import { detectBrowserLang } from './i18n/detect';
 import { createTranslator } from './i18n/translator';
 import { detectSite } from './sites/detect';
 import { bootstrapRutubeSite } from './sites/rutube';
-import { bootstrapYouTubeSite } from './sites/youtube';
+import {
+  bootstrapYouTubeSite,
+  extractYouTubeChannelKey,
+  isYouTubeAdShowing,
+  isYouTubeShortsPath,
+} from './sites/youtube';
 import {
   applyTransient,
   pickInitialSpeed,
@@ -55,9 +55,10 @@ import {
 } from './speed/controller';
 import { matchesHotkeyArray } from './speed/hotkeys';
 import { createRatechangeMeter } from './speed/meter';
+import { applyVolumeBoost } from './speed/volume-boost';
 import { createBrowserStorageAdapter, type StorageAdapter } from './storage/adapter';
-import { runTmMigration } from './storage/migration-tm';
 import { createCoalescingAdapter } from './storage/adapter-coalescing';
+import { runTmMigration } from './storage/migration-tm';
 import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { createPanel, createUiPort, injectStyles, insertPanel, installThemeWatcher } from './ui';
@@ -121,16 +122,25 @@ export async function bootstrap(
   // logger.warn so quota-exceeded / runtime-invalidated failures don't
   // disappear silently — previously speedStore reported success while
   // disk diverged.
-  const speedStore = createSpeedStore(
-    createCoalescingAdapter(adapter, {
-      flushMs: 200,
-      onWriteError: (key, err) => {
-        logger.warn(`speedStore coalesced write failed for ${key}`, err);
-      },
-    }),
-  );
+  // REL-033/038 (2026-06-10): keep a handle on the coalescing adapter so
+  // pending writes can be flushed on pagehide, and surface write failures
+  // to the user (once per page) instead of only logging them.
+  let notifyStorageWriteError: (() => void) | null = null;
+  const coalescedSpeedAdapter = createCoalescingAdapter(adapter, {
+    flushMs: 200,
+    onWriteError: (key, err) => {
+      logger.warn(`speedStore coalesced write failed for ${key}`, err);
+      notifyStorageWriteError?.();
+    },
+  });
+  const speedStore = createSpeedStore(coalescedSpeedAdapter);
   await settingsStore.init(site);
   await speedStore.init(site);
+  // Without this, a double-click "save as default" followed by an instant
+  // reload (within the 200 ms coalesce window) silently loses the write.
+  cleanup.addEventListener(window, 'pagehide', () => {
+    void coalescedSpeedAdapter.flushNow();
+  });
 
   // 3. Discovery.
   // killSwitch is declared early (TDZ guard, audit 2026-05-09 sec C6) so
@@ -282,6 +292,20 @@ export async function bootstrap(
   ctx.ui = realUi;
   cleanup.add(() => panel.dispose());
 
+  // REL-038: real UI exists now — arm the storage-write-failure toast.
+  // Shown at most once per page load to avoid a toast storm when the
+  // adapter is persistently broken (quota exceeded, dead SW).
+  let storageErrorToastShown = false;
+  notifyStorageWriteError = () => {
+    if (storageErrorToastShown) return;
+    storageErrorToastShown = true;
+    try {
+      ctx.ui.showNotification(ctx.i18n.t('toast.storage_write_failed'), 'warn');
+    } catch {
+      /* notification is best-effort */
+    }
+  };
+
   // Re-create translator on language change. Audit 2026-05-09 MAJOR-bootstrap:
   // also force a rerender of the live panel/settings menu so on-screen
   // strings update immediately instead of staying stale until the next
@@ -307,12 +331,45 @@ export async function bootstrap(
     }
   }
 
+  // FEAT-015 (YouTube): per-channel memory key. The channel link renders
+  // a beat after navigation, so retry a few times; once found, re-apply
+  // the initial speed so a remembered per-channel value kicks in.
+  const refreshChannelMemoryKey = (attempt = 0): void => {
+    if (site !== 'youtube') return;
+    if (cleanup.isDisposed) return;
+    const key = extractYouTubeChannelKey();
+    if (key) {
+      if (ctx.speedStore.activeMemoryKey() !== key) {
+        ctx.speedStore.setActiveMemoryKey(key);
+        if (ctx.settingsStore.getKey('rememberPerVideo') === true) {
+          const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
+          if (v instanceof HTMLVideoElement) {
+            applyTransient(ctx, pickInitialSpeed(ctx), { silent: true });
+          }
+        }
+      }
+      return;
+    }
+    ctx.speedStore.setActiveMemoryKey(null);
+    if (attempt < 3) {
+      ctx.cleanup.setTimeout(() => refreshChannelMemoryKey(attempt + 1), 800 * (attempt + 1));
+    }
+  };
+  refreshChannelMemoryKey();
+
   // 9. Insert the panel. Retries every 750ms (up to ~15s) because the
   //    player container often appears after document_idle on SPA sites
   //    (RuTube renders the player asynchronously). The retry stops as
   //    soon as we land a real anchor; SPA-navigation listener (step 12)
   //    handles subsequent page changes.
-  scheduleInsertWithRetry(panel.element, ctx);
+  //
+  // FEAT-020 (Shorts): the watch-page panel has no sane anchor in the
+  // Shorts vertical layout — skip insertion there. Hotkeys and the
+  // toolbar popup still control the Shorts <video>; the panel returns
+  // on the next regular watch navigation.
+  if (!(site === 'youtube' && isYouTubeShortsPath())) {
+    scheduleInsertWithRetry(panel.element, ctx);
+  }
   panel.applyLayout();
 
   // 9a. Wire the theme watcher AFTER the panel exists so the parent-chain
@@ -402,6 +459,8 @@ export async function bootstrap(
   //     OR a hotkey-input is in capture-mode -- otherwise binding Ctrl+C
   //     in settings would speed-up while typing and copy-paste would
   //     accelerate the video.
+  // FEAT-012: per-page memory for the toggle-last-speed hotkey.
+  let toggleLastSpeed: number | null = null;
   ctx.cleanup.addEventListener(
     document,
     'keydown',
@@ -417,18 +476,50 @@ export async function bootstrap(
       // resolve in the matched branch only.
       const speedUp = matchesHotkeyArray(ev, hk.speedUp);
       const speedDown = !speedUp && matchesHotkeyArray(ev, hk.speedDown);
-      if (!speedUp && !speedDown) return;
+      const reset = !speedUp && !speedDown && matchesHotkeyArray(ev, hk.resetSpeed);
+      const toggle = !speedUp && !speedDown && !reset && matchesHotkeyArray(ev, hk.toggleLast);
+      const seekFwd =
+        !speedUp && !speedDown && !reset && !toggle && matchesHotkeyArray(ev, hk.seekForward);
+      const seekBack =
+        !speedUp &&
+        !speedDown &&
+        !reset &&
+        !toggle &&
+        !seekFwd &&
+        matchesHotkeyArray(ev, hk.seekBack);
+      if (!speedUp && !speedDown && !reset && !toggle && !seekFwd && !seekBack) return;
       // Configurable since 0.1.43 — read live from settings every keypress
       // so changes from the welcome page / settings menu apply without
       // reload. SPEED_STEP retained as the constant default.
       const step = settingsStore.getKey('speedStep') ?? SPEED_STEP;
       const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
+      if (!v) return;
+      ev.preventDefault();
       if (speedUp) {
-        ev.preventDefault();
-        if (v) void setTemporary(ctx, v.playbackRate + step);
+        void setTemporary(ctx, v.playbackRate + step);
       } else if (speedDown) {
-        ev.preventDefault();
-        if (v) void setTemporary(ctx, v.playbackRate - step);
+        void setTemporary(ctx, v.playbackRate - step);
+      } else if (reset) {
+        // FEAT-011: one keypress back to normal speed (temporary — the
+        // saved default is untouched, same semantics as a button click).
+        toggleLastSpeed = v.playbackRate;
+        void setTemporary(ctx, 1);
+      } else if (toggle) {
+        // FEAT-012: swap current ↔ remembered. First press with no
+        // memory falls back to 1×.
+        const target = toggleLastSpeed ?? 1;
+        toggleLastSpeed = v.playbackRate;
+        void setTemporary(ctx, target);
+      } else if (seekFwd || seekBack) {
+        // FEAT-014: relative seek. Clamp into [0, duration].
+        const span = settingsStore.getKey('seekSeconds') ?? 10;
+        const delta = seekFwd ? span : -span;
+        try {
+          const dur = Number.isFinite(v.duration) ? v.duration : Number.POSITIVE_INFINITY;
+          v.currentTime = Math.min(Math.max(0, v.currentTime + delta), dur);
+        } catch (e) {
+          ctx.logger.warn('hotkey seek failed', e);
+        }
       }
     },
     { capture: true },
@@ -489,6 +580,19 @@ export async function bootstrap(
     // Detach only on RuTube (audit 2026-05-09 MAJOR-bootstrap).
     if (ctx.site === 'rutube') {
       panel.element.parentElement?.removeChild(panel.element);
+    }
+
+    // FEAT-015 (YouTube): the channel changed with the navigation.
+    refreshChannelMemoryKey();
+
+    // FEAT-020 (Shorts): no panel on the Shorts layout — detach if we
+    // navigated INTO Shorts; the regular insert path below restores it
+    // when navigating back to a watch page.
+    if (ctx.site === 'youtube' && isYouTubeShortsPath()) {
+      panel.element.parentElement?.removeChild(panel.element);
+      attachToVideo(ctx, meter, attachCleanup);
+      reapplyTheme();
+      return;
     }
 
     // RuTube React re-renders the page column AFTER the
@@ -609,8 +713,15 @@ export async function bootstrap(
   // visual cue that something broke (audit A3.1).
   cleanup.add(
     healthChecker.subscribe((report) => {
-      panel.rerenderSettings();
-      panel.setGearWarning(!report.healthy);
+      // REL-035: a throw inside the render path must not kill the
+      // subscription — otherwise one bad rerender silences the health
+      // indicator (gear dot) for the rest of the page lifetime.
+      try {
+        panel.rerenderSettings();
+        panel.setGearWarning(!report.healthy);
+      } catch (e) {
+        logger.warn('health subscriber render failed', e);
+      }
       logger.debug('health:', report.healthy ? 'ok' : 'warn');
     }),
   );
@@ -625,7 +736,7 @@ export async function bootstrap(
   const onPopupMessage = async (
     msg: unknown,
     sender?: { id?: string; tab?: { id?: number } },
-  ): Promise<{ ok: boolean; report?: DiagnosticReport; error?: string }> => {
+  ): Promise<{ ok: boolean; report?: DiagnosticReport; error?: string; speed?: number }> => {
     // Sender validation (audit 2026-05-09 sec C4): reject messages from
     // foreign extensions and from in-page content scripts. The intended
     // caller is our own popup (an extension page → sender.tab is
@@ -657,6 +768,33 @@ export async function bootstrap(
           // ok=true and the user would think the purge succeeded.
           await cache.purgeAll();
           return Promise.resolve({ ok: true });
+        }
+        // FEAT-021: popup quick actions — read/apply the live speed of
+        // the video in THIS tab without opening the in-player menu.
+        case 'vs:get-speed': {
+          const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
+          if (!(v instanceof HTMLVideoElement)) {
+            return Promise.resolve({ ok: false, error: 'no_video' });
+          }
+          return Promise.resolve({
+            ok: true,
+            speed: v.playbackRate,
+          } as { ok: boolean; speed?: number });
+        }
+        case 'vs:set-speed': {
+          const speed = (msg as { speed?: unknown }).speed;
+          if (typeof speed !== 'number' || !Number.isFinite(speed)) {
+            return Promise.resolve({ ok: false, error: 'bad_speed' });
+          }
+          const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
+          if (!(v instanceof HTMLVideoElement)) {
+            return Promise.resolve({ ok: false, error: 'no_video' });
+          }
+          await setTemporary(ctx, speed);
+          return Promise.resolve({ ok: true, speed: v.playbackRate } as {
+            ok: boolean;
+            speed?: number;
+          });
         }
         default:
           return Promise.resolve({ ok: false, error: 'unknown_type' });
@@ -904,6 +1042,13 @@ function attachToVideo(
     // gets a fresh try.
     if (attempt >= 20) {
       ctx.logger.warn('attachToVideo: gave up after 20 attempts; will re-arm on next SPA nav');
+      // REL-039: tell the user instead of failing silently. The retry
+      // budget spans ~80 s, so this only fires on genuinely broken pages.
+      try {
+        ctx.ui.showNotification(ctx.i18n.t('panel.video_not_found'), 'warn');
+      } catch {
+        /* notification is best-effort */
+      }
       return;
     }
     const delay = Math.min(5000, Math.round(500 * 1.2 ** attempt));
@@ -919,10 +1064,22 @@ function attachToVideo(
   // <video> can't bleed (audit B2.3 / A2.4).
   void ctx.speedStore.setSmart(null);
 
+  // FEAT-017: re-apply the user's volume boost to the fresh element.
+  // No-op (and no audio graph) while the setting sits at 100%.
+  const boost = ctx.settingsStore.getKey('volumeBoost');
+  if (typeof boost === 'number' && boost > 1.001) {
+    applyVolumeBoost(v, boost, ctx.logger);
+  }
+
   let lastSrc = v.currentSrc || v.src || '';
   let isSelfWrite = false;
 
   const isSite = (s: 'youtube' | 'rutube'): boolean => ctx.site === s;
+  // FEAT-019: ads play at YouTube's own pace. While an ad is showing we
+  // neither count ratechanges in the meter, nor sync our UI to the ad's
+  // rate, nor force the user's speed onto it — the post-ad 'playing'
+  // event restores the saved speed on the actual content.
+  const isAd = (): boolean => isSite('youtube') && isYouTubeAdShowing(v);
 
   /** Recent self-write check: controller stamps `__vsSelfWriteAt` on the
    *  video each time it writes playbackRate. We honour that timestamp
@@ -931,10 +1088,17 @@ function attachToVideo(
   const isFreshSelfWrite = (): boolean => {
     const ts = (v as Branded).__vsSelfWriteAt ?? 0;
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    return now - ts < SELF_WRITE_GRACE_MS;
+    // REL-036: bound the delta on both sides. A timer glitch (suspend /
+    // resume, clock source change) can make `now - ts` negative or huge;
+    // either way the stamp is not "fresh", so fall through to the normal
+    // revert path instead of treating a foreign write as ours.
+    const delta = now - ts;
+    return delta >= 0 && delta < SELF_WRITE_GRACE_MS;
   };
 
   const apply = (reason: string): void => {
+    // FEAT-019: never force the user's speed onto an ad.
+    if (isAd()) return;
     const target = pickInitialSpeed(ctx);
     if (Math.abs(v.playbackRate - target) < 0.005) return;
     // Use applyTransient (no storage write) — storage already holds the
@@ -979,10 +1143,19 @@ function attachToVideo(
   let prev = v.playbackRate;
   cleanup.addEventListener(v, 'ratechange', () => {
     const next = v.playbackRate;
+    // FEAT-019: rate flapping during ad playback is YouTube's business —
+    // don't meter it, don't mirror it into our UI, don't fight it.
+    if (isAd()) {
+      prev = next;
+      return;
+    }
     // Skip self-writes when feeding the meter so HealthChecker's "rate
     // resets storm" detection isn't tripped by our own corrections
-    // (audit C2.2).
-    if (!isSelfWrite && !isFreshSelfWrite()) {
+    // (audit C2.2). REL-034: also skip transitions through rate=0 —
+    // player lifecycle noise (ad start/stop, HLS buffering) rather than
+    // the site fighting our speed; counting them inflates perMinute()
+    // and can trip the rate-storm check on perfectly healthy pages.
+    if (!isSelfWrite && !isFreshSelfWrite() && prev > 0 && next > 0) {
       meter.tick(prev, next);
     }
     prev = next;
@@ -1018,7 +1191,10 @@ function attachToVideo(
 
   // playing-event revert: covers seek + quality switch + tab-resume
   // resets that don't always fire ratechange. .user.js:2477-2501.
+  // FEAT-019: this is also the post-ad restore point — the first
+  // content 'playing' after an ad re-applies the user's speed.
   cleanup.addEventListener(v, 'playing', () => {
+    if (isAd()) return;
     if (isSelfWrite || isFreshSelfWrite()) return;
     const target = pickInitialSpeed(ctx);
     if (Math.abs(v.playbackRate - target) > 0.005) {

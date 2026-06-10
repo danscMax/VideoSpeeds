@@ -66,6 +66,8 @@ export function exportSettingsToFile(ctx: AppContext): void {
 export interface ImportResult {
   ok: boolean;
   message?: string;
+  /** UX-032: the user declined the pre-apply preview — not an error. */
+  cancelled?: boolean;
 }
 
 /**
@@ -118,7 +120,15 @@ function sanitizeImportPatch(raw: unknown): Partial<Settings> | null {
   return out as Partial<Settings>;
 }
 
-export async function importSettingsFromText(ctx: AppContext, text: string): Promise<ImportResult> {
+export async function importSettingsFromText(
+  ctx: AppContext,
+  text: string,
+  /** UX-032: optional pre-apply gate. Receives a human-readable summary
+   *  of what's about to change; returning false aborts the import.
+   *  Interactive surfaces pass a window.confirm wrapper; programmatic
+   *  callers (tests, migrations) omit it and apply directly. */
+  confirmApply?: (summary: string) => boolean,
+): Promise<ImportResult> {
   const parsed = safeJsonParse<unknown>(text, null);
   if (!parsed) {
     return { ok: false, message: 'invalid JSON' };
@@ -139,6 +149,31 @@ export async function importSettingsFromText(ctx: AppContext, text: string): Pro
 
   const patch = sanitizeImportPatch(raw);
   if (!patch) return { ok: false, message: 'unrecognized shape or no valid keys' };
+
+  // UX-032: show what's about to change BEFORE applying. Previously the
+  // file was applied the instant the picker closed — no way to back out
+  // of importing the wrong snapshot.
+  if (confirmApply) {
+    const previewLines = [ctx.i18n.t('import.preview.header'), ''];
+    previewLines.push(
+      ctx.i18n.t('import.preview.line.settings', { count: Object.keys(patch).length }),
+    );
+    if (Array.isArray(patch.speedPresets)) {
+      previewLines.push(
+        ctx.i18n.t('import.preview.line.presets', { count: patch.speedPresets.length }),
+      );
+    }
+    if (patch.hotkeys && typeof patch.hotkeys === 'object') {
+      const hk = patch.hotkeys as { speedUp?: unknown[]; speedDown?: unknown[] };
+      const combos = (hk.speedUp?.length ?? 0) + (hk.speedDown?.length ?? 0);
+      if (combos > 0) {
+        previewLines.push(ctx.i18n.t('import.preview.line.hotkeys', { count: combos }));
+      }
+    }
+    if (!confirmApply(previewLines.join('\n'))) {
+      return { ok: false, cancelled: true };
+    }
+  }
 
   try {
     await ctx.settingsStore.update(patch);
@@ -166,7 +201,13 @@ export function openImportPicker(ctx: AppContext, onResult: (r: ImportResult) =>
     }
     try {
       const text = await file.text();
-      const result = await importSettingsFromText(ctx, text);
+      // Interactive surface — gate the apply behind a native confirm
+      // with the summary (UX-032).
+      const confirmApply =
+        typeof window !== 'undefined' && typeof window.confirm === 'function'
+          ? (summary: string) => window.confirm(summary)
+          : undefined;
+      const result = await importSettingsFromText(ctx, text, confirmApply);
       onResult(result);
     } catch (e) {
       onResult({ ok: false, message: e instanceof Error ? e.message : String(e) });

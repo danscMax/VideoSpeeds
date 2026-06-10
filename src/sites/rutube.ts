@@ -9,11 +9,7 @@
  */
 
 import type { AppContext } from '../app/context';
-import {
-  type BridgeMessage,
-  generateSessionId,
-  isBridgeMessage,
-} from './bridge-protocol';
+import { type BridgeMessage, generateSessionId, isBridgeMessage } from './bridge-protocol';
 
 export interface RutubeSiteHandle {
   /** Fired on every page-world history-change event. */

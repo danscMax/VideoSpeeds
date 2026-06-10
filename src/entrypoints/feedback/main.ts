@@ -69,12 +69,17 @@ async function bootstrap(host: HTMLElement): Promise<void> {
 }
 
 function renderForm(host: HTMLElement, t: Translator): void {
+  // UX-029: ?attach=1 means the user came from the Diagnostics tab —
+  // pre-enable the report checkbox so reporting a bug is one step, not
+  // four. Still a visible checkbox: they can untick before sending.
+  const cameFromDiag = new URLSearchParams(location.search).get('attach') === '1';
   const state: FormState = {
     rating: 'neutral',
     message: '',
     contact: '',
-    // Off by default — fingerprint surface (audit 0.2.8).
-    attachDiagnostics: false,
+    // Off by default — fingerprint surface (audit 0.2.8). The diag-tab
+    // entry point above is that explicit opt-in context.
+    attachDiagnostics: cameFromDiag,
   };
 
   const ratingBtn = (value: Rating, emoji: string, labelKey: string): HTMLButtonElement => {
@@ -121,6 +126,7 @@ function renderForm(host: HTMLElement, t: Translator): void {
 
   const diagCheckbox = h('input', {
     type: 'checkbox',
+    ...(state.attachDiagnostics ? { checked: true } : {}),
   }) as HTMLInputElement;
   diagCheckbox.addEventListener('change', () => {
     state.attachDiagnostics = diagCheckbox.checked;

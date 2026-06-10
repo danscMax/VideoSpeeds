@@ -5,16 +5,13 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import type { AppContext } from '../../src/app/context';
+import { Validators } from '../../src/discovery/validators';
 import { detectSite, isYouTube } from '../../src/sites/detect';
-import {
-  importSettingsFromText,
-  buildExportEnvelope,
-} from '../../src/ui/settings/export-import';
-import { createSettingsStore } from '../../src/storage/settings-store';
 import type { StorageAdapter } from '../../src/storage/adapter';
 import { createGmStorageAdapter } from '../../src/storage/adapter-gm';
-import { Validators } from '../../src/discovery/validators';
-import type { AppContext } from '../../src/app/context';
+import { createSettingsStore } from '../../src/storage/settings-store';
+import { buildExportEnvelope, importSettingsFromText } from '../../src/ui/settings/export-import';
 
 // --- C1: hostname regex anchoring -------------------------------------
 
@@ -49,7 +46,7 @@ function makeMemoryAdapter(): StorageAdapter & { _data: Map<string, unknown> } {
   return {
     _data: data,
     async get<T>(key: string, defaultValue: T): Promise<T> {
-      return (data.has(key) ? (data.get(key) as T) : defaultValue);
+      return data.has(key) ? (data.get(key) as T) : defaultValue;
     },
     async set(key: string, value: unknown): Promise<void> {
       data.set(key, value);
@@ -171,9 +168,7 @@ describe('audit C9: SettingsStore rolls back on persist failure', () => {
       return original(k, v);
     });
 
-    await expect(
-      ctx.settingsStore.update({ rememberSpeed: !before }),
-    ).rejects.toThrow(/quota/);
+    await expect(ctx.settingsStore.update({ rememberSpeed: !before })).rejects.toThrow(/quota/);
 
     // Rolled back to the previous value.
     expect(ctx.settingsStore.getKey('rememberSpeed')).toBe(before);
@@ -253,7 +248,10 @@ describe('audit C10: GM-adapter envelope round-trips primitive types', () => {
       await a.set('b', false);
       expect(await a.get<boolean>('b', true)).toBe(false);
       await a.set('o', { x: 1, y: 'two' });
-      expect(await a.get<{ x: number; y: string }>('o', { x: 0, y: '' })).toEqual({ x: 1, y: 'two' });
+      expect(await a.get<{ x: number; y: string }>('o', { x: 0, y: '' })).toEqual({
+        x: 1,
+        y: 'two',
+      });
       await a.set('z', null);
       expect(await a.get<null | string>('z', 'default')).toBe(null);
     });

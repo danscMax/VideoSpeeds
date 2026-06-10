@@ -268,6 +268,64 @@ export const I18N_DICT = {
     // instead of a silently broken extension.
     'panel.insertion_failed': 'Could not insert the speed panel — try reloading the page.',
 
+    // panel.video_not_found -- attachToVideo exhausted its retry budget:
+    // the page looks like a video page but no <video> ever appeared.
+    'panel.video_not_found':
+      'Video player not found — speed control is unavailable. Try reloading the page.',
+
+    // toast.storage_write_failed -- a coalesced storage write rejected
+    // (quota / invalidated context). Shown once per page so the user
+    // knows the saved speed/settings may not have persisted.
+    'toast.storage_write_failed': 'Could not save settings — changes may be lost after reload.',
+
+    // ---- UX wave 2026-06-10 ----
+    'general.speed_presets.dblclick_hint':
+      'On the panel: single click = speed for this video, double-click = save as your default.',
+    'behavior.compact': 'Compact panel',
+    'behavior.compact.tip':
+      'Show only the current speed button and the gear; hide the other presets, the slider and the pin.',
+    'diag.explainer':
+      'The check verifies that the player is found, the panel is inserted and your speed actually sticks.',
+    'menu.esc_hint': 'Press Esc to close',
+    'hotkeys.listening': 'Press keys…',
+    'toast.hotkey_reserved': '{combo} is a common browser shortcut — it may conflict.',
+    'confirm.reset_partial': 'Reset these settings to their defaults?',
+    'import.preview.header': 'Apply imported settings?',
+    'import.preview.line.settings': 'Settings keys: {count}',
+    'import.preview.line.presets': 'Speed buttons: {count}',
+    'import.preview.line.hotkeys': 'Hotkey combos: {count}',
+    'toast.import_cancelled': 'Import cancelled',
+
+    // ---- Feature wave 2026-06-10: quick actions + pitch + seek ----
+    'behavior.preserve_pitch': 'Preserve audio pitch',
+    'behavior.preserve_pitch.tip':
+      'Keep voices natural at any speed. Turn off to let the pitch shift with the speed ("vinyl mode").',
+    'hotkeys.step': 'Speed step per press',
+    'hotkeys.step.hint': 'How much each speed-up / slow-down press changes the rate (0.01–1).',
+    'hotkeys.reset_label': 'Reset to 1×',
+    'hotkeys.toggle_label': 'Toggle last speed',
+    'hotkeys.seek_fwd_label': 'Skip forward',
+    'hotkeys.seek_back_label': 'Skip back',
+    'hotkeys.seek_seconds': 'Skip amount (seconds)',
+    'behavior.remember_per_video': 'Remember speed per channel',
+    'behavior.remember_per_video.tip':
+      'Each YouTube channel keeps its own speed. Falls back to the global default for new channels. (RuTube: not available.)',
+    'behavior.volume_boost': 'Volume boost',
+    'behavior.volume_boost.tip':
+      'Amplify quiet audio up to 300%. Site-dependent: if the sound disappears, set it back to 100%.',
+    'toast.volume_boost_failed': 'Volume boost is not available for this player.',
+    'general.profile.movies': 'Movies',
+    'general.profile.movies.tip': 'Fine 0.1 steps between 1× and 2× — comfortable film pacing.',
+    'general.profile.lectures': 'Lectures',
+    'general.profile.lectures.tip': 'Coarse 0.5 steps up to 3× — for talks and tutorials.',
+    'general.profile.minimal': 'Minimal',
+    'general.profile.minimal.tip': 'Just 1× / 1.5× / 2× — the essentials.',
+    'time.min_suffix': ' min',
+    'time.sec_suffix': ' s',
+    'panel.time_saved.tip': 'At this speed you finish the video {value} earlier.',
+    'popup.quick.tip': 'Set the speed for the video in the current tab',
+    'popup.quick.no_video': 'Open a video page to control its speed.',
+
     // settings.export / import -- Wave 1.8b, manual fallback for the
     // GM-storage data the extension cannot read directly.
     'settings.export': 'Export settings',
@@ -549,6 +607,62 @@ export const I18N_DICT = {
     // panel.insertion_failed
     'panel.insertion_failed':
       'Не удалось вставить панель скоростей — попробуйте перезагрузить страницу.',
+
+    // panel.video_not_found
+    'panel.video_not_found':
+      'Видеоплеер не найден — управление скоростью недоступно. Попробуйте перезагрузить страницу.',
+
+    // toast.storage_write_failed
+    'toast.storage_write_failed':
+      'Не удалось сохранить настройки — изменения могут потеряться после перезагрузки.',
+
+    // ---- UX wave 2026-06-10 ----
+    'general.speed_presets.dblclick_hint':
+      'На панели: один клик — скорость для этого видео, двойной клик — сохранить по умолчанию.',
+    'behavior.compact': 'Компактная панель',
+    'behavior.compact.tip':
+      'Показывать только кнопку текущей скорости и шестерёнку; скрыть остальные кнопки, слайдер и закрепление.',
+    'diag.explainer':
+      'Проверка убеждается, что плеер найден, панель вставлена и выбранная скорость действительно применяется.',
+    'menu.esc_hint': 'Esc — закрыть',
+    'hotkeys.listening': 'Нажмите клавиши…',
+    'toast.hotkey_reserved': '{combo} — распространённое сочетание браузера, возможен конфликт.',
+    'confirm.reset_partial': 'Сбросить эти настройки к значениям по умолчанию?',
+    'import.preview.header': 'Применить импортированные настройки?',
+    'import.preview.line.settings': 'Ключей настроек: {count}',
+    'import.preview.line.presets': 'Кнопок скорости: {count}',
+    'import.preview.line.hotkeys': 'Сочетаний клавиш: {count}',
+    'toast.import_cancelled': 'Импорт отменён',
+
+    // ---- Feature wave 2026-06-10: quick actions + pitch + seek ----
+    'behavior.preserve_pitch': 'Сохранять тон звука',
+    'behavior.preserve_pitch.tip':
+      'Голоса звучат естественно на любой скорости. Выключите, чтобы тон менялся вместе со скоростью («режим винила»).',
+    'hotkeys.step': 'Шаг изменения скорости',
+    'hotkeys.step.hint': 'Насколько меняется скорость за одно нажатие (0.01–1).',
+    'hotkeys.reset_label': 'Сброс к 1×',
+    'hotkeys.toggle_label': 'Переключить последнюю скорость',
+    'hotkeys.seek_fwd_label': 'Перемотать вперёд',
+    'hotkeys.seek_back_label': 'Перемотать назад',
+    'hotkeys.seek_seconds': 'Шаг перемотки (секунды)',
+    'behavior.remember_per_video': 'Помнить скорость для каждого канала',
+    'behavior.remember_per_video.tip':
+      'У каждого канала YouTube своя скорость. Для новых каналов действует глобальная. (На RuTube недоступно.)',
+    'behavior.volume_boost': 'Усиление громкости',
+    'behavior.volume_boost.tip':
+      'Усиливает тихий звук до 300%. Зависит от сайта: если звук пропал — верните 100%.',
+    'toast.volume_boost_failed': 'Усиление громкости недоступно для этого плеера.',
+    'general.profile.movies': 'Фильмы',
+    'general.profile.movies.tip': 'Мелкие шаги 0.1 от 1× до 2× — комфортный темп кино.',
+    'general.profile.lectures': 'Лекции',
+    'general.profile.lectures.tip': 'Крупные шаги 0.5 до 3× — для докладов и туториалов.',
+    'general.profile.minimal': 'Минимум',
+    'general.profile.minimal.tip': 'Только 1× / 1.5× / 2× — самое необходимое.',
+    'time.min_suffix': ' мин',
+    'time.sec_suffix': ' с',
+    'panel.time_saved.tip': 'На этой скорости вы закончите видео на {value} раньше.',
+    'popup.quick.tip': 'Задать скорость видео в текущей вкладке',
+    'popup.quick.no_video': 'Откройте страницу с видео, чтобы управлять скоростью.',
 
     // settings.export / import
     'settings.export': 'Экспортировать настройки',

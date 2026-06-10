@@ -123,4 +123,3 @@ function isSameSpeed(a: number, b: number): boolean {
   // (1.0 + 0.1 × 5 = 1.4999...x) — audit C2.3.
   return Math.abs(a - b) < 0.01;
 }
-

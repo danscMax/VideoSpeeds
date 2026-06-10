@@ -41,10 +41,7 @@ export default defineBackground(() => {
   // wire before resolving.
   const ALLOWED_PAGES = new Set(['/feedback.html', '/welcome.html']);
   browser.runtime.onMessage.addListener(
-    (
-      msg: unknown,
-      sender,
-    ): Promise<{ ok: boolean; error?: string }> | undefined => {
+    (msg: unknown, sender): Promise<{ ok: boolean; error?: string }> | undefined => {
       if (!msg || typeof msg !== 'object') return undefined;
       const m = msg as { type?: unknown; path?: unknown };
       if (m.type !== 'open-extension-page') return undefined;

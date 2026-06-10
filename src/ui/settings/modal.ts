@@ -194,6 +194,46 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
   const presetSection = vsSection(
     t('general.speed_presets'),
     h('p', { class: 'vs-help-text' }, t('general.speed_presets.hint')),
+    // UX-023: the click-vs-double-click semantics used to live only in
+    // each button's hover tooltip — effectively invisible. One in-flow
+    // line here makes the core gesture discoverable.
+    h('p', { class: 'vs-help-text' }, t('general.speed_presets.dblclick_hint')),
+    // FEAT-022: one-click preset profiles — a lightweight alternative to
+    // hand-toggling pills for the common viewing modes.
+    h(
+      'div',
+      { class: 'vs-preset-grid', style: 'margin-bottom: 8px;' },
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'vs-preset-pill',
+          'data-vs-preset-profile': 'movies',
+          title: t('general.profile.movies.tip'),
+        },
+        t('general.profile.movies'),
+      ),
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'vs-preset-pill',
+          'data-vs-preset-profile': 'lectures',
+          title: t('general.profile.lectures.tip'),
+        },
+        t('general.profile.lectures'),
+      ),
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'vs-preset-pill',
+          'data-vs-preset-profile': 'minimal',
+          title: t('general.profile.minimal.tip'),
+        },
+        t('general.profile.minimal'),
+      ),
+    ),
     ...groupRows,
     h(
       'div',
@@ -317,6 +357,23 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
     vsRow(t('behavior.remember'), vsToggle('remember-speed', !!settings.rememberSpeed), {
       title: t('behavior.remember.tip'),
     }),
+    // FEAT-015: per-channel memory (YouTube).
+    vsRow(
+      t('behavior.remember_per_video'),
+      vsToggle('remember-per-video', !!settings.rememberPerVideo),
+      { title: t('behavior.remember_per_video.tip') },
+    ),
+    // UX-031: compact mode — collapse the panel to current speed + gear.
+    vsRow(t('behavior.compact'), vsToggle('compact-mode', !!settings.compactMode), {
+      title: t('behavior.compact.tip'),
+    }),
+    // FEAT-013: pitch preservation. Browsers default to true, so the
+    // toggle reads as ON unless the user explicitly disabled it.
+    vsRow(
+      t('behavior.preserve_pitch'),
+      vsToggle('preserve-pitch', settings.preservePitch !== false),
+      { title: t('behavior.preserve_pitch.tip') },
+    ),
     isRutube
       ? vsRow(t('behavior.hide_title'), vsToggle('hide-player-title', !!settings.hidePlayerTitle), {
           title: t('behavior.hide_title.tip'),
@@ -349,6 +406,31 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
     ),
   );
 
+  // FEAT-017: volume boost (percent input, 100 = off). Deliberately a
+  // separate section with an explicit warning hint — Web Audio boost
+  // silences cross-origin media without CORS headers, so the user must
+  // know how to back out.
+  const boostPercent = Math.round((settings.volumeBoost ?? 1) * 100);
+  const volumeSection = vsSection(
+    t('behavior.volume_boost'),
+    h(
+      'div',
+      { class: 'vs-preset-custom-row' },
+      h('input', {
+        type: 'number',
+        class: 'vs-preset-custom-input',
+        'data-vs-volume-boost': '',
+        min: 100,
+        max: 300,
+        step: 10,
+        value: String(boostPercent),
+        'aria-label': t('behavior.volume_boost'),
+      }),
+      h('span', { class: 'vs-help-text', style: 'margin: 0;' }, '%'),
+    ),
+    h('p', { class: 'vs-help-text' }, t('behavior.volume_boost.tip')),
+  );
+
   return h(
     'div',
     {
@@ -361,6 +443,7 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
     sliderRangeSection,
     langSection,
     behaviorSection,
+    volumeSection,
     advancedSection,
     // Big "talk to the author" CTA at the bottom — same data-vs-diag
     // hook the Diagnostics tab uses, just styled larger so a regular
@@ -413,6 +496,73 @@ function hotkeysTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
       'chevron-down',
       i18n,
     ),
+    // FEAT-018: the hotkey step lived only on the welcome page (which
+    // most users skip) — surface it next to the hotkeys it modifies.
+    vsSection(
+      t('hotkeys.step'),
+      h(
+        'div',
+        { class: 'vs-preset-custom-row' },
+        h('input', {
+          type: 'number',
+          class: 'vs-preset-custom-input',
+          'data-vs-speed-step': '',
+          min: 0.01,
+          max: 1,
+          step: 0.01,
+          value: String(settings.speedStep ?? 0.1),
+          'aria-label': t('hotkeys.step'),
+        }),
+      ),
+      h('p', { class: 'vs-help-text' }, t('hotkeys.step.hint')),
+    ),
+    // FEAT-011/012: quick actions.
+    generateHotkeyBlock(
+      'resetSpeed',
+      settings.hotkeys.resetSpeed ?? [],
+      t('hotkeys.reset_label'),
+      'rotate-ccw',
+      i18n,
+    ),
+    generateHotkeyBlock(
+      'toggleLast',
+      settings.hotkeys.toggleLast ?? [],
+      t('hotkeys.toggle_label'),
+      'refresh-cw',
+      i18n,
+    ),
+    // FEAT-014: relative seek hotkeys + step.
+    generateHotkeyBlock(
+      'seekForward',
+      settings.hotkeys.seekForward ?? [],
+      t('hotkeys.seek_fwd_label'),
+      'chevron-up',
+      i18n,
+    ),
+    generateHotkeyBlock(
+      'seekBack',
+      settings.hotkeys.seekBack ?? [],
+      t('hotkeys.seek_back_label'),
+      'chevron-down',
+      i18n,
+    ),
+    vsSection(
+      t('hotkeys.seek_seconds'),
+      h(
+        'div',
+        { class: 'vs-preset-custom-row' },
+        h('input', {
+          type: 'number',
+          class: 'vs-preset-custom-input',
+          'data-vs-seek-seconds': '',
+          min: 1,
+          max: 120,
+          step: 1,
+          value: String(settings.seekSeconds ?? 10),
+          'aria-label': t('hotkeys.seek_seconds'),
+        }),
+      ),
+    ),
   );
 }
 
@@ -426,6 +576,10 @@ function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
       'data-vs-panel': 'diag',
       'aria-hidden': hidden ? 'true' : 'false',
     },
+    // UX-027: one plain-language line about what the check actually
+    // verifies — without it "Run check" was a mystery button for
+    // non-technical users.
+    h('p', { class: 'vs-help-text' }, t('diag.explainer')),
     h(
       'div',
       {
@@ -498,6 +652,9 @@ function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
         {
           class: 'vs-action vs-action-feedback',
           'data-vs-diag': 'feedback',
+          // UX-029: feedback opened from the Diagnostics tab pre-attaches
+          // the diagnostic report on the feedback page (?attach=1).
+          'data-vs-feedback-attach': '1',
           title: t('diag.btn.feedback.tip'),
         },
         vsIcon('mail', 14),
@@ -573,6 +730,9 @@ export function renderSettingsMenu(opts: ModalRenderOptions): DocumentFragment {
     'div',
     { class: 'vs-menu-header' },
     h('div', { class: 'vs-menu-title' }, vsIcon('settings', 14), ' ', t('menu.title')),
+    // UX-030: Esc already closes the dialog, but nothing said so. A tiny
+    // keycap badge in the header makes the affordance discoverable.
+    h('span', { class: 'vs-menu-esc', title: t('menu.esc_hint'), 'aria-hidden': 'true' }, 'Esc'),
     helpLink,
   );
   void scriptVersion;

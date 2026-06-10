@@ -77,9 +77,10 @@ function snapshotForHistory(value: unknown): unknown {
   // report, none of the live tree.
   if (typeof Element !== 'undefined' && value instanceof Element) {
     const id = value.id ? `#${value.id}` : '';
-    const cls = value.className && typeof value.className === 'string'
-      ? `.${value.className.split(/\s+/).filter(Boolean).slice(0, 3).join('.')}`
-      : '';
+    const cls =
+      value.className && typeof value.className === 'string'
+        ? `.${value.className.split(/\s+/).filter(Boolean).slice(0, 3).join('.')}`
+        : '';
     return `<${value.tagName.toLowerCase()}${id}${cls}>`;
   }
   // Objects / arrays / functions — JSON.stringify with circular guard.
@@ -146,8 +147,7 @@ export function createLogger(opts: LoggerOptions = {}): ExtendedLogger {
     // debugging. Without this fix, 200 entries × ~1 retained DOM
     // node per entry blocks up to 200 detached nodes from GC after
     // a long session.
-    const snapshotDetails =
-      details === null ? null : details.map(snapshotForHistory);
+    const snapshotDetails = details === null ? null : details.map(snapshotForHistory);
     buffer[head] = { ts: Date.now(), level, message, details: snapshotDetails };
     head = (head + 1) % maxHistory;
     if (count < maxHistory) count++;

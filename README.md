@@ -112,6 +112,11 @@ controller for **HDRezka**. Two extensions are kept separate so each
 can declare narrow `host_permissions` in its manifest, which makes
 Chrome Web Store and AMO review faster.
 
+**Twin sync:** most of `src/` is shared by copy-paste. Before each
+release run `npm run drift` (compares the shared core against
+`../HDRezkaSpeeds`) and port shared-module fixes both ways; then run
+`npm run typecheck && npm test` in BOTH repos.
+
 ### License
 
 GNU General Public License v3.0 or later (GPL-3.0-or-later) — see

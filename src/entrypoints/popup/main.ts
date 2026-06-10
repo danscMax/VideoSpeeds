@@ -231,6 +231,51 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
         ),
       );
     }
+    // FEAT-021: quick speed row — change the video's speed right from
+    // the toolbar without opening the in-player menu. Buttons highlight
+    // once the live speed is known.
+    {
+      const presets = settingsStore.getKey('speedPresets') ?? [];
+      if (presets.length > 0) {
+        const quickRow = h(
+          'div',
+          { class: 'vs-popup-quick', title: ctx.i18n.t('popup.quick.tip') },
+          ...presets.map((s) =>
+            h(
+              'button',
+              { type: 'button', class: 'speed-button vs-popup-quick-btn', 'data-vs-speed': s },
+              `${s}x`,
+            ),
+          ),
+        );
+        const highlight = (speed: number | null): void => {
+          for (const b of quickRow.querySelectorAll<HTMLButtonElement>('.vs-popup-quick-btn')) {
+            const v = parseFloat(b.dataset.vsSpeed ?? '');
+            b.classList.toggle(
+              'active',
+              speed !== null && Number.isFinite(v) && Math.abs(v - speed) < 0.005,
+            );
+          }
+        };
+        quickRow.addEventListener('click', (event) => {
+          const btn = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>(
+            '.vs-popup-quick-btn',
+          );
+          if (!btn) return;
+          const speed = parseFloat(btn.dataset.vsSpeed ?? '');
+          if (!Number.isFinite(speed)) return;
+          void sendSpeedMessage({ type: 'vs:set-speed', speed }).then((applied) => {
+            if (applied === null) {
+              ui.showNotification(ctx.i18n.t('popup.quick.no_video'), 'info');
+            } else {
+              highlight(applied);
+            }
+          });
+        });
+        void sendSpeedMessage({ type: 'vs:get-speed' }).then(highlight);
+        children.push(quickRow);
+      }
+    }
     children.push(menu);
     host.replaceChildren(...children);
     attachSettingsHandlers(menu, ctx, {
@@ -392,6 +437,25 @@ function renderNoSitePlaceholder(host: HTMLElement): void {
       h('div', { style: 'margin-top:12px;font-size:11px;opacity:0.55;' }, subline),
     ),
   );
+}
+
+/** FEAT-021: speed read/write channel for the popup quick-actions row. */
+async function sendSpeedMessage(message: {
+  type: 'vs:get-speed' | 'vs:set-speed';
+  speed?: number;
+}): Promise<number | null> {
+  try {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tabId = tabs[0]?.id;
+    if (typeof tabId !== 'number') return null;
+    const res = (await browser.tabs.sendMessage(tabId, message)) as
+      | { ok: boolean; speed?: number }
+      | undefined;
+    if (!res?.ok || typeof res.speed !== 'number') return null;
+    return res.speed;
+  } catch {
+    return null;
+  }
 }
 
 async function sendToActiveTab(message: {

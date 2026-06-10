@@ -5,6 +5,63 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.5.0] — 2026-06-10
+
+### Added
+
+- **Quick-action hotkeys.** Reset to 1× (default Alt+0), toggle between
+  the last two speeds, and seek ±N seconds (N configurable 1–120 s) —
+  all rebindable in Settings → Shortcuts, where the hotkey speed step
+  (0.01–1.0) is now also editable.
+- **Per-channel speed memory** (opt-in, Settings → Behavior): each
+  YouTube channel remembers its own speed (LRU-capped at 200 channels;
+  RuTube has no channel key and keeps the global behaviour).
+- **Ad-aware speed control (YouTube).** Ads play at YouTube's own pace:
+  the extension no longer forces the saved speed onto ads, mirrors ad
+  rate-flapping into its UI, or counts it toward the rate-storm
+  diagnostic; the saved speed is restored on the first content frame.
+- **Shorts behaviour defined:** no panel is injected into the Shorts
+  layout (there is no sane anchor); hotkeys and the toolbar popup still
+  control the Shorts video.
+- **Preserve-pitch toggle**, **volume boost** (100–300%, Web Audio, with
+  a CORS caveat), **compact panel mode**, **"finish N min earlier"
+  badge**, **popup quick actions** (preset buttons in the toolbar popup)
+  and **preset profiles** (Movies / Lectures / Minimal) — same set as
+  the HDRezkaSpeeds 0.5.0 twin.
+- Twin-drift checker (`npm run drift`) comparing the shared core with
+  HDRezkaSpeeds.
+
+### Changed
+
+- Settings modal: short centred tab indicator, brighter scrollbar +
+  scroll-edge fades, visible keyboard-focus rings, "Press keys…"
+  placeholder during hotkey capture, Esc badge, focus trap, inline
+  field-error rings, reserved-combo warning, confirm-on-discard for
+  partial resets, import preview, diag-tab feedback pre-attaches the
+  report, double-click semantics explained inline, Diagnostics tab
+  explainer line.
+- Toasts: tinted hairline border + higher-contrast background; pinned
+  bookmark near-white on dark pills; slider thumb accent halo; floating
+  slider tooltip clamped to the container; welcome replica shows the
+  pinned state and a breathing slider thumb.
+
+### Fixed
+
+- A speed saved by double-click no longer evaporates when the page is
+  reloaded within the 200 ms write-coalescing window (pending writes
+  flush on `pagehide`).
+- One throwing probe or render no longer kills the health watchdog for
+  the rest of the page (subscriber + report probes are isolated).
+- Rate-meter no longer counts player lifecycle noise (transitions
+  through rate 0, ad start/stop) toward the "rate storm" threshold.
+- Storage write failures (quota, dead context) now surface as a one-time
+  toast instead of disappearing silently; the same applies to a video
+  element that never appears (retry budget exhausted).
+- Self-write grace window is robust against timer glitches after
+  suspend/resume.
+
+---
+
 ## [0.4.3] — 2026-05-11
 
 ### Bug fix

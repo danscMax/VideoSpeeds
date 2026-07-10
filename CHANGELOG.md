@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.5.2] — 2026-07-10
+
+### Fixed
+
+- **Speed survives player-crash recovery (REL-040).** When the browser's
+  media decoder dies mid-playback (e.g. Firefox software-AV1 failing on a
+  4K quality switch after a seek: `NS_ERROR_DOM_MEDIA_METADATA_ERR`),
+  YouTube silently rebuilds the `<video>` element and restarts at 1× —
+  with no SPA navigation, so all per-element listeners died with the old
+  node and the saved speed was never restored until the user clicked a
+  speed button again. A document-level capture listener now detects a
+  fresh unattached `<video>` starting to play and re-arms the attach
+  pipeline, restoring the saved speed automatically.
+
 ## [0.5.1] — 2026-06-10
 
 ### Fixed

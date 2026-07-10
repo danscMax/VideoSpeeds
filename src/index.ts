@@ -441,6 +441,34 @@ export async function bootstrap(
   cleanup.add(() => attachCleanup.dispose());
   attachToVideo(ctx, meter, attachCleanup);
 
+  // REL-040: YouTube replaces the <video> ELEMENT (not just src) after a
+  // fatal decode error — e.g. AV1 NS_ERROR_DOM_MEDIA_METADATA_ERR on a
+  // 4K quality switch — with NO SPA navigation. All our per-element
+  // listeners die with the old node, the fresh element plays at rate=1,
+  // and nothing restores the saved speed until the next navigation
+  // (diagnosed 2026-07-09 via RATE-SPY: second element __spyId=2 playing
+  // at rate=1 while listeners sat on the dead __spyId=1).
+  //
+  // Media events don't bubble, but capture-phase listeners on document
+  // still see them. Any 'playing' from an unbranded <video> == a fresh
+  // element → dispose the stale per-attach registry and re-arm. The
+  // __vsAttached brand makes this a no-op for already-attached elements,
+  // so the listener costs one property read per playing event.
+  ctx.cleanup.addEventListener(
+    document,
+    'playing',
+    (event) => {
+      const t = event.target;
+      if (!(t instanceof HTMLVideoElement)) return;
+      if ((t as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached) return;
+      ctx.logger.info('unattached <video> is playing (element replaced?); re-attaching');
+      attachCleanup.dispose();
+      attachCleanup = new CleanupRegistry();
+      attachToVideo(ctx, meter, attachCleanup);
+    },
+    { capture: true },
+  );
+
   // RuTube same-URL debounce (audit B4.1). RuTube fires history events
   // for same-URL replaceState calls during widget mount; without this
   // we rebuild listeners + cascading retries on every spurious event.

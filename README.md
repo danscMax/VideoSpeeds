@@ -1,5 +1,10 @@
 # Video Speed Controller (YouTube + RuTube)
 
+[![Firefox Add-on](https://img.shields.io/amo/v/video-speed-controller-yt-rt?label=Firefox%20Add-on&logo=firefoxbrowser)](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/)
+[![Users](https://img.shields.io/amo/users/video-speed-controller-yt-rt?label=users)](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/)
+<!-- TODO: add the Chrome Web Store badge once the listing is public:
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/EXTENSION_ID?label=Chrome%20Web%20Store&logo=googlechrome)](https://chromewebstore.google.com/detail/EXTENSION_ID) -->
+
 [English](#english) | [Русский](#russian)
 
 ---
@@ -20,13 +25,14 @@ UI, no telemetry, settings stored locally.
 
 ### Features
 
-- **Per-site speed presets** — 9 buttons on YouTube (1x ... 4x), 7 on
-  RuTube (1x ... 3x).
+- **Per-site speed presets** — 9 buttons on YouTube (1x ... 3.25x), 9 on
+  RuTube (1x ... 3x). The preset list is customizable, and the slider
+  range goes up to 10x.
 - **Slider** with the same min/max as the buttons, accent-coloured fill.
 - **Single-click** → temporary speed for this video only.
 - **Double-click** → set as global default for the site.
-- **Hotkeys** — Ctrl+C (+0.1) / Ctrl+V (-0.1) by default, fully
-  rebindable in Settings.
+- **Hotkeys** — Alt+. (+0.1) / Alt+, (-0.1) by default, Alt+0 resets to
+  1x; fully rebindable in Settings.
 - **In-player gear menu** — 3 tabs (General, Shortcuts, Diagnostics)
   with EN/RU language switcher, slider position toggles, RuTube-only
   hide-title / hide-Premium switches.
@@ -150,14 +156,15 @@ the full terms.
 
 ### Возможности
 
-- **Пресеты скорости по сайтам** — 9 кнопок на YouTube (1x ... 4x),
-  7 на RuTube (1x ... 3x).
+- **Пресеты скорости по сайтам** — 9 кнопок на YouTube (1x ... 3.25x),
+  9 на RuTube (1x ... 3x). Список настраивается, диапазон ползунка —
+  до 10x.
 - **Ползунок** с теми же min/max что у кнопок, заливка в цвет
   акцента.
 - **Один клик** → временная скорость только для этого видео.
 - **Двойной клик** → закрепить как глобальную скорость для сайта.
-- **Горячие клавиши** — Ctrl+C (+0.1) / Ctrl+V (-0.1) по умолчанию,
-  полностью переназначаемые в настройках.
+- **Горячие клавиши** — Alt+. (+0.1) / Alt+, (-0.1) по умолчанию,
+  Alt+0 сбрасывает на 1x; полностью переназначаемые в настройках.
 - **Меню на шестерёнке** — 3 вкладки (Общие, Клавиши, Диагностика)
   с переключателем EN/RU, тогглом положения ползунка и (только для
   RuTube) переключателями скрытия заголовка плеера / Premium-баннеров.

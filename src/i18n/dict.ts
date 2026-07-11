@@ -65,7 +65,7 @@ export const I18N_DICT = {
     'welcome.step1.title': 'Speed buttons in one click',
     'welcome.step1.body': 'Visit YouTube or RuTube — the panel appears automatically.',
     'welcome.ann.clicks':
-      '**Click** — switch speed.\n**Double-click** — set as default for new videos.\n**Alt+Shift+↑/↓** — fine-tune by 0.1×.',
+      '**Click** — switch speed.\n**Double-click** — set as default for new videos.\n**Alt+. / Alt+,** — fine-tune by 0.1×.',
     'welcome.ann.slider': '**Slider** — smooth speed, e.g. 1.7x or 2.3x.',
     'welcome.ann.gear': '**⚙ button** — keys, speeds, diagnostics.',
     'welcome.step2.title': 'Make it yours',
@@ -402,7 +402,7 @@ export const I18N_DICT = {
     'welcome.step1.title': 'Кнопки скорости в один клик',
     'welcome.step1.body': 'Зайдите на YouTube или RuTube — панель встраивается автоматически.',
     'welcome.ann.clicks':
-      '**Клик** — сменить скорость.\n**Двойной клик** — сделать скоростью по умолчанию для новых видео.\n**Alt+Shift+↑/↓** — точная настройка ±0.1×.',
+      '**Клик** — сменить скорость.\n**Двойной клик** — сделать скоростью по умолчанию для новых видео.\n**Alt+. / Alt+,** — точная настройка ±0.1×.',
     'welcome.ann.slider': '**Ползунок** — плавная скорость, например 1.7x или 2.3x.',
     'welcome.ann.gear': '**Кнопка ⚙** — клавиши, скорости, диагностика.',
     'welcome.step2.title': 'Любые кнопки, любые скорости',

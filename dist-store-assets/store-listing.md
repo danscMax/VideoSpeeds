@@ -1,21 +1,33 @@
 # Store listing copy (Chrome Web Store + AMO)
 
-Drop-in copy for the listing forms. EN only -- localize at submission
-time if the store requires.
+Drop-in copy for the listing forms. EN sections are canonical; Russian
+translations follow each. Paste the matching language into the store's
+per-locale fields (CWS and AMO both take a separate RU listing).
 
 ## Short description (max 132 characters)
 
-> Speed buttons, slider, and customizable hotkeys for YouTube and RuTube
-> videos. Bilingual (EN/RU). No tracking.
+Benefit-first: the first line is what a searcher sees before "read more".
+
+> Speed up YouTube and RuTube — speed buttons right under the player,
+> a slider, and custom hotkeys. Bilingual EN/RU, no tracking.
 
 (127 characters.)
+
+### Russian translation
+
+> Ускоряйте видео на YouTube и RuTube: кнопки скорости прямо под
+> плеером, ползунок и горячие клавиши. Двуязычно EN/RU, без трекинга.
+
+(130 characters.)
 
 ## Detailed description (under 16,000 characters)
 
 ```
-Video Speed Controller adds an always-visible row of speed buttons, a
-fine-grained slider, and customizable keyboard shortcuts to videos on
-YouTube and RuTube.
+Watch lectures, tutorials and reviews in less time. Video Speed
+Controller puts a row of speed buttons right under the YouTube and
+RuTube player — one click takes a slow talk up to 2x, one more click
+brings it back to 1x. A slider and customizable hotkeys give you exact
+control.
 
 WHAT IT DOES
 
@@ -76,10 +88,77 @@ first run; switch any time from the gear menu.
 
 (Roughly 1,800 characters out of the 16,000 limit -- room to grow.)
 
+### Russian translation
+
+```
+Смотрите лекции, разборы и обзоры за меньшее время. Video Speed
+Controller ставит ряд кнопок скорости прямо под плеером YouTube и
+RuTube — один клик разгоняет размеренную речь до 2x, ещё один
+возвращает к 1x. Ползунок и настраиваемые горячие клавиши дают точный
+контроль.
+
+ЧТО УМЕЕТ
+
+- 9 кнопок скорости на YouTube (1x, 1.5x, 1.75x, 2x, 2.25x, 2.5x,
+  2.75x, 3x, 3.25x) и 9 на RuTube (от 1x до 3x с шагом 0.25) — прямо
+  под видео. Кнопка 1x включена по умолчанию: ускоренное видео
+  возвращается к обычной скорости одним кликом. Список кнопок
+  настраивается (можно добавить до 4x).
+- Ползунок для промежуточных значений с цветной заливкой и
+  всплывающей подписью над бегунком — точное значение видно всегда.
+- Один клик по кнопке — временная скорость только для этого видео.
+  Двойной клик — сохранить как скорость по умолчанию для новых видео.
+  Сохранённая кнопка отмечена маленькой точкой в углу.
+- Настраиваемые горячие клавиши: несколько комбинаций на одно
+  действие (например, клавиатура и пульт разом), переназначаются в
+  настройках.
+- Меню на шестерёнке в плеере с вкладками:
+  - «Общие»: положение ползунка (справа / под плеером / внутри),
+    язык интерфейса (English / Русский), кнопки скорости
+    сгруппированы по диапазонам (медленнее 1×, 1×–2×, быстрее 2×).
+  - «Клавиши»: переназначение ускорения/замедления, дополнительные
+    комбинации, сброс к умолчанию.
+  - «Диагностика»: скопировать структурированный отчёт для баг-репорта;
+    очистить кеш селекторов, если обновление сайта сломало панель.
+  - «Поддержать»: форма обратной связи (уходит в Telegram
+    разработчика через Cloudflare Worker — без сторонней аналитики).
+- Иконка в тулбаре открывает то же меню без открытия видео.
+- Только для RuTube: переключатели скрытия заголовка плеера и
+  Premium-баннеров.
+- Доступность: aria-labels на шестерёнке, объявления через aria-live
+  при смене скорости и статуса диагностики, поддержка
+  prefers-reduced-motion. Работает в полноэкранном режиме (панель
+  переезжает в fullscreen-элемент и остаётся видимой).
+
+ПОЧЕМУ РАБОТАЕТ НАДЁЖНО
+
+Когда YouTube или RuTube меняет вёрстку, панель восстанавливается сама
+через цепочку из пяти стратегий поиска (кеш селектора → точное
+совпадение → подстрока → подъём от элемента видео → геометрическая
+эвристика). Встроенный watchdog замечает поломку, чистит плохой кеш и
+заново прикрепляет панель. При SPA-переходе между видео панель
+пере-монтируется через MutationObserver, не теряя ваши настройки.
+
+ПРИВАТНОСТЬ
+
+- Все настройки хранятся локально в browser.storage.local.
+- Никакой телеметрии, аналитики и удалённых вызовов.
+- Декларация AMO data_collection_permissions = "none".
+- Исходники открыты на GitHub для проверки.
+
+ЯЗЫКИ
+
+Английский и русский. Язык интерфейса определяется автоматически по
+языку браузера при первом запуске; переключается в меню в любой момент.
+```
+
 ## Single-purpose statement (CWS requires this)
 
 > Manage video playback speed on YouTube and RuTube via in-player
 > buttons, a slider, and configurable keyboard shortcuts.
+
+Russian: Управление скоростью воспроизведения на YouTube и RuTube через
+кнопки в плеере, ползунок и настраиваемые горячие клавиши.
 
 ## Permissions justification (CWS requires this)
 
@@ -98,8 +177,13 @@ already grant URL access for the toolbar popup's active-tab check.)
 
 ## Tags / keywords (where the store accepts them)
 
-video speed, playback speed, youtube speed, rutube speed, hotkeys,
-keyboard shortcuts, video player, slider
+`video speed`, `playback speed`, `keyboard shortcuts`
+
+(Kept to a few focused tags on purpose. The sister HDRezka listing was
+rejected by CWS in 2026-05 for keyword stuffing after a longer list —
+brand/site terms like youtube/rutube live in host_permissions and the
+natural description, not a keyword pile. Benefit-first copy ranks on the
+same terms without tripping the filter.)
 
 ## Screenshots to upload
 

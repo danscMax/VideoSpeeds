@@ -41,9 +41,9 @@ WHAT IT DOES
 - Single-click on a button = temporary speed for this video only.
   Double-click = save as the default for new videos. The saved speed
   is marked with a small accent dot in the corner of its button.
-- Configurable hotkeys (default Alt+Period / Alt+Comma — i.e. Alt+. /
-  Alt+,) — assign multiple combinations per action so a remote and a
-  keyboard can both trigger speed changes.
+- Configurable hotkeys — assign multiple combinations per action so a
+  remote and a keyboard can both trigger speed changes. Rebind them and
+  set the step size in Settings → Keys.
 - In-player gear menu with four tabs:
   - General: slider position (right / below / inside player), language
     switch (English / Russian), preset chips grouped by range

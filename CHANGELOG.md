@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.6.0] — 2026-07-16
+
+### Added
+
+- **"Show time-saved badge" toggle** (Settings → Behavior) hides the
+  "finish N earlier" badge for anyone who finds it noise. The badge now
+  carries a clock icon so its meaning reads without hovering for the tooltip.
+
+### Changed
+
+- **Slider default upper bound now follows the fastest speed button** instead
+  of the absolute site cap — the slider spans exactly the buttons out of the
+  box. Set an explicit range in Settings → Slider range to override.
+
+## [0.5.3] — 2026-07-10
+
+### Fixed
+
+- **REL-040 listener ignores hover previews.** The re-attach listener now
+  runs the `video` validator first, so unbranded hover-preview videos on
+  the YouTube home page don't dispose the live attach registry (and stomp
+  the temporary speed) on every card hover.
+
 ## [0.5.2] — 2026-07-10
 
 ### Fixed

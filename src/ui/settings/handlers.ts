@@ -355,6 +355,9 @@ export function attachSettingsHandlers(
   attachToggle(menuRoot, ctx, 'preserve-pitch', 'preservePitch');
   // FEAT-015: per-content speed memory.
   attachToggle(menuRoot, ctx, 'remember-per-video', 'rememberPerVideo');
+  // FEAT-016: show/hide the "finish N earlier" badge. Panel subscribes to the
+  // store and reflects the change live.
+  attachToggle(menuRoot, ctx, 'show-time-saved', 'showTimeSaved');
   attachToggle(menuRoot, ctx, 'hide-player-title', 'hidePlayerTitle');
   attachToggle(menuRoot, ctx, 'hide-premium', 'hidePremium');
 
@@ -686,7 +689,8 @@ function attachToggle(
     | 'hidePremium'
     | 'compactMode'
     | 'preservePitch'
-    | 'rememberPerVideo',
+    | 'rememberPerVideo'
+    | 'showTimeSaved',
   onChanged?: () => void,
 ): void {
   const cb = menuRoot.querySelector<HTMLInputElement>(`input[name="${inputName}"]`);

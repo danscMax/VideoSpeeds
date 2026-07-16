@@ -461,6 +461,10 @@ export async function bootstrap(
       const t = event.target;
       if (!(t instanceof HTMLVideoElement)) return;
       if ((t as HTMLVideoElement & { __vsAttached?: boolean }).__vsAttached) return;
+      // Hover previews on the YouTube home page also fire 'playing' from
+      // unbranded <video> elements; without this filter every hover would
+      // dispose the live attach registry and stomp the temporary speed.
+      if (!Validators.video(t).ok) return;
       ctx.logger.info('unattached <video> is playing (element replaced?); re-attaching');
       attachCleanup.dispose();
       attachCleanup = new CleanupRegistry();

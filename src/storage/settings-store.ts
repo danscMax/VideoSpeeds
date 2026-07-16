@@ -313,6 +313,8 @@ function sanitizePatch(
   ) {
     out.volumeBoost = Math.round(safe.volumeBoost * 100) / 100;
   }
+  // FEAT-016 "finish N earlier" badge visibility.
+  if (typeof safe.showTimeSaved === 'boolean') out.showTimeSaved = safe.showTimeSaved;
   // lastSeenTheme — only accept the two valid string values; anything
   // else means a corrupt write or a stale shape from an older version.
   if (safe.lastSeenTheme === 'dark' || safe.lastSeenTheme === 'light') {

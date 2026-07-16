@@ -99,6 +99,12 @@ export interface Settings {
    */
   volumeBoost?: number;
   /**
+   * FEAT-016: show the "finish N earlier" badge next to the speed buttons at
+   * >1x. Default on (undefined === on); a user who finds it noise can hide it
+   * from Settings → Behavior.
+   */
+  showTimeSaved?: boolean;
+  /**
    * FEAT-013: keep audio pitch constant while changing speed. Mirrors
    * HTMLMediaElement.preservesPitch, which browsers default to true —
    * so `undefined` means "preserve" and only an explicit false lets
@@ -188,5 +194,6 @@ export function defaultSettings(language: Lang, site?: Site): Settings {
     preservePitch: true,
     seekSeconds: 10,
     volumeBoost: 1,
+    showTimeSaved: true,
   };
 }

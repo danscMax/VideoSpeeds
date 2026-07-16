@@ -952,6 +952,7 @@ html[data-vs-theme="light"] .speed-value::after {
 .vs-time-saved {
   display: inline-flex;
   align-items: center;
+  gap: 3px;
   padding: 0 6px;
   font-size: 11px;
   font-variant-numeric: tabular-nums;

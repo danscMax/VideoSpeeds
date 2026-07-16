@@ -245,7 +245,14 @@ export function createPanel(opts: CreatePanelOptions): PanelHandle {
     // site cap, kept strictly above min) so the slider spans exactly the
     // buttons. Was bounds.max, which read as absurdly high next to the
     // faster preset buttons. An explicit user-set sliderMax still wins.
-    const presets = ctx.settingsStore.getKey('speedPresets') ?? [];
+    //
+    // Derive presetMax from resolvePresets() — the SAME source the buttons
+    // render from — not the raw `speedPresets` key. When nothing is stored
+    // (fresh profile), the buttons fall back to defaultPresetsFor(site) while
+    // the raw key is empty; reading the key directly then fell through to
+    // bounds.max, so the slider spanned to the site cap even though the
+    // fastest button was far lower. (Bug in the original 0.6.0 change.)
+    const presets = resolvePresets();
     const presetMax = presets.length > 0 ? Math.max(...presets) : bounds.max;
     const defaultMax = Math.min(bounds.max, Math.max(presetMax, min + 0.1));
     const max =

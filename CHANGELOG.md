@@ -12,12 +12,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 - **"Show time-saved badge" toggle** (Settings → Behavior) hides the
   "finish N earlier" badge for anyone who finds it noise. The badge now
   carries a clock icon so its meaning reads without hovering for the tooltip.
+- **Current speed on the toolbar icon.** The extension icon shows a small
+  badge with the active playback rate (e.g. `1.5`) so you can see it at a
+  glance without opening the popup; it clears at normal 1× speed.
 
 ### Changed
 
 - **Slider default upper bound now follows the fastest speed button** instead
   of the absolute site cap — the slider spans exactly the buttons out of the
   box. Set an explicit range in Settings → Slider range to override.
+- **Terminal failures now show a durable chip with a "Reload" button** instead
+  of a 3-second toast that vanished before it could be read. When the speed
+  panel can't attach, or no video is ever found, the message and its recovery
+  action stay put until dismissed.
+- **Clearer "playing vs saved" speed buttons.** The saved-default button used a
+  large blurry accent halo that competed with the currently-playing button for
+  attention (worst on the dark theme). It's now a crisp accent outline plus a
+  bookmark, so the solid-filled "playing now" button stays the primary read —
+  and the bookmark glyph is unified with the pin button's.
+
+### Security
+
+- **Explicit Content-Security-Policy on the extension's own pages.** The
+  popup/welcome/feedback pages now declare `connect-src 'self' <feedback
+  worker>` (on top of the MV3-default `script-src 'self'`), so the only
+  outbound connection they can make is the feedback submission you trigger —
+  everything else is blocked.
 
 ## [0.5.3] — 2026-07-10
 

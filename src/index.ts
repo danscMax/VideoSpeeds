@@ -62,7 +62,7 @@ import { runTmMigration } from './storage/migration-tm';
 import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { createPanel, createUiPort, injectStyles, insertPanel, installThemeWatcher } from './ui';
-import { showNotification } from './ui/notifications';
+import { showActionChip, showNotification } from './ui/notifications';
 import { installFullscreenReparent } from './ui/popup';
 import { createLogger } from './utils/logger';
 import { detectAndClaim, release as releaseCoexistMarker } from './utils/tm-coexist';
@@ -285,12 +285,38 @@ export async function bootstrap(
       },
     },
   });
+  // FEAT-016: reflect the live playback rate on the toolbar icon badge.
+  // The SW owns chrome.action; we just message it the text to show ('' at
+  // 1×). Deduped so the HLS-cascade retry storm doesn't spam the SW, and
+  // the wxt/browser import is lazy + swallowed so the userscript build
+  // (no toolbar, aliased-to-throwing shim) is a silent no-op.
+  let lastBadgeText: string | null = null;
+  const setToolbarBadge = (speed: number): void => {
+    const text =
+      Number.isFinite(speed) && Math.abs(speed - 1) > 0.005
+        ? parseFloat(speed.toFixed(2)).toString()
+        : '';
+    if (text === lastBadgeText) return;
+    lastBadgeText = text;
+    void import('wxt/browser')
+      .then(({ browser: br }) => br.runtime.sendMessage({ type: 'vs:speed-badge', text }))
+      .catch(() => {
+        /* SW asleep or userscript shim — badge is best-effort */
+      });
+  };
+
   const realUi = createUiPort({
     panel,
     playerContainer: () => discoveryPort.resolve('playerContainer'),
+    onSpeed: setToolbarBadge,
   });
   ctx.ui = realUi;
   cleanup.add(() => panel.dispose());
+
+  // FEAT-016: clear the toolbar badge when the page goes away — a same-tab
+  // navigation to a non-video page would otherwise leave the last speed
+  // lingering on the icon (Chrome persists per-tab badge across navigations).
+  cleanup.addEventListener(window, 'pagehide', () => setToolbarBadge(1));
 
   // REL-038: real UI exists now — arm the storage-write-failure toast.
   // Shown at most once per page load to avoid a toast storm when the
@@ -872,6 +898,26 @@ export async function bootstrap(
  * can take 15+ seconds to mount the player; the previous flat 750ms × 20
  * = 15s budget gave up before the player appeared on those installs.
  */
+/**
+ * FEAT-018/20 (ported from HDRezka twin): a durable failure chip (warn ✕ +
+ * a "Reload" action) for the two terminal give-up paths. Replaces the
+ * auto-dismissing 3s warn toast so the message — and its recovery action —
+ * stays put until the user acts.
+ */
+function showFailureChip(ctx: AppContext, message: string): void {
+  try {
+    showActionChip(message, {
+      kind: 'warn',
+      icon: 'alert',
+      dismissLabel: ctx.i18n.t('chip.dismiss'),
+      action: { label: ctx.i18n.t('chip.reload'), onClick: () => location.reload() },
+      playerContainer: ctx.discovery.resolve('playerContainer'),
+    });
+  } catch (e) {
+    ctx.logger.warn('failure chip render failed', e);
+  }
+}
+
 function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
   const MAX_ATTEMPTS = 16;
   const BASE_DELAY = 500;
@@ -935,15 +981,11 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
           `panel insertion failed after ${attempts} attempts; giving up until next SPA nav`,
         );
         // Surface this to the user. Silent failure left the page with no
-        // gear, no notification, no explanation. Now they get a hint to
-        // try a reload (which kicks the retry cycle from scratch). The
-        // toast lives in the page's body, so it appears even when the
-        // panel itself never landed.
-        try {
-          ctx.ui.showNotification(ctx.i18n.t('panel.insertion_failed'), 'warn');
-        } catch (e) {
-          ctx.logger.warn('panel.insertion_failed notification failed', e);
-        }
+        // gear, no notification, no explanation. A durable chip (with a
+        // Reload action that kicks the retry cycle from scratch) stays put
+        // instead of vanishing in 3s. It lives in the page body, so it
+        // appears even when the panel itself never landed.
+        showFailureChip(ctx, ctx.i18n.t('panel.insertion_failed'));
       }
       return;
     }
@@ -1076,11 +1118,8 @@ function attachToVideo(
       ctx.logger.warn('attachToVideo: gave up after 20 attempts; will re-arm on next SPA nav');
       // REL-039: tell the user instead of failing silently. The retry
       // budget spans ~80 s, so this only fires on genuinely broken pages.
-      try {
-        ctx.ui.showNotification(ctx.i18n.t('panel.video_not_found'), 'warn');
-      } catch {
-        /* notification is best-effort */
-      }
+      // Durable chip with a Reload action (FEAT-018/20).
+      showFailureChip(ctx, ctx.i18n.t('panel.video_not_found'));
       return;
     }
     const delay = Math.min(5000, Math.round(500 * 1.2 ** attempt));

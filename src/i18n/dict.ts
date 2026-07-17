@@ -23,7 +23,9 @@
 export const I18N_DICT = {
   en: {
     // menu.*
-    'menu.title': 'Playback Speed',
+    // Brand identity in the menu/popup header — kept untranslated so it reads
+    // as the app name, not a section that competes with the tab labels.
+    'menu.title': 'Video Speed',
 
     // tabs.*
     'tabs.general': 'General',
@@ -369,7 +371,8 @@ export const I18N_DICT = {
   },
   ru: {
     // menu.*
-    'menu.title': 'Скорость воспроизведения',
+    // Brand — same in both languages (see the EN note).
+    'menu.title': 'Video Speed',
 
     // tabs.*
     'tabs.general': 'Общие',

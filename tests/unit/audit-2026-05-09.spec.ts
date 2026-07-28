@@ -115,8 +115,7 @@ describe('audit C5: importSettingsFromText rejects malformed payloads', () => {
     // The original setting (true by default) should now be flipped.
     expect(ctx.settingsStore.getKey('rememberSpeed')).toBe(false);
     // Object.prototype must NOT have been polluted.
-    // biome-ignore lint/suspicious/noExplicitAny: pollution probe
-    expect(({} as any).pollute).toBeUndefined();
+    expect(({} as Record<string, unknown>).pollute).toBeUndefined();
   });
 
   it('accepts a known-shape envelope and updates the recognised keys', async () => {

@@ -60,8 +60,8 @@ WHAT IT DOES
   hide Premium subscription banners.
 - Accessibility: aria-labels on the gear button, aria-live status
   announcements for diagnostic state and speed changes,
-  prefers-reduced-motion support. Survives fullscreen playback (panel
-  re-parents into the fullscreen element so it stays visible).
+  prefers-reduced-motion support. In fullscreen the panel steps out of the
+  way — no extension UI on top of the picture; the shortcuts keep working.
 
 WHY IT'S RELIABLE
 
@@ -127,8 +127,8 @@ RuTube — один клик разгоняет размеренную речь 
   Premium-баннеров.
 - Доступность: aria-labels на шестерёнке, объявления через aria-live
   при смене скорости и статуса диагностики, поддержка
-  prefers-reduced-motion. Работает в полноэкранном режиме (панель
-  переезжает в fullscreen-элемент и остаётся видимой).
+  prefers-reduced-motion. В полноэкранном режиме панель не мешает —
+  интерфейс расширения не показывается поверх картинки, хоткеи работают.
 
 ПОЧЕМУ РАБОТАЕТ НАДЁЖНО
 

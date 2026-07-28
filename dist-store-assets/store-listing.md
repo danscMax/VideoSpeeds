@@ -214,8 +214,13 @@ Re-generate any time with: `node tests/store-screenshots/render.mjs`
 
 ## Files to upload
 
+Current version is **0.6.1** (`package.json` is the source of truth — the
+zips are named from it, so read the version there instead of trusting this
+table if the two ever disagree). Regenerate with `npm run zip` +
+`npm run zip:firefox`.
+
 | Store | File |
 |---|---|
-| Chrome Web Store | `.output/video-speeds-0.3.5-chrome.zip` |
-| Firefox AMO (extension) | `.output/video-speeds-0.3.5-firefox.zip` |
-| Firefox AMO (sources) | `.output/video-speeds-0.3.5-sources.zip` |
+| Chrome Web Store | `.output/video-speeds-0.6.1-chrome.zip` |
+| Firefox AMO (extension) | `.output/video-speeds-0.6.1-firefox.zip` |
+| Firefox AMO (sources) | `.output/video-speeds-0.6.1-sources.zip` |

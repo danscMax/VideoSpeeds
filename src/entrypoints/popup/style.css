@@ -45,6 +45,43 @@ html[data-vs-theme="light"] .vs-skel-block,
 html[data-vs-theme="light"] .vs-skel-row {
   background: rgba(0, 0, 0, 0.06);
 }
+/* Access banner. Only rendered when the extension holds no permission for the
+   video sites, i.e. when nothing else in this popup can work anyway — so it is
+   allowed to take the whole top. Orange, not red: one click from fixed. */
+.vs-popup-grant {
+  margin: 10px 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--vs-orange, #ff7a00);
+  border-radius: 10px;
+  background: rgba(255, 122, 0, 0.1);
+}
+.vs-popup-grant-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--vs-text-primary, #fff);
+}
+.vs-popup-grant-body {
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+  color: var(--vs-text-secondary, rgba(255, 255, 255, 0.72));
+}
+.vs-popup-grant-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  background: var(--vs-accent, #00a1db);
+}
+.vs-popup-grant-btn:hover {
+  filter: brightness(1.1);
+}
+
 html[data-vs-theme="light"] .vs-popup-diag-hint {
   background: rgba(0, 0, 0, 0.05);
   color: rgba(15, 15, 15, 0.55);

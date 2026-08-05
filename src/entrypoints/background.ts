@@ -17,8 +17,9 @@
 
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
+import { refreshPermissionBadge as refreshBadge } from '../health/permission-badge';
 import { detectBrowserLang } from '../i18n/detect';
-import { supportedOrigins } from '../sites/host-patterns';
+import { supportedOriginGroups } from '../sites/host-patterns';
 
 export default defineBackground(() => {
   // FEAT-016: brand the toolbar speed badge (cyan fill, matching the HDRezka
@@ -31,21 +32,6 @@ export default defineBackground(() => {
   }
 
   /**
-   * Say it out loud when the extension has no right to run.
-   *
-   * Firefox 127+ grants host permissions as part of the install flow, so a
-   * normal install needs nothing from the user. But permissions added by an
-   * extension UPDATE are documented as NOT shown and NOT granted, and access
-   * can be revoked at any time from about:addons. In both cases the content
-   * script simply never starts: no panel, no error, nothing to click, and no
-   * reason for anyone to suspect a permission. The toolbar icon is the only
-   * surface left, so it carries the warning instead of the user being expected
-   * to know.
-   *
-   * Set GLOBALLY; the per-tab speed badge overrides it wherever the content
-   * script runs, which by definition is only where access exists.
-   */
-  /**
    * The one string this worker shows. Deliberately NOT in src/i18n/dict.ts:
    * importing the translator pulls the whole 60 kB dictionary into a service
    * worker that wakes on every browser event, to render a single tooltip.
@@ -55,19 +41,16 @@ export default defineBackground(() => {
     en: 'Video Speed Controller has no access to YouTube / RuTube — click to allow it, or the panel will not appear',
   } as const;
 
-  async function refreshPermissionBadge(): Promise<void> {
-    // Unable to tell → stay silent. Crying wolf on a working install is worse
-    // than missing the rare broken one.
-    const held = await browser.permissions
-      .contains({ origins: supportedOrigins() })
-      .catch(() => true);
-    const title = NO_ACCESS_TITLE[detectBrowserLang()];
-    await browser.action.setBadgeText({ text: held ? '' : '!' }).catch(() => undefined);
-    await browser.action
-      .setBadgeBackgroundColor({ color: held ? '#0e7490' : '#c0392b' })
-      .catch(() => undefined);
-    await browser.action.setTitle({ title: held ? '' : title }).catch(() => undefined);
-  }
+  // The rule itself lives in src/health/permission-badge.ts — shared with the
+  // twin and therefore watched by the drift checker. This copy was previously
+  // duplicated verbatim in both background.ts files, where nothing noticed.
+  const refreshPermissionBadge = (): Promise<boolean> =>
+    refreshBadge(browser.action, browser.permissions, {
+      // YouTube and RuTube are independent: access to one is enough to work.
+      // Derived from the one host list, not written out a second time.
+      originGroups: supportedOriginGroups(),
+      alertTitle: NO_ACCESS_TITLE[detectBrowserLang()],
+    });
   void refreshPermissionBadge();
   browser.permissions.onAdded.addListener(() => {
     void refreshPermissionBadge();
@@ -103,6 +86,12 @@ export default defineBackground(() => {
   const ALLOWED_PAGES = new Set(['/feedback.html', '/welcome.html']);
   browser.runtime.onMessage.addListener(
     (msg: unknown, sender): Promise<{ ok: boolean; error?: string }> | undefined => {
+      // Reject messages from other extensions. This side can open tabs and set
+      // the toolbar badge; the content script's own handler has validated its
+      // sender since audit 2026-05-09 (src/index.ts) and this one had not.
+      // `sender.id` is absent for same-extension messages in some engines, so
+      // only a PRESENT and FOREIGN id is refused.
+      if (sender?.id && sender.id !== browser.runtime.id) return undefined;
       if (!msg || typeof msg !== 'object') return undefined;
       const m = msg as { type?: unknown; path?: unknown; text?: unknown };
       // FEAT-016: the content script mirrors the live playback rate onto the

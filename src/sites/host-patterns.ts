@@ -27,3 +27,27 @@ export const SUPPORTED_HOST_PATTERNS: readonly string[] = [
 export function supportedOrigins(): string[] {
   return [...SUPPORTED_HOST_PATTERNS];
 }
+
+/**
+ * The same patterns, grouped by the SITE they belong to.
+ *
+ * YouTube and RuTube are independent: access to one is enough for the extension
+ * to be useful, so "do we have permission" is a question per site, not one
+ * question over every pattern at once. Asking it flat made the toolbar warning
+ * fire when one site was granted and the other was not — a warning that is
+ * usually wrong teaches people to ignore it.
+ *
+ * Derived from the single list above rather than written out again, so a host
+ * added there cannot be forgotten here.
+ */
+export function supportedOriginGroups(): string[][] {
+  const groups = new Map<string, string[]>();
+  for (const pattern of SUPPORTED_HOST_PATTERNS) {
+    // '*://*.youtube.com/*' -> 'youtube.com'
+    const host = pattern.replace(/^\*:\/\/(\*\.)?/, '').replace(/\/\*$/, '');
+    const existing = groups.get(host);
+    if (existing) existing.push(pattern);
+    else groups.set(host, [pattern]);
+  }
+  return [...groups.values()];
+}

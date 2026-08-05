@@ -17,6 +17,9 @@
 
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
+import { detectBrowserLang } from '../i18n/detect';
+import { createTranslator } from '../i18n/translator';
+import { supportedOrigins } from '../sites/host-patterns';
 
 export default defineBackground(() => {
   // FEAT-016: brand the toolbar speed badge (cyan fill, matching the HDRezka
@@ -28,7 +31,49 @@ export default defineBackground(() => {
     /* action API not ready — badge still works with the default colour */
   }
 
+  /**
+   * Say it out loud when the extension has no right to run.
+   *
+   * Firefox 127+ grants host permissions as part of the install flow, so a
+   * normal install needs nothing from the user. But permissions added by an
+   * extension UPDATE are documented as NOT shown and NOT granted, and access
+   * can be revoked at any time from about:addons. In both cases the content
+   * script simply never starts: no panel, no error, nothing to click, and no
+   * reason for anyone to suspect a permission. The toolbar icon is the only
+   * surface left, so it carries the warning instead of the user being expected
+   * to know.
+   *
+   * Set GLOBALLY; the per-tab speed badge overrides it wherever the content
+   * script runs, which by definition is only where access exists.
+   */
+  async function refreshPermissionBadge(): Promise<void> {
+    // Unable to tell → stay silent. Crying wolf on a working install is worse
+    // than missing the rare broken one.
+    const held = await browser.permissions
+      .contains({ origins: supportedOrigins() })
+      .catch(() => true);
+    const { t } = createTranslator(detectBrowserLang());
+    await browser.action.setBadgeText({ text: held ? '' : '!' }).catch(() => undefined);
+    await browser.action
+      .setBadgeBackgroundColor({ color: held ? '#0e7490' : '#c0392b' })
+      .catch(() => undefined);
+    await browser.action
+      .setTitle({ title: held ? '' : t('badge.no_access') })
+      .catch(() => undefined);
+  }
+  void refreshPermissionBadge();
+  browser.permissions.onAdded.addListener(() => {
+    void refreshPermissionBadge();
+  });
+  browser.permissions.onRemoved.addListener(() => {
+    void refreshPermissionBadge();
+  });
+  browser.runtime.onStartup.addListener(() => {
+    void refreshPermissionBadge();
+  });
+
   browser.runtime.onInstalled.addListener(({ reason }) => {
+    void refreshPermissionBadge();
     if (reason !== 'install') return;
     const url = browser.runtime.getURL('/welcome.html');
     void browser.tabs.create({ url });

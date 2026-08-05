@@ -25,6 +25,7 @@ import type { DiagnosticReport } from '../../health/types';
 import { detectBrowserLang } from '../../i18n/detect';
 import { createTranslator } from '../../i18n/translator';
 import { detectSite } from '../../sites/detect';
+import { supportedOrigins } from '../../sites/host-patterns';
 import { createBrowserStorageAdapter } from '../../storage/adapter';
 import { createSettingsStore } from '../../storage/settings-store';
 import { createSpeedStore } from '../../storage/speed-store';
@@ -147,6 +148,19 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
   const cleanup = new CleanupRegistry();
   const i18n = createTranslator(settingsStore.getKey('language'));
 
+  // Mirrors the toolbar badge: the icon says "click to allow", so the first
+  // thing the click shows must be the way to allow it. Origins come from the
+  // manifest — the exact set Firefox lists, and it cannot drift. Unknown state
+  // counts as fine; a false alarm on a working install is worse than a missed
+  // broken one.
+  let missingAccess = false;
+  async function refreshMissingAccess(): Promise<void> {
+    missingAccess = !(await browser.permissions
+      .contains({ origins: supportedOrigins() })
+      .catch(() => true));
+  }
+  await refreshMissingAccess();
+
   const ui: UiPort = {
     refreshButtons: () => {},
     refreshSlider: () => {},
@@ -222,6 +236,33 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
     // buttons. CSS in popup/style.css disables those buttons in popup
     // context.
     const children: Node[] = [];
+    if (missingAccess) {
+      const grantBtn = h(
+        'button',
+        { type: 'button', class: 'vs-popup-grant-btn' },
+        ctx.i18n.t('popup.grant.button'),
+      );
+      grantBtn.addEventListener('click', () => {
+        // No await before the request: Firefox only honours it while the
+        // click's user-gesture token is alive.
+        void browser.permissions
+          .request({ origins: supportedOrigins() })
+          .then((granted) => {
+            if (!granted) return;
+            void refreshMissingAccess().then(rerender);
+          })
+          .catch(() => undefined);
+      });
+      children.push(
+        h(
+          'div',
+          { class: 'vs-popup-grant' },
+          h('div', { class: 'vs-popup-grant-title' }, ctx.i18n.t('popup.grant.title')),
+          h('div', { class: 'vs-popup-grant-body' }, ctx.i18n.t('popup.grant.body')),
+          grantBtn,
+        ),
+      );
+    }
     if (activeTab === 'diag') {
       children.push(
         h(

@@ -7,9 +7,10 @@
  * SPA navigation hooks), see entrypoints/page-world.ts which runs in MAIN world.
  */
 import { defineContentScript } from 'wxt/utils/define-content-script';
+import { supportedOrigins } from '../sites/host-patterns';
 
 export default defineContentScript({
-  matches: ['*://*.youtube.com/*', '*://rutube.ru/*', '*://*.rutube.ru/*'],
+  matches: supportedOrigins(),
   runAt: 'document_idle',
   allFrames: false,
   async main(ctx) {

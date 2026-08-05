@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.6.2] — 2026-08-05
+
+### Added
+
+- **The extension now tells you when it has no access to the site.** Firefox
+  grants site access when you install an add-on, but it does *not* grant access
+  it gains in an update — so the extension can end up doing nothing on YouTube
+  or RuTube, with no panel and no error to explain why. The toolbar icon now
+  shows a red "!" with an explanation, and clicking it offers to fix it in one
+  click. The same offer appears on the welcome page after installing.
+
+### Changed
+
+- The list of supported hosts now lives in one place instead of three, so the
+  manifest, the content script and the permission checks cannot drift apart.
+
 ## [0.6.1] — 2026-07-28
 
 ### Changed

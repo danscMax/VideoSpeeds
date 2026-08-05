@@ -1,21 +1,17 @@
-0.6.3 — onboarding only. No new permissions (still just "storage" plus the
-same YouTube/RuTube host permissions), no new remote endpoints.
+0.6.4 — one behaviour change, no new permissions, no new endpoints.
 
-1. Default playback speed for a FRESH profile: RuTube 1.5 -> 1.0
-   (src/config.ts SPEED_BOUNDS). Stored speeds are untouched — the value is
-   only a fallback and the target of the "full reset" action.
+The fullscreen rule changed: persistent chrome (speed panel, in-player slider)
+stays hidden, but the transient speed confirmation ("1.50x") and the toast/chip
+stack are shown again. Reason: in fullscreen the panel is hidden, so the
+keyboard shortcut is the only control, and it gave no feedback at all.
 
-2. New one-time hint chip on first panel render (src/index.ts
-   showFirstRunHint + src/storage/onboarding-store.ts). Local flag in
-   storage.local, no network.
-
-3. welcome.html now also opens on runtime.onInstalled reason === 'update',
-   and only when permissions.contains() reports no access — the Firefox case
-   where a host permission gained in an update is not granted (bug 1893232)
-   and the add-on is silently inert.
-
-4. Copy fix: the welcome subtitle claimed "0.5-10x"; the real bounds are
-   0.75 (YouTube) and 1.0 (RuTube).
+Implementation notes:
+- src/ui/styles.ts — `.speed-popup` removed from the `:fullscreen` hide list,
+  plus a fullscreen-only size/position block (top centre, larger type).
+- src/ui/popup.ts, src/ui/notifications.ts — both surfaces are re-parented
+  under `document.fullscreenElement` while it is set, because native fullscreen
+  paints only that subtree. Restored to the player container on exit.
+- Sticky chips get an 8s deadline while fullscreen is active.
 
 Build: WXT + Vite, output minified; source archive attached.
 Build it with `npm ci && npm run zip:firefox` on Node 22.

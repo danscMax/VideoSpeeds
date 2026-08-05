@@ -1115,6 +1115,26 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 #speed-popup.speed-popup.show { opacity: 1; }
 
+/* Fullscreen sizing. Measured on a real 1920×1080 fullscreen: the windowed
+   geometry (18px type, pinned 20px from the right edge) put the confirmation
+   in the far periphery at 79×44 px — present, and not where a person watching
+   the middle of the screen is looking. Full screen gets its own scale and a
+   top-centre anchor: away from the player controls at the bottom, away from
+   the picture's focal centre, where video players conventionally put an OSD. */
+:is(:fullscreen, .plyr--fullscreen-fallback) #speed-popup.speed-popup {
+  top: 7%;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  padding: 14px 26px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+
 /* Settings modal -- glassmorphic floating popover (parity
    .user.js:3019-3066). Dark translucent fill + backdrop-filter blur so
    the modal feels lifted above the player chrome instead of pasted on.

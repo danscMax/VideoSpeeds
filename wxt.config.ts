@@ -1,5 +1,6 @@
 import { defineConfig } from 'wxt';
 import pkg from './package.json' with { type: 'json' };
+import { supportedOrigins } from './src/sites/host-patterns';
 
 // WXT config: builds Chrome MV3 + Firefox MV3 from the same source.
 // Browser-specific manifest tweaks are handled via the `manifest` callback below.
@@ -70,7 +71,7 @@ export default defineConfig({
     // Product scope is YouTube + RuTube. Audit H5 dropped the *.piped.video
     // host that an earlier scaffold included -- it was out of product scope
     // and would have read as CWS overreach during listing review.
-    host_permissions: ['*://*.youtube.com/*', '*://rutube.ru/*', '*://*.rutube.ru/*'],
+    host_permissions: supportedOrigins(),
     // Firefox needs explicit ID for AMO submission and storage isolation.
     // data_collection_permissions is required for all new AMO extensions
     // since 2025-11-03 (Mozilla mandate). We don't transmit any personal

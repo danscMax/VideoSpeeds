@@ -46,7 +46,8 @@ export default defineBackground(() => {
   // duplicated verbatim in both background.ts files, where nothing noticed.
   const refreshPermissionBadge = (): Promise<boolean> =>
     refreshBadge(browser.action, browser.permissions, {
-      origins: supportedOrigins(),
+      // YouTube and RuTube are independent: access to one is enough to work.
+      originGroups: [['*://*.youtube.com/*'], ['*://rutube.ru/*', '*://*.rutube.ru/*']],
       alertTitle: NO_ACCESS_TITLE[detectBrowserLang()],
     });
   void refreshPermissionBadge();
@@ -84,6 +85,12 @@ export default defineBackground(() => {
   const ALLOWED_PAGES = new Set(['/feedback.html', '/welcome.html']);
   browser.runtime.onMessage.addListener(
     (msg: unknown, sender): Promise<{ ok: boolean; error?: string }> | undefined => {
+      // Reject messages from other extensions. This side can open tabs and set
+      // the toolbar badge; the content script's own handler has validated its
+      // sender since audit 2026-05-09 (src/index.ts) and this one had not.
+      // `sender.id` is absent for same-extension messages in some engines, so
+      // only a PRESENT and FOREIGN id is refused.
+      if (sender?.id && sender.id !== browser.runtime.id) return undefined;
       if (!msg || typeof msg !== 'object') return undefined;
       const m = msg as { type?: unknown; path?: unknown; text?: unknown };
       // FEAT-016: the content script mirrors the live playback rate onto the

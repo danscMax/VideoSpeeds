@@ -42,6 +42,16 @@ import { createLogger } from '../../utils/logger';
 declare const __VS_VERSION__: string | undefined;
 const SCRIPT_VERSION = typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
 
+// Firefox anchors the native permission doorhanger to the toolbar button —
+// exactly where the popup PANEL hangs — so its "Allow" lands BEHIND our panel
+// and cannot be clicked. A detached popup WINDOW no longer covers the toolbar,
+// so the doorhanger is reachable: in panel mode Firefox hands off to that
+// window first (same fix as omniroute-cookie-bridge). Chrome centres its own
+// prompt and must keep requesting straight from the panel.
+// `import.meta.env.BROWSER` is WXT's build-time target — no UA sniffing.
+const IS_FIREFOX = import.meta.env.BROWSER === 'firefox';
+const DETACHED = new URLSearchParams(location.search).get('window') === '1';
+
 console.info('[VIDEO-SPEEDS] popup loaded');
 
 const root = document.getElementById('app');
@@ -123,7 +133,7 @@ function renderInitialShell(host: HTMLElement): void {
 async function bootstrapPopup(host: HTMLElement): Promise<void> {
   // 1. Detect which site the active tab is on. activeTab grant from the
   //    toolbar click gives us URL access for THIS click only.
-  const detected = await detectActiveTabSite();
+  const detected = (await detectActiveTabSite()) ?? detachedSiteHint();
   if (!detected) {
     renderNoSitePlaceholder(host);
     return;
@@ -243,6 +253,12 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
         ctx.i18n.t('popup.grant.button'),
       );
       grantBtn.addEventListener('click', () => {
+        // Panel mode on Firefox: the doorhanger would open behind us — reopen
+        // as a detached window and let the button there do the real request.
+        if (IS_FIREFOX && !DETACHED) {
+          openDetachedPopup(site);
+          return;
+        }
         // No await before the request: Firefox only honours it while the
         // click's user-gesture token is alive.
         void browser.permissions
@@ -459,15 +475,38 @@ async function detectActiveTabSite(): Promise<Site | null> {
   }
 }
 
+/**
+ * Reopen the popup as a standalone window so the Firefox permission
+ * doorhanger is not covered by the panel (see IS_FIREFOX above). The window
+ * carries the site we already detected: over there OUR tab is the active one
+ * and, with no host permission granted yet, Firefox hides the other tabs'
+ * URLs from tabs.query — so live detection can come back empty.
+ */
+function openDetachedPopup(site: Site): void {
+  const url = `${browser.runtime.getURL('/popup.html')}?window=1&site=${site}`;
+  void browser.windows
+    .create({ url, type: 'popup', width: 440, height: 660 })
+    .then(() => window.close())
+    .catch(() => undefined);
+}
+
+/** Site passed in by the panel that spawned this detached window, if any. */
+function detachedSiteHint(): Site | null {
+  if (!DETACHED) return null;
+  const raw = new URLSearchParams(location.search).get('site');
+  return raw === 'youtube' || raw === 'rutube' ? raw : null;
+}
+
 function renderNoSitePlaceholder(host: HTMLElement): void {
   // Falls back to the user's browser language because we can't read settings
   // without knowing the site (settings are per-site).
-  const lang = detectBrowserLang();
-  const t = createTranslator(lang).t;
-  const subline =
-    lang === 'ru'
-      ? 'Откройте YouTube или RuTube, чтобы открыть настройки.'
-      : 'Open YouTube or RuTube to access settings.';
+  const t = createTranslator(detectBrowserLang()).t;
+  const cta = (cls: string, href: string, labelKey: string): HTMLElement =>
+    h(
+      'a',
+      { class: `welcome-cta ${cls}`, href, target: '_blank', rel: 'noopener noreferrer' },
+      t(labelKey),
+    );
   host.replaceChildren(
     h(
       'div',
@@ -475,7 +514,14 @@ function renderNoSitePlaceholder(host: HTMLElement): void {
       h('span', { class: 'vs-popup-empty-title' }, 'Video Speed Controller'),
       ' ',
       t('tabs.general.tip'),
-      h('div', { style: 'margin-top:12px;font-size:11px;opacity:0.55;' }, subline),
+      // The hint used to be dead text telling the user to go to YouTube or
+      // RuTube; same CTA buttons as the welcome page, so it is one click.
+      h(
+        'div',
+        { class: 'welcome-cta-row' },
+        cta('cta-yt', 'https://www.youtube.com/', 'welcome.cta.youtube'),
+        cta('cta-rt', 'https://rutube.ru/', 'welcome.cta.rutube'),
+      ),
     ),
   );
 }

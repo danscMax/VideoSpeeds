@@ -195,6 +195,49 @@ html[data-vs-theme="light"] body::-webkit-scrollbar-thumb:hover {
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* CTA buttons in the "no supported page" placeholder. Same classes and
+   colours as the welcome page (welcome/style.css) — that stylesheet is not
+   loaded here, and the paddings are scaled down because two buttons have to
+   fit the 420px popup instead of a full-width page. */
+.welcome-cta-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.welcome-cta {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  color: #fff;
+  transition: all 160ms ease;
+}
+.welcome-cta.cta-yt {
+  /* #cc0000 keeps white-on-red at AA (5.89:1); #f00 fails. */
+  background: #cc0000;
+  box-shadow: 0 4px 14px rgba(255, 0, 0, 0.3);
+}
+.welcome-cta.cta-yt:hover {
+  background: #b30000;
+}
+.welcome-cta.cta-rt {
+  background: linear-gradient(135deg, #00a1e7, #0078a3);
+  box-shadow: 0 4px 14px rgba(0, 161, 231, 0.3);
+}
+.welcome-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
 /* The settings menu, when rendered inside the popup, inherits the styles
    injected by src/ui/styles.ts but we override position so it occupies the
    popup body instead of floating absolute. */

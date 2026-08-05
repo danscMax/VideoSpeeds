@@ -68,6 +68,24 @@ export interface CoexistDecision {
  * `bootstrap(ctx)`. If `proceed` is false, do NOT inject UI; show a one-time
  * notification (Wave 1.3 i18n keys `tm.detected.title` / `tm.detected.body`).
  */
+/**
+ * Is a legacy userscript artifact actually on screen?
+ *
+ * Exported for tests — the visibility rule is the whole point and it is worth
+ * pinning. `getBoundingClientRect` rather than `offsetParent` because a
+ * `position: fixed` control has no offsetParent yet is perfectly visible.
+ */
+export function hasVisibleArtifact(doc: Document): boolean {
+  for (const el of doc.querySelectorAll(LEGACY_TM_DOM_SELECTORS)) {
+    const rect = (el as HTMLElement).getBoundingClientRect?.();
+    // No layout information at all (jsdom, detached node) → fall back to the
+    // old "it exists" behaviour rather than inventing a verdict.
+    if (!rect) return true;
+    if (rect.width > 0 && rect.height > 0) return true;
+  }
+  return false;
+}
+
 export function detectAndClaim(): CoexistDecision {
   const root = document.documentElement;
 
@@ -77,8 +95,17 @@ export function detectAndClaim(): CoexistDecision {
   }
 
   // (2) Older TM versions / forks don't set the marker but still leave
-  //     recognizable DOM artifacts. Treat that as an active userscript.
-  if (document.querySelector(LEGACY_TM_DOM_SELECTORS)) {
+  //     recognizable DOM artifacts. Treat that as an active userscript — but
+  //     only artifacts the user can actually SEE.
+  //
+  //     `.speed-button` / `#more-speeds-container` are generic enough to be
+  //     collateral: a hidden leftover from our own failed teardown, or an
+  //     unrelated script's element. HDRezka pages routinely run three or more
+  //     competing userscripts at once, so a false positive here is not
+  //     hypothetical — and its cost is the whole UI silently never appearing,
+  //     with nothing on screen to explain it. A speed control nobody can see is
+  //     not a speed control that conflicts with ours.
+  if (hasVisibleArtifact(document)) {
     return { proceed: false, reason: 'tm-userscript-active' };
   }
 
@@ -109,4 +136,47 @@ export function __resetForTests(): void {
   delete document.documentElement.dataset[TM_MARKER_KEY];
   delete document.documentElement.dataset[EXT_MARKER_KEY];
   for (const el of document.querySelectorAll(LEGACY_TM_DOM_SELECTORS)) el.remove();
+}
+
+/**
+ * Soft-detect the popular HDrezka-Improvement userscript and emit a
+ * one-line console warning if it is present. Unlike the TM-userscript
+ * coexistence above, we do NOT block our bootstrap — the two scripts
+ * touch different things (HC-Improvement is layout/theme tweaks,
+ * we are speed control). They CAN overlap on the player area though,
+ * and a heads-up in DevTools makes triage faster when a user reports
+ * weirdness.
+ *
+ * Probes (in order):
+ *   1. window.HDrezkaImprovement (or window.hcImprovement) is truthy.
+ *   2. Any element on the page carries an `id="hc-..."` or
+ *      `class="...hc-..."` token — HC-Improvement applies that prefix
+ *      to its toggle classes (hc-content-size-..., hc-style-..., etc.,
+ *      seen in the HDRezka console output the user shared 2026-05-06).
+ */
+export function warnIfHdrezkaImprovementPresent(): boolean {
+  try {
+    const w = window as unknown as {
+      HDrezkaImprovement?: unknown;
+      hcImprovement?: unknown;
+    };
+    const flagSet = !!(w.HDrezkaImprovement || w.hcImprovement);
+    // Token-boundary class selectors only — `[class*="hc-"]` would match
+    // `bg-hc-banner`, `theme-hc-mode`, third-party ad classes, etc., and
+    // emit a false-positive warning for users without HC-Improvement.
+    // Match `hc-` only at the start of an id, or at the start of a
+    // class token (whitespace-separated).
+    const domMatch = !!document.querySelector('[id^="hc-"], [class^="hc-"], [class*=" hc-"]');
+    if (!flagSet && !domMatch) return false;
+    console.warn(
+      '[HDREZKA-SPEEDS] HDrezka-Improvement userscript detected — speed controls may overlap with that script. If something looks broken, disable one of them.',
+    );
+    // Returned, not just logged: the two scripts CAN overlap on the player
+    // area, and a console line is invisible to the person actually looking at
+    // the overlap. The caller decides how to say it out loud.
+    return true;
+  } catch {
+    /* swallow — diagnostic-only */
+    return false;
+  }
 }

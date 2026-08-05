@@ -73,9 +73,12 @@ export default defineBackground(() => {
     // (Mozilla bug 1893232), so the extension goes silently inert. The page
     // that explains the fix used to open only at install, i.e. never for the
     // people this case actually hits. Opened here ONLY when access is really
-    // missing: a tab on every auto-update would be spam.
+    // missing: a tab on every auto-update would be spam. Scoped to 'update'
+    // explicitly — onInstalled also fires with 'chrome_update' and
+    // 'shared_module_update', which have nothing to do with this extension
+    // changing, and the twin guards the same way.
     void refreshPermissionBadge().then((held) => {
-      if (held) return;
+      if (reason !== 'update' || held) return;
       void browser.tabs.create({ url: browser.runtime.getURL('/welcome.html') });
     });
   });

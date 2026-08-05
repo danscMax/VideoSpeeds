@@ -5,6 +5,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.6.3] — 2026-08-05
+
+### Changed
+
+- **A video no longer starts faster than normal on its own.** On RuTube a
+  brand-new install used to play the first video at 1.5× with nothing on screen
+  explaining it. 1.5× is still one click away on the panel. If you have ever
+  picked a speed yourself, nothing changes for you.
+- **The extension now explains itself where it is used.** The first time the
+  speed panel appears, a small note says what a click and a double-click do and
+  where the hotkeys live. It waits for you to close it, and never comes back.
+- **The welcome page opens after an update too** — but only when the extension
+  has actually lost access to YouTube or RuTube, which is the one case where it
+  stops working without saying why.
+
+### Fixed
+
+- **The welcome page promised speeds the extension cannot reach.** It said
+  "0.5–10x"; the real floor is 0.75× on YouTube and 1× on RuTube. Anyone who
+  installed this to slow a lecture down hit a wall the first screen had
+  promised them past.
+- The button that takes you to a video site was the last thing on the welcome
+  page, after the donation block — it is now right under the title as well.
+- The advice to pin the extension to the toolbar was the faintest text on the
+  page; it is now a proper callout.
+- The example panel on the welcome page invited clicks and did nothing.
+- Screen-reader users were told the labels were buttons that do nothing.
+- Hovering the toolbar icon said only "Video Speed Controller", dropping the
+  "(YouTube + RuTube)" that tells it apart from the HDRezka extension.
+
+### Internal
+
+- Both READMEs and both store listings called the settings tab "Shortcuts"; in
+  the product it is "Keys", and neither mentioned the "Support" tab. The English
+  listing was missing a sentence the Russian one had. Store screenshots were
+  regenerated (they still showed the old default speed and the wrong range), and
+  the RuTube settings screenshot now actually shows the RuTube-only toggles its
+  own caption promised.
+
 ## [0.6.2] — 2026-08-05
 
 ### Added

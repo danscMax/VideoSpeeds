@@ -16,10 +16,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
   shows a red "!" with an explanation, and clicking it offers to fix it in one
   click. The same offer appears on the welcome page after installing.
 
+- **Liked it? There is now a way to say so.** After you send positive feedback,
+  the form offers a link to the add-on's review page. It never interrupts you
+  and only appears once the message has actually gone.
+- **The popup is no longer a dead end on other sites.** Opening it somewhere
+  that isn't YouTube or RuTube used to just say so; it now offers buttons that
+  take you there.
+
+### Fixed
+
+- **The access banner in the popup showed raw text like `popup.grant.title`.**
+  Its translations were missing entirely from this extension.
+- **On Firefox, the button that grants access appeared to do nothing.** The
+  browser anchors its own permission window to the toolbar button, which is
+  exactly where our panel hangs — so its "Allow" landed behind our own window.
+  The panel now steps aside first.
+- **The "no access" warning could be wrong.** It asked about YouTube and RuTube
+  as one question, so permission to one and not the other still warned. The two
+  sites are independent, and the warning now means the extension cannot work on
+  either.
+- **The speed panel could silently never appear.** If any script on the page had
+  left behind an invisible element with a common name like `speed-button`, the
+  extension assumed a rival speed control was present and shut itself down, with
+  nothing on screen to explain it. Only controls you can actually see count now.
+
 ### Changed
 
 - The list of supported hosts now lives in one place instead of three, so the
   manifest, the content script and the permission checks cannot drift apart.
+
+### Internal
+
+- The background worker now refuses messages from other extensions, the
+  permission-warning rule is shared with the twin project (and watched for
+  drift), and the manifest is covered by tests — it is built from the host list,
+  and nothing checked that the two agreed.
 
 ## [0.6.1] — 2026-07-28
 

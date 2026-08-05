@@ -18,7 +18,6 @@
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import { detectBrowserLang } from '../i18n/detect';
-import { createTranslator } from '../i18n/translator';
 import { supportedOrigins } from '../sites/host-patterns';
 
 export default defineBackground(() => {
@@ -46,20 +45,28 @@ export default defineBackground(() => {
    * Set GLOBALLY; the per-tab speed badge overrides it wherever the content
    * script runs, which by definition is only where access exists.
    */
+  /**
+   * The one string this worker shows. Deliberately NOT in src/i18n/dict.ts:
+   * importing the translator pulls the whole 60 kB dictionary into a service
+   * worker that wakes on every browser event, to render a single tooltip.
+   */
+  const NO_ACCESS_TITLE = {
+    ru: 'У Video Speed Controller нет доступа к YouTube / RuTube — нажмите, чтобы выдать его, иначе панель не появится',
+    en: 'Video Speed Controller has no access to YouTube / RuTube — click to allow it, or the panel will not appear',
+  } as const;
+
   async function refreshPermissionBadge(): Promise<void> {
     // Unable to tell → stay silent. Crying wolf on a working install is worse
     // than missing the rare broken one.
     const held = await browser.permissions
       .contains({ origins: supportedOrigins() })
       .catch(() => true);
-    const { t } = createTranslator(detectBrowserLang());
+    const title = NO_ACCESS_TITLE[detectBrowserLang()];
     await browser.action.setBadgeText({ text: held ? '' : '!' }).catch(() => undefined);
     await browser.action
       .setBadgeBackgroundColor({ color: held ? '#0e7490' : '#c0392b' })
       .catch(() => undefined);
-    await browser.action
-      .setTitle({ title: held ? '' : t('badge.no_access') })
-      .catch(() => undefined);
+    await browser.action.setTitle({ title: held ? '' : title }).catch(() => undefined);
   }
   void refreshPermissionBadge();
   browser.permissions.onAdded.addListener(() => {

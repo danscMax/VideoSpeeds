@@ -98,9 +98,6 @@ export const I18N_DICT = {
     'welcome.cta.gotit': 'Close',
     // welcome.perm.* — shown only while the site permission is missing, which
     // in Firefox is the default state (see renderPermissionGate).
-    // Toolbar tooltip while the extension holds no access to the video sites.
-    'badge.no_access':
-      'Video Speed Controller has no access to YouTube / RuTube — click to allow it, or the panel will not appear',
     'welcome.perm.title': 'One step left: allow access to the sites',
     'welcome.perm.body':
       'Firefox asks you to grant site access separately. Without it the panel will not appear on YouTube or RuTube.',
@@ -453,8 +450,6 @@ export const I18N_DICT = {
     'welcome.cta.youtube': 'Открыть YouTube',
     'welcome.cta.rutube': 'Открыть RuTube',
     'welcome.cta.gotit': 'Закрыть',
-    'badge.no_access':
-      'У Video Speed Controller нет доступа к YouTube / RuTube — нажмите, чтобы выдать его, иначе панель не появится',
     'welcome.perm.title': 'Остался один шаг: разрешите доступ к сайтам',
     'welcome.perm.body':
       'Firefox просит выдать доступ к сайтам отдельно. Без него панель на YouTube и RuTube не появится.',

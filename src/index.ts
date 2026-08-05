@@ -878,7 +878,14 @@ export async function bootstrap(
  * double-click, and that the gear holds the hotkeys) in the place where they
  * are actually used, then never appears again.
  */
+let firstRunHintAttempted = false;
+
 function showFirstRunHint(ctx: AppContext): void {
+  // Synchronous latch on top of the stored flag: the panel re-inserts on
+  // every SPA navigation, and two of those inside the storage round-trip
+  // would both read "not shown yet" and raise two identical chips.
+  if (firstRunHintAttempted) return;
+  firstRunHintAttempted = true;
   const adapter = createBrowserStorageAdapter();
   void wasHintShown(adapter).then((seen) => {
     if (seen) return;

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { SUPPORTED_HOST_PATTERNS } from '../../src/sites/host-patterns';
+import { SUPPORTED_HOST_PATTERNS, supportedOriginGroups } from '../../src/sites/host-patterns';
 import config from '../../wxt.config';
 
 type ManifestFn = (env: { browser: string }) => Record<string, unknown>;
@@ -52,5 +52,18 @@ describe('permissions stay least-privilege', () => {
     const gecko = (firefox.browser_specific_settings as { gecko?: { id?: string } })?.gecko;
     expect(gecko?.id).toBe('video-speeds@maxscorpy');
     expect(chrome.browser_specific_settings).toBeUndefined();
+  });
+});
+
+describe('supportedOriginGroups', () => {
+  it('groups every pattern under its own site, losing none', () => {
+    const groups = supportedOriginGroups();
+    expect(groups.flat().sort()).toEqual([...SUPPORTED_HOST_PATTERNS].sort());
+    // Two independent sites: permission to one is enough for the extension to
+    // be useful, which is what the toolbar warning asks about.
+    expect(groups).toHaveLength(2);
+    expect(groups.some((g) => g.includes('*://*.youtube.com/*'))).toBe(true);
+    const rutube = groups.find((g) => g.includes('*://rutube.ru/*'));
+    expect(rutube).toContain('*://*.rutube.ru/*');
   });
 });

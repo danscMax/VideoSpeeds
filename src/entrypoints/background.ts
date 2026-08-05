@@ -19,7 +19,7 @@ import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import { refreshPermissionBadge as refreshBadge } from '../health/permission-badge';
 import { detectBrowserLang } from '../i18n/detect';
-import { supportedOrigins } from '../sites/host-patterns';
+import { supportedOriginGroups } from '../sites/host-patterns';
 
 export default defineBackground(() => {
   // FEAT-016: brand the toolbar speed badge (cyan fill, matching the HDRezka
@@ -47,7 +47,8 @@ export default defineBackground(() => {
   const refreshPermissionBadge = (): Promise<boolean> =>
     refreshBadge(browser.action, browser.permissions, {
       // YouTube and RuTube are independent: access to one is enough to work.
-      originGroups: [['*://*.youtube.com/*'], ['*://rutube.ru/*', '*://*.rutube.ru/*']],
+      // Derived from the one host list, not written out a second time.
+      originGroups: supportedOriginGroups(),
       alertTitle: NO_ACCESS_TITLE[detectBrowserLang()],
     });
   void refreshPermissionBadge();

@@ -2,8 +2,8 @@
 
 [![Firefox Add-on](https://img.shields.io/amo/v/video-speed-controller-yt-rt?label=Firefox%20Add-on&logo=firefoxbrowser)](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/)
 [![Users](https://img.shields.io/amo/users/video-speed-controller-yt-rt?label=users)](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/)
-<!-- TODO: add the Chrome Web Store badge once the listing is public:
-[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/EXTENSION_ID?label=Chrome%20Web%20Store&logo=googlechrome)](https://chromewebstore.google.com/detail/EXTENSION_ID) -->
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/gppapgnbcdmpgeeccldopkgpagcdinlk?label=Chrome%20Web%20Store&logo=googlechrome)](https://chromewebstore.google.com/detail/gppapgnbcdmpgeeccldopkgpagcdinlk)
+[![Chrome users](https://img.shields.io/chrome-web-store/users/gppapgnbcdmpgeeccldopkgpagcdinlk?label=chrome%20users)](https://chromewebstore.google.com/detail/gppapgnbcdmpgeeccldopkgpagcdinlk)
 
 [English](#english) | [Русский](#russian)
 

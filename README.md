@@ -35,7 +35,7 @@ UI, no telemetry, settings stored locally.
 - **Double-click** → set as global default for the site.
 - **Hotkeys** — Alt+. (+0.1) / Alt+, (-0.1) by default, Alt+0 resets to
   1x; fully rebindable in Settings.
-- **In-player gear menu** — 3 tabs (General, Shortcuts, Diagnostics)
+- **In-player gear menu** — 4 tabs (General, Keys, Diagnostics, Support)
   with EN/RU language switcher, slider position toggles, RuTube-only
   hide-title / hide-Premium switches.
 - **Toolbar popup** — mirror of the in-player menu, available without

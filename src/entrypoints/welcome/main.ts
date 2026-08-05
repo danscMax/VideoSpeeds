@@ -112,6 +112,10 @@ async function renderWelcome(host: HTMLElement, langOverride?: Lang): Promise<vo
     renderLangSwitch(t, lang, onLangChange),
     renderHero(t),
     renderPermissionGate(t),
+    // The button that actually starts the product, right where the user is
+    // looking — the full row at the bottom stays, but reaching it meant
+    // scrolling past two teaching blocks, a hotkey editor and a donation ask.
+    renderCta(t),
     renderBlockA(t),
     renderHotkeys(t, liveSettings, applyPatch),
     renderBlockB(t),
@@ -361,12 +365,11 @@ function annotation(positionClass: string, text: string): HTMLElement {
     {
       class: `annotation ${positionClass}`,
       'data-ann-group': group,
-      // Make annotations focusable — keyboard/AT users tab through them
-      // and the focus handler in wireHoverGroups() lights up the matching
-      // UI part. role=button + aria-label tell SR users this thing has
-      // an effect when activated.
+      // Focusable so keyboard/AT users can tab through them — the focus
+      // handler in wireHoverGroups() lights up the matching UI part.
+      // Deliberately NOT role=button: nothing happens on Enter/Space, and
+      // announcing "button" promised an activation that does not exist.
       tabindex: 0,
-      role: 'button',
     },
     h('div', { class: 'ann-label' }, ...richText(text)),
   );
@@ -764,12 +767,14 @@ function renderTips(t: T): HTMLElement {
   const tipRow = (icon: SVGElement, text: string): HTMLElement =>
     h('div', { class: 'tip-row' }, icon, h('span', {}, ...richText(text)));
 
-  return h(
-    'div',
-    { class: 'tips-block' },
-    tipRow(reopenIcon, t('welcome.tips.reopen')),
-    tipRow(pinSvg, t('welcome.pin.tip')),
-  );
+  // Pinning gets its own callout rather than a dimmed 13px line among the
+  // other tips: it is the single action that decides whether the person can
+  // find the settings again tomorrow, and it used to carry the least visual
+  // weight on a page that gives a pulsing heart to the donation block.
+  const pinRow = tipRow(pinSvg, t('welcome.pin.tip'));
+  pinRow.classList.add('tip-row-callout');
+
+  return h('div', { class: 'tips-block' }, pinRow, tipRow(reopenIcon, t('welcome.tips.reopen')));
 }
 
 /* ─── Donate ───────────────────────────────────────────────────────── */

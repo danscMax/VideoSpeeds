@@ -62,7 +62,10 @@ export const I18N_DICT = {
     // \n becomes <br>. The 5-char `<` regex in i18n.spec.ts is unaffected
     // because we never embed literal HTML, only ASCII markers.
     'welcome.title': 'The speed you choose',
-    'welcome.subtitle': '0.5–10x speed for YouTube and RuTube. No ads, no tracking.',
+    // The floors differ per site and neither is 0.5 (see config.ts SPEED_BOUNDS)
+    // — the old "0.5–10x" was copied from the HDRezka twin and promised a
+    // slow-down this extension cannot do.
+    'welcome.subtitle': '0.75–10x on YouTube, 1–10x on RuTube. No ads, no tracking.',
     'welcome.value': '⚡ Save time on long videos',
     'welcome.step1.title': 'Speed buttons in one click',
     'welcome.step1.body': 'Visit YouTube or RuTube — the panel appears automatically.',
@@ -296,6 +299,12 @@ export const I18N_DICT = {
     'chip.reload': 'Reload',
     'chip.dismiss': 'Dismiss',
 
+    // onboarding.first_run — the one-time chip shown the first time the panel
+    // ever appears for this profile. Names only what is NOT self-evident:
+    // the click/double-click split and where the hotkeys live.
+    'onboarding.first_run':
+      'Click a button — speed for this video. Double-click — save it as your default. The ⚙ button holds hotkeys and settings.',
+
     // toast.storage_write_failed -- a coalesced storage write rejected
     // (quota / invalidated context). Shown once per page so the user
     // knows the saved speed/settings may not have persisted.
@@ -424,7 +433,7 @@ export const I18N_DICT = {
 
     // welcome.*
     'welcome.title': 'Скорость, которую выбираете Вы',
-    'welcome.subtitle': 'Скорость 0.5–10x для YouTube и RuTube. Без рекламы и трекинга.',
+    'welcome.subtitle': '0.75–10x на YouTube, 1–10x на RuTube. Без рекламы и трекинга.',
     'welcome.value': '⚡ Экономьте время на длинных видео',
     'welcome.step1.title': 'Кнопки скорости в один клик',
     'welcome.step1.body': 'Зайдите на YouTube или RuTube — панель встраивается автоматически.',
@@ -653,6 +662,10 @@ export const I18N_DICT = {
     // Подписи кнопок durable-чипов терминального отказа.
     'chip.reload': 'Обновить',
     'chip.dismiss': 'Закрыть',
+
+    // onboarding.first_run
+    'onboarding.first_run':
+      'Клик по кнопке — скорость для этого видео. Двойной клик — сохранить её по умолчанию. В ⚙ живут горячие клавиши и настройки.',
 
     // toast.storage_write_failed
     'toast.storage_write_failed':

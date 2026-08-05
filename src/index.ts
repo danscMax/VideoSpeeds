@@ -59,6 +59,7 @@ import { applyVolumeBoost } from './speed/volume-boost';
 import { createBrowserStorageAdapter, type StorageAdapter } from './storage/adapter';
 import { createCoalescingAdapter } from './storage/adapter-coalescing';
 import { runTmMigration } from './storage/migration-tm';
+import { markHintShown, wasHintShown } from './storage/onboarding-store';
 import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { createPanel, createUiPort, injectStyles, insertPanel, installThemeWatcher } from './ui';
@@ -868,6 +869,37 @@ export async function bootstrap(
  * = 15s budget gave up before the player appeared on those installs.
  */
 /**
+ * The one thing the panel says to a brand-new user, once per profile.
+ *
+ * Everything else is taught on the welcome page, in a tab that opens at
+ * install and is often closed unread — after which the panel explains itself
+ * only through a `title` attribute, i.e. only to someone already hovering a
+ * button with a mouse. This chip names the two non-obvious things (click vs
+ * double-click, and that the gear holds the hotkeys) in the place where they
+ * are actually used, then never appears again.
+ */
+function showFirstRunHint(ctx: AppContext): void {
+  const adapter = createBrowserStorageAdapter();
+  void wasHintShown(adapter).then((seen) => {
+    if (seen) return;
+    // Written BEFORE showing: a failed write must not turn into a hint on
+    // every page load for the rest of the profile's life.
+    void markHintShown(adapter).then(() => {
+      try {
+        showActionChip(ctx.i18n.t('onboarding.first_run'), {
+          kind: 'info',
+          icon: 'help-circle',
+          dismissLabel: ctx.i18n.t('chip.dismiss'),
+          playerContainer: ctx.discovery.resolve('playerContainer'),
+        });
+      } catch (e) {
+        ctx.logger.warn('first-run hint render failed', e);
+      }
+    });
+  });
+}
+
+/**
  * FEAT-018/20 (ported from HDRezka twin): a durable failure chip (warn ✕ +
  * a "Reload" action) for the two terminal give-up paths. Replaces the
  * auto-dismissing 3s warn toast so the message — and its recovery action —
@@ -916,6 +948,7 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
         installRemovalObserver(panelEl, ctx, scheduleInsertWithRetry);
         observerInstalled = true;
       }
+      showFirstRunHint(ctx);
       return;
     }
 

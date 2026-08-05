@@ -63,10 +63,21 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onInstalled.addListener(({ reason }) => {
-    void refreshPermissionBadge();
-    if (reason !== 'install') return;
-    const url = browser.runtime.getURL('/welcome.html');
-    void browser.tabs.create({ url });
+    if (reason === 'install') {
+      void refreshPermissionBadge();
+      void browser.tabs.create({ url: browser.runtime.getURL('/welcome.html') });
+      return;
+    }
+    // An UPDATE can leave the extension without access to YouTube/RuTube —
+    // Firefox does not grant host permissions an add-on gains in an update
+    // (Mozilla bug 1893232), so the extension goes silently inert. The page
+    // that explains the fix used to open only at install, i.e. never for the
+    // people this case actually hits. Opened here ONLY when access is really
+    // missing: a tab on every auto-update would be spam.
+    void refreshPermissionBadge().then((held) => {
+      if (held) return;
+      void browser.tabs.create({ url: browser.runtime.getURL('/welcome.html') });
+    });
   });
 
   // Audit 2026-05-11: open-extension-page proxy. Content scripts can't

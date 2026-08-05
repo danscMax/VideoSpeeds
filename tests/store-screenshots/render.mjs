@@ -109,13 +109,18 @@ function makeRoute(url, body) {
 /**
  * Capture a panel + settings shot pair against a host URL.
  */
-async function captureHost(label, url, mockBody) {
+async function captureHost(label, url, mockBody, scrollSettingsTo = 0) {
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.route('**/*', makeRoute(url, mockBody));
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForSelector('.vs-panel', { timeout: 15000 });
   await page.waitForTimeout(800);
+  // The first-run hint chip is correct behaviour on a fresh profile — and
+  // exactly wrong in a store screenshot, where it lands half-covered by the
+  // settings modal and reads as a rendering glitch. Remove it before every
+  // shot; the profile is throwaway anyway.
+  await page.evaluate(() => document.getElementById('speed-notifications')?.remove());
   await shoot(page, `${label}-panel`);
 
   await page.click('.vs-gear-button');
@@ -123,12 +128,24 @@ async function captureHost(label, url, mockBody) {
     .waitForSelector('.settings-menu.show, .settings-menu[aria-hidden="false"]', { timeout: 5000 })
     .catch(() => null);
   await page.waitForTimeout(400);
+  // The RuTube shot exists to show the RuTube-only toggles ("hide player
+  // title", "hide Premium banners"). They sit below the fold of the modal, so
+  // the un-scrolled capture showed a generic General tab and the listing's
+  // caption promised something the image did not contain.
+  if (scrollSettingsTo > 0) {
+    await page.evaluate((top) => {
+      const body = document.querySelector('.settings-menu .vs-menu-body');
+      if (body) body.scrollTop = top;
+    }, scrollSettingsTo);
+    await page.waitForTimeout(300);
+  }
+  await page.evaluate(() => document.getElementById('speed-notifications')?.remove());
   await shoot(page, `${label}-settings`);
   await page.close();
 }
 
 await captureHost('youtube', YT_URL, MOCK_YT);
-await captureHost('rutube', RT_URL, MOCK_RT);
+await captureHost('rutube', RT_URL, MOCK_RT, 620);
 
 // 5. Welcome — through the built extension.
 let extId = null;

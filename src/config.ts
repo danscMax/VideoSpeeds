@@ -38,8 +38,13 @@ export interface SpeedBounds {
 // playback they didn't ask for. RuTube keeps its long-standing 1.5 —
 // most RuTube content is bloggers/talks where the bias is welcome.
 const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
+  // defaultSpeed is what a profile with NOTHING stored plays at — the very
+  // first video a new user opens. RuTube used to start at 1.5 with no
+  // explanation on screen, which reads as "the extension broke the player";
+  // 1.5 is still one click away as a preset button. Existing users are
+  // unaffected: their speed comes from storage.
   youtube: { min: 0.75, max: 10.0, defaultSpeed: 1.0 },
-  rutube: { min: 1.0, max: 10.0, defaultSpeed: 1.5 },
+  rutube: { min: 1.0, max: 10.0, defaultSpeed: 1.0 },
 };
 
 export function speedBoundsFor(site: Site): SpeedBounds {

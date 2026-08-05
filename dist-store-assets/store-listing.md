@@ -35,7 +35,7 @@ WHAT IT DOES
   2.75x, 3x, 3.25x) and 9 on RuTube (1x through 3x in 0.25 steps),
   positioned right below the video. The 1x preset is included by
   default so a fast-forwarded video can return to normal in a single
-  click.
+  click. The button row is customizable (you can add speeds up to 4x).
 - Slider for in-between values, with a coloured fill and a value
   tooltip that follows the thumb so you always see the exact rate.
 - Single-click on a button = temporary speed for this video only.
@@ -48,7 +48,7 @@ WHAT IT DOES
   - General: slider position (right / below / inside player), language
     switch (English / Russian), preset chips grouped by range
     (slower than 1×, 1×–2×, faster than 2×), behaviour toggles.
-  - Shortcuts: rebind speed-up / speed-down, add additional combos,
+  - Keys: rebind speed-up / speed-down, add additional combos,
     reset to defaults.
   - Diagnostics: copy a structured report for bug submissions; clear
     cached selectors if a site update breaks the panel.
@@ -84,6 +84,13 @@ LANGUAGES
 
 English and Russian. UI language is auto-detected from your browser on
 first run; switch any time from the gear menu.
+
+AFTER YOU INSTALL
+
+A short walkthrough opens automatically in a new tab: what each control
+does, how to set your keyboard shortcuts, and how to pin the icon to the
+toolbar. It takes about a minute, and you can close it and start using
+the extension right away.
 ```
 
 (Roughly 1,800 characters out of the 16,000 limit -- room to grow.)
@@ -150,6 +157,13 @@ RuTube — один клик разгоняет размеренную речь 
 
 Английский и русский. Язык интерфейса определяется автоматически по
 языку браузера при первом запуске; переключается в меню в любой момент.
+
+СРАЗУ ПОСЛЕ УСТАНОВКИ
+
+В новой вкладке автоматически откроётся короткая инструкция: что делает
+каждый элемент, как назначить свои горячие клавиши и как закрепить
+значок на панели. Занимает около минуты — можно закрыть и сразу
+пользоваться.
 ```
 
 ## Single-purpose statement (CWS requires this)

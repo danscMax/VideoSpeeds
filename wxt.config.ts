@@ -116,7 +116,10 @@ export default defineConfig({
     },
     action: {
       default_popup: 'popup.html',
-      default_title: 'Video Speed Controller',
+      // Same qualifier as the manifest name: hovering the toolbar icon should
+      // say which sites this one works on — there is a sister extension for
+      // HDRezka and "Video Speed Controller" alone does not tell them apart.
+      default_title: 'Video Speed Controller (YouTube + RuTube)',
       default_icon: {
         16: 'icon/16.png',
         32: 'icon/32.png',

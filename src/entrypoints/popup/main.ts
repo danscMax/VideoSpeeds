@@ -21,11 +21,12 @@ import { CleanupRegistry } from '../../app/cleanup';
 import type { AppContext } from '../../app/context';
 import type { DiagnosticsPort, DiscoveryPort, Site, UiPort } from '../../app/ports';
 import { storageKeysFor } from '../../config';
+import { hasAnySiteAccess } from '../../health/permission-badge';
 import type { DiagnosticReport } from '../../health/types';
 import { detectBrowserLang } from '../../i18n/detect';
 import { createTranslator } from '../../i18n/translator';
 import { detectSite } from '../../sites/detect';
-import { supportedOrigins } from '../../sites/host-patterns';
+import { supportedOriginGroups, supportedOrigins } from '../../sites/host-patterns';
 import { createBrowserStorageAdapter } from '../../storage/adapter';
 import { createSettingsStore } from '../../storage/settings-store';
 import { createSpeedStore } from '../../storage/speed-store';
@@ -159,15 +160,14 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
   const i18n = createTranslator(settingsStore.getKey('language'));
 
   // Mirrors the toolbar badge: the icon says "click to allow", so the first
-  // thing the click shows must be the way to allow it. Origins come from the
-  // manifest — the exact set Firefox lists, and it cannot drift. Unknown state
-  // counts as fine; a false alarm on a working install is worse than a missed
-  // broken one.
+  // thing the click shows must be the way to allow it. Literally the same
+  // question as the badge asks, through the same shared rule — a clean icon
+  // next to a panel shouting "no access" is a worse bug than either answer
+  // alone. Flat `contains` over both sites was exactly that: a profile with
+  // YouTube granted and RuTube not got a permanent nag while YouTube worked.
   let missingAccess = false;
   async function refreshMissingAccess(): Promise<void> {
-    missingAccess = !(await browser.permissions
-      .contains({ origins: supportedOrigins() })
-      .catch(() => true));
+    missingAccess = !(await hasAnySiteAccess(browser.permissions, supportedOriginGroups()));
   }
   await refreshMissingAccess();
 

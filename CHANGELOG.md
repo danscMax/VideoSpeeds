@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.6.6] — 2026-08-06
+
+### Fixed
+
+- **The tip shown to a brand-new user was cut off mid-sentence** and its close
+  button was pushed off screen. It now wraps onto a second line and reads in
+  full.
+- **On YouTube the tip often never appeared at all.** It was tied to the panel
+  reaching its final position, which on YouTube frequently never happens —
+  so the panel was on screen with nothing explaining it. It now appears as
+  soon as the panel does.
+
 ## [0.6.5] — 2026-08-05
 
 ### Fixed

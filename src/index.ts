@@ -951,6 +951,13 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
     const inDoc = document.contains(panelEl);
     const placed = result.anchor !== 'no-anchor' && inDoc;
 
+    // The moment the panel is on screen is the moment the hint is about — and
+    // on YouTube the first placement is usually TENTATIVE (the preferred
+    // anchor appears later, or never). Hanging the hint off the final-anchor
+    // branch alone meant a new user saw the panel and no explanation at all.
+    // The latch inside makes the repeated call a no-op.
+    if (placed) showFirstRunHint(ctx);
+
     if (placed && !result.tentative) {
       // Final placement -- preferred anchor. Stop the retry loop, install
       // the displacement observer, and we're done.
@@ -959,7 +966,6 @@ function scheduleInsertWithRetry(panelEl: HTMLElement, ctx: AppContext): void {
         installRemovalObserver(panelEl, ctx, scheduleInsertWithRetry);
         observerInstalled = true;
       }
-      showFirstRunHint(ctx);
       return;
     }
 

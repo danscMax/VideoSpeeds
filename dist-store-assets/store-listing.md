@@ -56,9 +56,10 @@ WHAT IT DOES
     Cloudflare Worker — no third-party analytics).
 - Toolbar popup mirrors the in-player menu so you can adjust settings
   without opening a video.
-- Dzen video is supported as an OPT-IN site: it is not requested at
-  install time, so an update never disables the extension. Open a Dzen
-  video, click the extension icon and press "Allow" once.
+- Dzen video and VK Video are supported as OPT-IN sites: they are not
+  requested at install time, so an update never disables the extension.
+  Open a video there, click the extension icon and press "Allow" once.
+  On VK the extension only ever runs on the video section.
 - RuTube-only quality-of-life toggles: hide the overlay player title,
   hide Premium subscription banners.
 - Accessibility: aria-labels on the gear button, aria-live status
@@ -184,7 +185,7 @@ Russian: Управление скоростью воспроизведения 
 | `storage` | Persist user preferences (speed presets, hotkeys, language, slider position). |
 | `activeTab` | Read the address of the tab you clicked the extension on, so the popup can show settings for that site and offer the one-click opt-in on Dzen. Scoped to that click; no background access to browsing history. |
 | `host_permissions: *://*.youtube.com/*, *://rutube.ru/*, *://*.rutube.ru/*` | Inject the speed-control UI on the supported video sites. |
-| `optional_host_permissions: *://dzen.ru/*, *://*.dzen.ru/*` | Same speed-control UI on Dzen video, requested only if the user opens Dzen and clicks "Allow" in the extension popup. Optional so that adding the site cannot disable the extension for existing users. |
+| `optional_host_permissions: *://dzen.ru/*, *://*.dzen.ru/*, *://vkvideo.ru/*, *://*.vkvideo.ru/*, *://vk.com/video*, *://vk.ru/video*` | Same speed-control UI on Dzen video and VK Video, requested only when the user opens that site and clicks "Allow" in the extension popup. Optional so that adding a site cannot disable the extension for existing users. The VK patterns are scoped to the video section — the extension never runs on the rest of vk.com. |
 
 (No `tabs`, no `activeTab` for the popup -- the existing host_permissions
 already grant URL access for the toolbar popup's active-tab check.)

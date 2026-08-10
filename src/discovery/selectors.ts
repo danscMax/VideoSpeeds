@@ -106,6 +106,32 @@ const SELECTORS: Record<Site, SelectorMap> = {
       '[class*="video-viewer--video-controls__composer"]',
     ],
   },
+  // VK video. Deliberately the thinnest table here, and that is the honest
+  // shape rather than a gap to fill in later.
+  //
+  // VK's player creates no <video> under any automated browser we can drive
+  // (headless Chromium, headed real Chrome, a persistent on-disk profile, and
+  // the official /video_ext.php embed all report zero on a page that renders
+  // its title, view count and comments), so there is no measured DOM to copy.
+  // The one name below comes from VK's own shipped stylesheet
+  // (st.vk.ru/dist/web/video_embed.isolated.*.css), not from guesswork.
+  //
+  // The rest is left to the engine's heuristic strategy, which finds the video
+  // by area and the player by tightest containing ancestor — the mechanism
+  // built for exactly this, and the one that already carries YouTube and RuTube
+  // through a redesign. Inventing control-bar selectors instead would put a
+  // fiction in the table and a green test on top of it; this branch has already
+  // caught two of those.
+  //
+  // Consequence, and it is the correct one: with no control-bar entry
+  // `supportsInPlayerSlider('vk')` is false, so the "in player" slider position
+  // is not offered on VK. The feature is withheld until someone can measure the
+  // bar — `node scripts/harvest-site-selectors.mjs --snippet` produces the
+  // report from a human's own browser.
+  vk: {
+    video: ['video'],
+    playerContainer: ['[class*="VideoPage__playerContainer"]'],
+  },
 };
 
 export function selectorsFor(site: Site): SelectorMap {
@@ -158,6 +184,11 @@ const SUBSTRING_FRAGMENTS: Record<Site, Partial<Record<SelectorKey, readonly str
       'video-viewer--video-viewer-content__wrapper',
       'video-viewer--viewer-layout__content',
     ],
+  },
+  // The one fragment VK's own stylesheet gave up. Everything else on VK is
+  // resolved by the heuristic strategy — see the note on the vk entry above.
+  vk: {
+    playerContainer: ['VideoPage__playerContainer'],
   },
 };
 

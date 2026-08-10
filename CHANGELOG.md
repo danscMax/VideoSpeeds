@@ -9,6 +9,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ### Added
 
+- **VK Video (vkvideo.ru and the video section of vk.com) is now supported** —
+  opt-in, like Dzen. It ships with its unknowns declared rather than filled in:
+  VK's player creates no `<video>` under any automated browser, so unlike every
+  other site here its DOM was never measured, and the table carries exactly one
+  selector — the class name VK's own stylesheet gave up. The rest is resolved by
+  the engine's heuristic strategy (largest video by area, tightest containing
+  ancestor), which is the mechanism built for unmeasurable and changing DOM.
+  Consequence, and it is the intended one: the "in player" slider position is
+  NOT offered on VK, because its control bar was never measured. The gate
+  derives that from the selector table, so it turns itself on the day someone
+  fills the bar in — `node scripts/harvest-site-selectors.mjs --snippet`
+  produces the report from a normal browser.
+  Host access is scoped to the video section; the extension never runs on the
+  rest of vk.com.
 - **Dzen video (dzen.ru) is now supported** — speed buttons, slider and hotkeys
   on `dzen.ru/video/watch/…` and Dzen shorts, with the panel anchored between
   the player and the description. Every selector was measured on the live site

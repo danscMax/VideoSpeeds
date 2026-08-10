@@ -447,7 +447,8 @@ async function detectActiveTabSite(): Promise<Site | null> {
     const matches = (t: { url?: string }): boolean => {
       if (!t.url || t.url.startsWith(ourPopupPrefix)) return false;
       try {
-        return detectSite(new URL(t.url).hostname) !== null;
+        const u = new URL(t.url);
+        return detectSite(u.hostname, u.pathname) !== null;
       } catch {
         return false;
       }
@@ -474,7 +475,10 @@ async function detectActiveTabSite(): Promise<Site | null> {
     for (const q of queries) {
       const tabs = await browser.tabs.query(q);
       const hit = tabs.find(matches);
-      if (hit?.url) return detectSite(new URL(hit.url).hostname);
+      if (hit?.url) {
+        const u = new URL(hit.url);
+        return detectSite(u.hostname, u.pathname);
+      }
     }
     return null;
   } catch {

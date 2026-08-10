@@ -1,5 +1,5 @@
 /**
- * Dzen gets a real theme decision, not the hardcoded default.
+ * Dzen and VK get a real theme decision, not the hardcoded default.
  *
  * Found by an independent review of the Dzen change: `detectAndApplyTheme`
  * branched on 'youtube' and 'rutube' only, so a third site fell through to the
@@ -22,26 +22,28 @@ afterEach(() => {
   delete document.documentElement.dataset.vsTheme;
 });
 
-const themeFor = (background: string): string | undefined => {
+const themeFor = (site: 'dzen' | 'vk', background: string): string | undefined => {
   document.body.style.backgroundColor = background;
   delete document.documentElement.dataset.vsTheme;
-  detectAndApplyTheme('dzen', document, document.body);
+  detectAndApplyTheme(site, document, document.body);
   return document.documentElement.dataset.vsTheme;
 };
 
-describe('detectAndApplyTheme on Dzen', () => {
+// Parameterised because the bug recurred: VK was added later and fell through
+// the very same branch chain, which the Dzen fix had just been written for.
+describe.each(['dzen', 'vk'] as const)('detectAndApplyTheme on %s', (site) => {
   it('reads a light page as light', () => {
-    expect(themeFor('rgb(255, 255, 255)')).toBe('light');
+    expect(themeFor(site, 'rgb(255, 255, 255)')).toBe('light');
   });
 
   it('reads a dark page as dark', () => {
-    expect(themeFor('rgb(19, 19, 19)')).toBe('dark');
+    expect(themeFor(site, 'rgb(19, 19, 19)')).toBe('dark');
   });
 
   it('does not simply answer dark for everything', () => {
     // The regression this guards is a fall-through that always yields 'dark'.
     // Asserting the pair DIFFERS is what separates a real decision from a
     // constant; either case alone would pass against the broken version.
-    expect(themeFor('rgb(250, 250, 250)')).not.toBe(themeFor('rgb(16, 16, 16)'));
+    expect(themeFor(site, 'rgb(250, 250, 250)')).not.toBe(themeFor(site, 'rgb(16, 16, 16)'));
   });
 });

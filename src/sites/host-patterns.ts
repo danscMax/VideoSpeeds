@@ -48,6 +48,15 @@ export const SITE_HOSTS: Record<Site, SiteHosts> = {
     spaBridge: true,
   },
   dzen: { patterns: ['*://dzen.ru/*', '*://*.dzen.ru/*'], optional: true, spaBridge: true },
+  // Scoped to the video product on purpose. `*://vk.com/*` would put the
+  // extension on every page of a social network — an install-time warning far
+  // out of proportion to a speed slider, and the kind of overreach a store
+  // reviewer is right to reject. vk.ru is the same site under its newer domain.
+  vk: {
+    patterns: ['*://vkvideo.ru/*', '*://*.vkvideo.ru/*', '*://vk.com/video*', '*://vk.ru/video*'],
+    optional: true,
+    spaBridge: true,
+  },
 };
 
 const entries = (): SiteHosts[] => Object.values(SITE_HOSTS);

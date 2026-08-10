@@ -40,7 +40,7 @@ import type { DiagnosticReport } from './health/types';
 import { detectBrowserLang } from './i18n/detect';
 import { createTranslator } from './i18n/translator';
 import { detectSite } from './sites/detect';
-import { bootstrapDzenSite } from './sites/dzen';
+import { createNavigationBridge } from './sites/history-bridge';
 import { bootstrapRutubeSite } from './sites/rutube';
 import {
   bootstrapYouTubeSite,
@@ -680,8 +680,10 @@ export async function bootstrap(
   // not interchangeable.
   if (site === 'youtube') {
     bootstrapYouTubeSite(ctx).onNavigation(reattach);
-  } else if (site === 'dzen') {
-    bootstrapDzenSite(ctx).onNavigation(reattach);
+  } else if (site === 'dzen' || site === 'vk') {
+    // Both are React-router SPAs with no site-specific chrome of their own, so
+    // the shared history bridge is the whole bootstrap.
+    createNavigationBridge(ctx, site).onNavigation(reattach);
   } else {
     bootstrapRutubeSite(ctx).onNavigation(reattach);
   }

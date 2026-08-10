@@ -30,6 +30,7 @@
  */
 
 import type { AppContext } from '../app/context';
+import { isVkVideoPath } from '../sites/detect';
 import type { SliderPosition } from '../storage/types';
 
 export type InsertionAnchor =
@@ -151,6 +152,13 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
   //     heuristic strategy would promote whichever tile happens to be on
   //     screen and drop the panel into the feed.
   if (ctx.site === 'dzen' && !isDzenVideoPath(location.pathname)) {
+    return { parent: null, anchor: 'no-anchor' };
+  }
+
+  // 1c. Same for VK, and it matters more there: the host patterns already scope
+  //     us to the video section, but that section's feed and playlist pages are
+  //     grids of preview tiles.
+  if (ctx.site === 'vk' && !isVkVideoPath(location.pathname)) {
     return { parent: null, anchor: 'no-anchor' };
   }
 

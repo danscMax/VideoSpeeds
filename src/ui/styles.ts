@@ -39,6 +39,7 @@ export function removeStyles(container: Document = document): void {
  *              (their canonical signal). Fallback to prefers-color-scheme.
  *   RuTube  -- walk parent chain from `referenceEl` (or body), find
  *   + Dzen     first ancestor with a non-transparent background, decide
+ *   + VK
  *              by perception-weighted luminance (YIQ formula). Future-
  *              proofs against RuTube ever shipping a light theme; Dzen
  *              already has one, so there it is load-bearing today.
@@ -59,7 +60,7 @@ export function detectAndApplyTheme(
     } else {
       theme = preferredColorScheme(container) ?? 'light';
     }
-  } else if (site === 'rutube' || site === 'dzen') {
+  } else if (site === 'rutube' || site === 'dzen' || site === 'vk') {
     // Same luminance walk for both. Dzen is not a "future-proofing" case the
     // way RuTube is — it ships a real light theme today, and without this the
     // function would fall straight through to the `'dark'` initializer and

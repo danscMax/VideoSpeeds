@@ -72,6 +72,25 @@ const SCENARIOS = [
     hasInChromeSlider: true,
     liveUrl: 'https://dzen.ru/video/watch/6a673a21d29c014a1b594be3',
   },
+  {
+    name: 'vk',
+    mockPath: resolve(REPO, 'tests/store-screenshots/mock-vk.html'),
+    hostUrl: 'https://vkvideo.ru/video-211232966_456241404',
+    // Anonymous class name on purpose — this scenario proves the HEURISTIC
+    // path, the one VK depends on because its DOM cannot be measured. Nothing
+    // in this mock matches the selector table.
+    playerSelector: '.m-a',
+    // No control-bar entry for VK in the selector table, so the "in player"
+    // position is not offered there. Withheld rather than guessed.
+    hasInChromeSlider: false,
+    // Plyr's CSS-only pseudo-fullscreen is HDRezka's player. The other three
+    // scenarios assert it as cheap coverage of the shared stylesheet matcher,
+    // on mocks that faithfully copy their site. This mock copies nothing on
+    // purpose, so the same assertion would only be testing the mock.
+    plyrFallback: false,
+    // No liveUrl: VK's player creates no <video> under automation, so a LIVE
+    // pass here would fail for a reason that says nothing about the extension.
+  },
 ];
 
 // EXT_DIR=<path> runs the harness against a DIFFERENT build — e.g. one built
@@ -420,6 +439,11 @@ try {
     check(`[${scenario.name}] panel is back after leaving fullscreen`, after.panel.present && after.panel.display !== 'none', JSON.stringify(after.panel));
 
     // ── B. Plyr CSS-only pseudo-fullscreen ────────────────────────────────
+    if (scenario.plyrFallback === false) {
+      console.log(`  skip [${scenario.name}] Plyr pseudo-fullscreen not asserted for this scenario`);
+      await page.close();
+      continue;
+    }
     // No fullscreenElement, no event: this path is carried by the
     // .plyr--fullscreen-fallback matcher in the stylesheet and by the class
     // sniff in notifications.ts. Verified here because a unit test cannot say

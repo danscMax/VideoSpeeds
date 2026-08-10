@@ -49,6 +49,7 @@ const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
   // useful here; the floor matches RuTube's rather than YouTube's because
   // sub-1x has no audience on a feed of short-form video.
   dzen: { min: 1.0, max: 10.0, defaultSpeed: 1.0 },
+  vk: { min: 1.0, max: 10.0, defaultSpeed: 1.0 },
 };
 
 export function speedBoundsFor(site: Site): SpeedBounds {
@@ -81,6 +82,7 @@ const DEFAULT_PRESETS: Record<Site, readonly number[]> = {
   youtube: [1, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25],
   rutube: [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
   dzen: [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+  vk: [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
 };
 
 export function defaultPresetsFor(site: Site): readonly number[] {
@@ -110,6 +112,10 @@ const STORAGE_KEYS: Record<Site, StorageKeys> = {
   dzen: {
     settings: 'dzen-speed-settings',
     speed: 'dzen-selected-speed',
+  },
+  vk: {
+    settings: 'vk-speed-settings',
+    speed: 'vk-selected-speed',
   },
 };
 

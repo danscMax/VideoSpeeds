@@ -22,7 +22,7 @@
  * them in without touching the port surface.
  */
 
-export type Site = 'youtube' | 'rutube' | 'dzen';
+export type Site = 'youtube' | 'rutube' | 'dzen' | 'vk';
 
 // ---------------------------------------------------------------------------
 // Storage ports — hydrated sync getters, async writes (audit C1).

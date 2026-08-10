@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru" data-vs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>VK Video — heuristic-only mock host</title>
+<style>
+  /* DELIBERATELY ANONYMOUS MARKUP.
+     Every other mock in this folder copies its class names from the live site.
+     This one must not, and that is the point: VK's player creates no <video>
+     under any automated browser, so there is no measured DOM to copy, and
+     inventing VK-looking class names would put a fiction in the repository and
+     a green assertion on top of it.
+
+     What VK actually relies on is the engine's heuristic strategy — largest
+     <video> by area, tightest containing ancestor as the player, next sibling
+     with text as the info block (src/discovery/engine.ts heuristicScan). So the
+     honest thing to test is that path, on a page whose class names match
+     NOTHING in the selector table. If the extension finds the player here, it
+     finds it on any page shaped like a video page.
+
+     If someone later harvests VK's real DOM
+     (`node scripts/harvest-site-selectors.mjs --snippet`), this file should be
+     replaced with a faithful one and the selector table filled in. */
+  html, body {
+    margin: 0; padding: 0;
+    background: #0f1621;
+    color: rgba(255, 255, 255, 0.92);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+  .m-head {
+    height: 56px; background: #17212b;
+    display: flex; align-items: center; gap: 24px; padding: 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .m-brand { font-weight: 800; font-size: 22px; color: #07f; letter-spacing: -0.5px; }
+  .m-col { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  .m-a {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    border-radius: 10px; overflow: hidden;
+    background: radial-gradient(120% 120% at 35% 25%, #1d3a5c 0%, #101a26 60%, #0b1119 100%);
+  }
+  .m-b { position: absolute; inset: 0; }
+  video { width: 100%; height: 100%; display: block; background: transparent; }
+  .m-play {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 72px; height: 72px; border-radius: 50%; background: #07f;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .m-play::after {
+    content: ''; width: 0; height: 0;
+    border-left: 22px solid #fff;
+    border-top: 14px solid transparent; border-bottom: 14px solid transparent;
+    margin-left: 6px;
+  }
+  .m-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+    padding: 12px 16px 10px;
+    display: flex; align-items: center; gap: 12px;
+    color: rgba(255, 255, 255, 0.85); font-size: 12px;
+  }
+  .m-seek { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; overflow: hidden; }
+  .m-seek::after { content: ''; display: block; width: 38%; height: 100%; background: #07f; }
+  .m-meta { margin-top: 12px; }
+  .m-meta h1 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+  .m-sub { color: rgba(255, 255, 255, 0.5); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="m-head"><div class="m-brand">VK Видео</div></div>
+
+<div class="m-col">
+  <div class="m-a">
+    <div class="m-b"><video preload="none" muted></video></div>
+    <div class="m-play"></div>
+    <div class="m-bar">
+      <div class="m-seek"></div>
+      <span style="font-variant-numeric:tabular-nums">05:41 / 19:03</span>
+    </div>
+  </div>
+  <div class="m-meta">
+    <h1>Разбор: как смотреть длинные записи быстрее</h1>
+    <div class="m-sub">412 908 просмотров · 3 дня назад · Сообщество</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1187,19 +1187,39 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: 12px;
+  /* Sits ABOVE the like button, so the spacing goes below it. */
+  margin-bottom: 16px;
 }
+/* Colours copied from YouTube's own buttons in this column, not invented.
+   The column has no background of its own — it sits over the PAGE, not over
+   the video — so YouTube draws opaque light circles with dark glyphs. The
+   first version of this control used a translucent white fill with white
+   glyphs, sized for a dark backdrop: it laid out correctly, reported
+   opacity 1, and photographed as a blank 44x116 rectangle, because it was
+   white on white. Two placement rewrites chased that before the contrast was
+   spotted (2026-08-10). Theme tokens keep it right in dark mode too. */
 .vs-shorts-btn,
 .vs-shorts-readout {
   border: 0;
   cursor: pointer;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.05);
+  color: #0f0f0f;
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background 0.15s ease;
 }
+html[dark] .vs-shorts-btn,
+html[dark] .vs-shorts-readout,
+html[data-vs-theme='dark'] .vs-shorts-btn,
+html[data-vs-theme='dark'] .vs-shorts-readout {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f1f1;
+}
 .vs-shorts-btn:hover,
-.vs-shorts-readout:hover { background: rgba(255, 255, 255, 0.24); }
+.vs-shorts-readout:hover { background: rgba(0, 0, 0, 0.12); }
+html[dark] .vs-shorts-btn:hover,
+html[dark] .vs-shorts-readout:hover,
+html[data-vs-theme='dark'] .vs-shorts-btn:hover,
+html[data-vs-theme='dark'] .vs-shorts-readout:hover { background: rgba(255, 255, 255, 0.2); }
 .vs-shorts-btn {
   width: 40px;
   height: 40px;
@@ -1211,7 +1231,7 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
   justify-content: center;
 }
 /* The readout doubles as the reset control, so it has to look pressable —
-   a plain label would leave "back to 1x" undiscoverable. */
+   a plain label would leave "back to normal speed" undiscoverable. */
 .vs-shorts-readout {
   min-width: 44px;
   height: 24px;

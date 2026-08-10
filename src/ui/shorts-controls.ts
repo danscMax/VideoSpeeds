@@ -40,6 +40,7 @@ export function createShortsControls(ctx: AppContext): ShortsControls {
   const bounds = speedBoundsFor(ctx.site);
   let root: HTMLElement | null = null;
   let readout: HTMLElement | null = null;
+  let observer: MutationObserver | null = null;
 
   const round = (n: number): number => Math.round(n * 100) / 100;
   const clamp = (n: number): number => Math.min(bounds.max, Math.max(bounds.min, round(n)));
@@ -104,6 +105,22 @@ export function createShortsControls(ctx: AppContext): ShortsControls {
     ensureMounted(): void {
       const bar = document.querySelector(ACTION_BAR);
       if (!bar) return;
+      // YouTube re-renders the reel's action bar while you watch — a new Short
+      // scrolling in, the like count updating — and the re-render takes our
+      // node with it. Mounting only on navigation therefore left the controls
+      // present for a moment and gone by the time anyone looked: measured
+      // visible in the DOM, absent from a screenshot of the column taken
+      // seconds later (2026-08-10). Watch the bar and put them back.
+      if (!observer) {
+        observer = new MutationObserver(() => {
+          const live = document.querySelector(ACTION_BAR);
+          if (live && !live.contains(root)) this.ensureMounted();
+        });
+        ctx.cleanup.add(() => {
+          observer?.disconnect();
+          observer = null;
+        });
+      }
       // The reel renderer is swapped on every scroll, taking our node with it,
       // so "already built" is not the same as "still on the page".
       if (root && bar.contains(root)) {
@@ -112,7 +129,16 @@ export function createShortsControls(ctx: AppContext): ShortsControls {
       }
       root?.parentElement?.removeChild(root);
       root = build();
-      bar.appendChild(root);
+      // PREPEND, not append. The column's box grows to fit whatever is added,
+      // but YouTube only paints its own region of it: appended at the end, our
+      // stack sat 116px BELOW the drawn column, over empty page — present in
+      // the DOM, correct geometry, correct computed styles, and a screenshot of
+      // the element came back blank (measured 2026-08-10). Going in above the
+      // like button puts it inside the painted area.
+      bar.prepend(root);
+      // Re-observe: the node we were watching may itself have been replaced.
+      observer.disconnect();
+      observer.observe(bar.parentElement ?? bar, { childList: true, subtree: true });
       ctx.logger.info('shorts: controls mounted into the action bar');
     },
     refresh(speed: number): void {

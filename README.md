@@ -194,9 +194,9 @@ the full terms.
 ### Установка
 
 - **Firefox AMO** — [**Установить из AMO**](https://addons.mozilla.org/firefox/addon/video-speed-controller-yt-rt/) ✅ одобрено
-- **Chrome Web Store** — *(на ревью)*
+- **Chrome Web Store** — [**Установить из Chrome Web Store**](https://chromewebstore.google.com/detail/gppapgnbcdmpgeeccldopkgpagcdinlk) ✅ одобрено (Chrome / Edge / Brave / Яндекс.Браузер)
 
-#### Chrome / Edge / Brave — вручную (пока CWS-листинг не одобрен)
+#### Chrome / Edge / Brave — вручную (из исходников)
 
 1. Сборка: `npm install && npx wxt build`
 2. Открыть `chrome://extensions`, включить «Режим разработчика»

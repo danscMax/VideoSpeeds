@@ -38,9 +38,10 @@ export function removeStyles(container: Document = document): void {
  *   YouTube -- mirror the [dark] attribute YouTube sets on `<html>`
  *              (their canonical signal). Fallback to prefers-color-scheme.
  *   RuTube  -- walk parent chain from `referenceEl` (or body), find
- *              first ancestor with a non-transparent background, decide
+ *   + Dzen     first ancestor with a non-transparent background, decide
  *              by perception-weighted luminance (YIQ formula). Future-
- *              proofs against RuTube ever shipping a light theme.
+ *              proofs against RuTube ever shipping a light theme; Dzen
+ *              already has one, so there it is load-bearing today.
  *              Mirrors .user.js:1614-1662 detectPageTheme().
  */
 export function detectAndApplyTheme(
@@ -58,7 +59,11 @@ export function detectAndApplyTheme(
     } else {
       theme = preferredColorScheme(container) ?? 'light';
     }
-  } else if (site === 'rutube') {
+  } else if (site === 'rutube' || site === 'dzen') {
+    // Same luminance walk for both. Dzen is not a "future-proofing" case the
+    // way RuTube is — it ships a real light theme today, and without this the
+    // function would fall straight through to the `'dark'` initializer and
+    // paint near-white panel text onto a light page.
     theme =
       detectByLuminance(referenceEl ?? container.body, container) ??
       preferredColorScheme(container) ??
@@ -335,6 +340,19 @@ html[data-vs-site="rutube"] {
   --vs-menu-active-glow-hover: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
   --vs-toggle-on: var(--vs-accent-dark);
 }
+.vs-panel[data-vs-site="dzen"],
+html[data-vs-site="dzen"] {
+  /* Yandex's red-orange. Close to YouTube red but not the same, and without
+     its own entry Dzen inherits the :root YouTube palette outright. */
+  --vs-accent: #fc3f1d;
+  --vs-accent-dark: #d63315;
+  --vs-accent-darker: #a82810;
+  --vs-accent-rgb: 252, 63, 29;
+  --vs-menu-active-bg: linear-gradient(135deg, var(--vs-accent-dark) 0%, var(--vs-accent-darker) 100%);
+  --vs-menu-active-glow: 0 2px 10px rgba(var(--vs-accent-rgb), 0.35);
+  --vs-menu-active-glow-hover: 0 3px 14px rgba(var(--vs-accent-rgb), 0.5);
+  --vs-toggle-on: var(--vs-accent-dark);
+}
 .vs-panel[data-vs-site="youtube"],
 html[data-vs-site="youtube"] {
   --vs-accent: #ff0000;
@@ -421,14 +439,13 @@ html[data-vs-site="youtube"] {
   position: static;
   animation: vs-fade-in 0.3s ease;
 }
-/* No extension UI in fullscreen (user directive 2026-07-27). Native
-   fullscreen paints only the fullscreenElement's subtree, and the panel is
-   anchored beside / below the player — so it is already off-screen there.
-   This rule covers what genuinely lives INSIDE the player: the slider in
-   'video' position, the "1.50x" popup, and the panel itself in the case
-   where the site fullscreens an ancestor that contains it. Second matcher
-   is Plyr's CSS-only pseudo-fullscreen (used when the Fullscreen API is
-   unavailable — no fullscreenElement, hence no :fullscreen match).
+/* No floating extension furniture in fullscreen (user directive 2026-07-27).
+   Native fullscreen paints only the fullscreenElement's subtree, and the
+   panel is anchored beside / below the player — so it is already off-screen
+   there. This rule still matters for the case where the site fullscreens an
+   ancestor that CONTAINS the panel. Second matcher is Plyr's CSS-only
+   pseudo-fullscreen (used when the Fullscreen API is unavailable — no
+   fullscreenElement, hence no :fullscreen match).
    The :is() wrapper is deliberate, not cosmetic: it is forgiving, so a
    browser that doesn't know :fullscreen drops only that matcher instead of
    invalidating the whole selector list. Don't flatten it back.
@@ -436,15 +453,24 @@ html[data-vs-site="youtube"] {
    display-!important declaration, which an author stylesheet cannot
    override — it is guarded in JS instead (ui/notifications.ts + the
    fullscreenchange listener in index.ts). */
-:is(:fullscreen, .plyr--fullscreen-fallback) :is(.vs-panel, .vs-slider-in-chrome) {
+:is(:fullscreen, .plyr--fullscreen-fallback) .vs-panel {
   display: none !important;
 }
 /* .speed-popup is deliberately NOT in that list (2026-08-05). It is the
-   centred "1.50x" that flashes for two seconds after a speed change — and in
-   fullscreen the panel is hidden, so the hotkey is the only way to change
-   speed and this popup is the only confirmation that anything happened.
-   Hiding it made the hotkey silent: you pressed and guessed. The persistent
-   chrome above stays hidden; this one disappears on its own. */
+   centred "1.50x" that flashes for two seconds after a speed change — and
+   with the panel hidden the hotkey is the only always-available control, so
+   this popup is the only confirmation that anything happened. Hiding it made
+   the hotkey silent: you pressed and guessed. It disappears on its own.
+
+   .vs-slider-in-chrome left the list too (2026-08-10, owner report: the
+   in-player slider was missing in fullscreen and that read as broken). It
+   is not floating furniture — sliderPosition='video' mounts it INTO the
+   player's own control bar, which is inside the fullscreen element and
+   therefore paints, and it already fades with the rest of the controls
+   (the .ytp-autohide rule further down). Hiding it left that display mode
+   with nothing on screen in the one place a video is actually watched.
+   The panel above stays hidden: it really is furniture, it is anchored
+   outside the player and never auto-hides. */
 
 .vs-panel.vs-panel--pending {
   visibility: hidden;

@@ -15,6 +15,7 @@ export function detectSite(host: string = safeHostname()): Site | null {
   // called from the popup for arbitrary tab URLs (audit 2026-05-09).
   if (/(?:^|\.)youtube\.com$/.test(h)) return 'youtube';
   if (/(?:^|\.)rutube\.ru$/.test(h)) return 'rutube';
+  if (/(?:^|\.)dzen\.ru$/.test(h)) return 'dzen';
   return null;
 }
 
@@ -24,6 +25,10 @@ export function isYouTube(host?: string): boolean {
 
 export function isRutube(host?: string): boolean {
   return detectSite(host) === 'rutube';
+}
+
+export function isDzen(host?: string): boolean {
+  return detectSite(host) === 'dzen';
 }
 
 function safeHostname(): string {

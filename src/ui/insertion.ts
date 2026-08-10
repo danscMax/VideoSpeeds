@@ -146,6 +146,14 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
     return { parent: null, anchor: 'no-anchor' };
   }
 
+  // 1b. Dzen has the same problem in a sharper form: its feed is wall-to-wall
+  //     autoplaying preview <video> elements, so without a path filter the
+  //     heuristic strategy would promote whichever tile happens to be on
+  //     screen and drop the panel into the feed.
+  if (ctx.site === 'dzen' && !isDzenVideoPath(location.pathname)) {
+    return { parent: null, anchor: 'no-anchor' };
+  }
+
   // 2. YouTube fast path. `#primary-inner` has exactly two children on
   //    /watch pages: `#player` (the play surface) and `#below` (everything
   //    underneath -- metadata, comments, and on narrow viewports with a
@@ -202,6 +210,27 @@ function chooseAnchor(pos: SliderPosition, ctx: AppContext): AnchorChoice {
         parent: layoutPlayer.parentElement,
         anchor: 'after-player',
         before: skipOwnPanel(layoutPlayer.nextSibling),
+      };
+    }
+  }
+
+  // 3b. Dzen fast path — direct DOM query, for the same reason as RuTube's:
+  //     the cache can stale-resolve `playerContainer` to one of the inner
+  //     boxes, all of which report the video's exact dimensions, and inserting
+  //     next to those lands the panel INSIDE the viewer overlay on top of the
+  //     picture. `playerWrap` is the outermost box that still matches the
+  //     video, and its parent is the content column — the panel gets its own
+  //     row between the player and the description, which is where a reader
+  //     expects it. Measured on live dzen.ru 2026-08-10.
+  if (ctx.site === 'dzen') {
+    const playerWrap = document.querySelector(
+      '[class*="video-viewer--video-viewer-player__playerWrap"]',
+    );
+    if (playerWrap?.parentElement) {
+      return {
+        parent: playerWrap.parentElement,
+        anchor: 'after-player',
+        before: skipOwnPanel(playerWrap.nextSibling),
       };
     }
   }
@@ -281,6 +310,20 @@ export function isRutubeVideoPath(pathname: string): boolean {
     pathname.startsWith('/shorts/') ||
     pathname.startsWith('/play/embed/')
   );
+}
+
+/**
+ * Allow-list of Dzen paths where the panel should be inserted.
+ *
+ *   /video/watch/<id>  — the video viewer, the only page with a real player
+ *   /shorts/<id>       — vertical short, same viewer shell
+ *
+ * Everything else is feed, channel or article. Those pages are full of
+ * autoplaying preview <video> tiles, which is exactly what the heuristic
+ * discovery strategy would latch onto without this filter.
+ */
+export function isDzenVideoPath(pathname: string): boolean {
+  return pathname.startsWith('/video/watch/') || pathname.startsWith('/shorts/');
 }
 
 /**

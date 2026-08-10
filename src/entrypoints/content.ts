@@ -7,10 +7,12 @@
  * SPA navigation hooks), see entrypoints/page-world.ts which runs in MAIN world.
  */
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import { supportedOrigins } from '../sites/host-patterns';
+import { allMatchPatterns } from '../sites/host-patterns';
 
 export default defineContentScript({
-  matches: supportedOrigins(),
+  // Required AND optional hosts: an optional-host match simply never fires
+  // until the user grants it, so no runtime registration path is needed.
+  matches: allMatchPatterns(),
   runAt: 'document_idle',
   allFrames: false,
   async main(ctx) {

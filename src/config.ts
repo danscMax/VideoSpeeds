@@ -45,6 +45,10 @@ const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
   // unaffected: their speed comes from storage.
   youtube: { min: 0.75, max: 10.0, defaultSpeed: 1.0 },
   rutube: { min: 1.0, max: 10.0, defaultSpeed: 1.0 },
+  // Dzen's own player offers no speed control at all, so the full range is
+  // useful here; the floor matches RuTube's rather than YouTube's because
+  // sub-1x has no audience on a feed of short-form video.
+  dzen: { min: 1.0, max: 10.0, defaultSpeed: 1.0 },
 };
 
 export function speedBoundsFor(site: Site): SpeedBounds {
@@ -76,6 +80,7 @@ export const SPEED_POOL: readonly number[] = [
 const DEFAULT_PRESETS: Record<Site, readonly number[]> = {
   youtube: [1, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25],
   rutube: [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
+  dzen: [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3],
 };
 
 export function defaultPresetsFor(site: Site): readonly number[] {
@@ -99,6 +104,12 @@ const STORAGE_KEYS: Record<Site, StorageKeys> = {
   rutube: {
     settings: 'rutube-speed-settings',
     speed: 'rutube-selected-speed',
+  },
+  // No legacy userscript ever ran on Dzen, so there is nothing to migrate —
+  // these keys just follow the established naming.
+  dzen: {
+    settings: 'dzen-speed-settings',
+    speed: 'dzen-selected-speed',
   },
 };
 

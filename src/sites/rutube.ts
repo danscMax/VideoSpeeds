@@ -9,7 +9,7 @@
  */
 
 import type { AppContext } from '../app/context';
-import { type BridgeMessage, generateSessionId, isBridgeMessage } from './bridge-protocol';
+import { createNavigationBridge } from './history-bridge';
 
 export interface RutubeSiteHandle {
   /** Fired on every page-world history-change event. */
@@ -69,8 +69,10 @@ function setStyleEnabled(id: string, css: string, enabled: boolean): void {
 }
 
 export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
-  const subscribers = new Set<() => void>();
-  const sessionId = generateSessionId();
+  // The navigation half is shared with every other React-router site — see
+  // sites/history-bridge.ts. What stays here is RuTube's own chrome: the
+  // hide-title and hide-Premium stylesheets.
+  const { onNavigation, sessionId } = createNavigationBridge(ctx, 'rutube');
 
   // Initial application of hide-title / hide-Premium toggles + reactive
   // re-application on settings change. Mirrors .user.js:2199-2204 (bootstrap)
@@ -107,52 +109,5 @@ export function bootstrapRutubeSite(ctx: AppContext): RutubeSiteHandle {
     document.getElementById(HIDE_PREMIUM_STYLE_ID)?.remove();
   });
 
-  ctx.cleanup.addEventListener(window, 'message', (event) => {
-    const ev = event as MessageEvent;
-    // Defence in depth (audit 2026-05-09 sec C2/C3):
-    //  1. ev.source === window  — this rejects messages dispatched from any
-    //     other window object, including same-origin iframes (parent.postMessage
-    //     from an ad iframe makes ev.source === iframe.contentWindow, not us).
-    //  2. ev.origin === location.origin — additionally rejects cross-origin
-    //     iframes that some browsers attribute to the parent window in
-    //     unusual edge cases (e.g. about:srcdoc with inheritance), and
-    //     blocks any future top-frame embedded in a cross-origin shell.
-    //  3. Strict sessionId === 'page' — page-world.content.ts broadcasts
-    //     navigation events with the literal sentinel 'page'. Any other
-    //     value indicates a malicious in-page script forging the envelope
-    //     (formerly we accepted arbitrary sessionId values, allowing a
-    //     reattach-spam DoS primitive).
-    if (ev.source !== window) return;
-    if (ev.origin !== window.location.origin) return;
-    if (!isBridgeMessage(ev.data)) return;
-
-    const msg = ev.data as BridgeMessage;
-    if (msg.type === 'history-changed' || msg.type === 'navigated') {
-      if (msg.sessionId !== 'page') return;
-      ctx.logger.debug('site:rutube nav via bridge', msg.payload);
-      for (const fn of subscribers) {
-        try {
-          fn();
-        } catch (e) {
-          ctx.logger.error('site:rutube nav handler', e);
-        }
-      }
-    }
-  });
-
-  // Audit 2026-05-11 W2.2 (REL-005 + PLAT-001 + SEC-004): removed
-  // pong/dispose postMessage broadcasts. The page-world side never
-  // installed a receiver — these envelopes vanished into the void
-  // while exposing the per-bootstrap sessionId to any in-page
-  // listener (passive fingerprint surface on RuTube). The "replay
-  // pending events" comment was aspirational; no buffer existed in
-  // page-world.content.ts. Bridge is now strictly one-way
-  // (page → isolated). See bridge-protocol.ts BridgeMessageType.
-
-  return {
-    onNavigation(fn) {
-      subscribers.add(fn);
-    },
-    sessionId,
-  };
+  return { onNavigation, sessionId };
 }

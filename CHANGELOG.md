@@ -5,6 +5,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Dzen video (dzen.ru) is now supported** — speed buttons, slider and hotkeys
+  on `dzen.ru/video/watch/…` and Dzen shorts, with the panel anchored between
+  the player and the description. Every selector was measured on the live site
+  rather than guessed (`scripts/harvest-site-selectors.mjs`, kept in the repo
+  for the next site or the next Yandex redesign); Dzen hashes its class names
+  per build, so the matching is substring-based by necessity.
+  Dzen is an **opt-in** host: it is deliberately not in `host_permissions`,
+  because in Chrome a new required host permission disables the extension on
+  every existing install until the user re-accepts it. Open a Dzen video, click
+  the extension icon, press "Allow" once.
+- **The in-player slider position is now offered on RuTube too.** It had been
+  gated on a literal `site === 'youtube'` while RuTube's control-bar selectors
+  had been in the table all along. The gate now derives from that table, so any
+  site with a control bar gets the option automatically.
+- `activeTab` permission. Without it the popup cannot read the address of a tab
+  it has no host permission for, so on an opt-in site it could not tell which
+  site it was on and never showed the "Allow" button — the grant was
+  unreachable. activeTab is scoped to the tab you invoked the extension on and
+  carries no install-time warning.
+
+### Fixed
+
+- RuTube's in-player control cluster was addressed by a selector that matches
+  nothing on the current site: the right-hand column carries no "right" in its
+  class attribute at all (measured — zero hits across the player subtree). The
+  slider fell back to the whole control wrapper. Now matched on the utility
+  class RuTube actually uses, with the old patterns kept as trailing fallbacks.
+
+- The in-player speed slider (Settings → slider position → "in the player")
+  no longer disappears in fullscreen. It had been swept into the same hide rule
+  as the floating panel, which left that display mode with nothing on screen in
+  the one place a video is actually watched. It is a player control, not
+  extension furniture: it sits inside YouTube's own control bar and already
+  fades in and out with the rest of the controls. The floating panel stays
+  hidden in fullscreen, unchanged.
+- The live fullscreen smoke was asserting on that slider without ever creating
+  it — the default slider position is "right", so the element was simply absent
+  and the check passed while proving nothing. It now switches the setting
+  through the real settings UI first, and the YouTube and RuTube mock pages grew
+  the control clusters they had always lacked.
+
 ## [0.6.6] — 2026-08-06
 
 ### Fixed

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru" data-vs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Dzen — offline mock host</title>
+<style>
+  /* Host-page styles ONLY. The extension's content script injects its own
+     .vs-panel + .settings-menu at runtime.
+
+     Every class name below was copied from a live dzen.ru/video/watch page
+     (scripts/harvest-site-selectors.mjs, 2026-08-10). Dzen hashes each class
+     per build — `__playerWrap-1P`, `__videoControls-3i` — so the suffixes here
+     are frozen samples, and both the product selectors and this mock match on
+     the stable module prefix only. Do not "tidy" them into clean names: the
+     substring matching is the whole point, and a clean name would let a
+     selector pass here that cannot find anything on the real site. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #131313;
+    color: rgba(255, 255, 255, 0.92);
+    font-family: 'YS Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+  .dzen-masthead {
+    height: 56px;
+    background: #1c1c1c;
+    display: flex; align-items: center; gap: 24px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .dzen-logo { font-weight: 800; font-size: 22px; color: #fc3f1d; letter-spacing: -0.5px; }
+  .dzen-search {
+    flex: 0 1 540px; height: 36px; margin: 0 auto;
+    background: #2b2b2b; border-radius: 18px;
+    display: flex; align-items: center; padding: 0 16px;
+    color: rgba(255, 255, 255, 0.45); font-size: 14px;
+  }
+
+  /* The viewer column. On the real site this is the scrollable content
+     wrapper the panel anchors into, as a sibling right after the player. */
+  .video-viewer--video-viewer-content__wrapper-2w { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+  /* Player box chain, outermost first — playerWrap is what insertion.ts
+     queries, and the element the site fullscreens. */
+  .video-viewer--video-viewer-player__playerWrap-1P {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    border-radius: 12px; overflow: hidden;
+    background: radial-gradient(120% 120% at 30% 20%, #2a2036 0%, #101018 60%, #0b0b10 100%);
+  }
+  .video-viewer--video-player__videoPlayer-QK,
+  .video-viewer--video-player__player-1k { position: absolute; inset: 0; }
+  video { width: 100%; height: 100%; display: block; background: transparent; }
+
+  .dzen-play-btn {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 76px; height: 76px; border-radius: 20px;
+    background: #fc3f1d;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dzen-play-btn::after {
+    content: ''; width: 0; height: 0;
+    border-left: 24px solid #fff;
+    border-top: 15px solid transparent; border-bottom: 15px solid transparent;
+    margin-left: 6px;
+  }
+
+  /* The controls overlay covers the whole player; its bottom strip is the
+     row that actually holds buttons. */
+  .video-viewer--video-controls__videoControls-3i { position: absolute; inset: 0; }
+  .video-viewer--cover__bottom-29 {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+    padding: 12px 16px 10px;
+    display: flex; align-items: center; gap: 12px;
+    color: rgba(255, 255, 255, 0.85); font-size: 12px;
+  }
+  .video-viewer--video-controls__seekbar-so {
+    flex: 1; height: 4px; background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px; overflow: hidden;
+  }
+  .video-viewer--video-controls__seekbar-so::after {
+    content: ''; display: block; width: 42%; height: 100%; background: #fc3f1d;
+  }
+  /* Dzen's own buttons. They matter for more than looks: the `rightControls`
+     validator rejects a cluster with no interactive child, so a decorative
+     strip would silently resolve to null and the in-player slider would never
+     mount. Kept visible because that is how the real bar looks. */
+  .dzen-btn {
+    width: 24px; height: 24px; border: 0; padding: 0; border-radius: 4px;
+    background: rgba(255, 255, 255, 0.14); cursor: pointer;
+  }
+
+  .video-viewer--video-header__title-2L {
+    position: absolute; left: 16px; top: 14px; right: 16px;
+    margin: 0; font-size: 15px; font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  }
+  .dzen-meta { color: rgba(255, 255, 255, 0.5); font-size: 13px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="dzen-masthead">
+  <div class="dzen-logo">Дзен</div>
+  <div class="dzen-search">Поиск видео</div>
+</div>
+
+<div class="video-viewer--viewer-layout__content-2N">
+<div class="video-viewer--video-viewer-content__wrapper-2w">
+  <div class="video-viewer--video-viewer-player__playerWrap-1P">
+    <div class="video-viewer--video-player__videoPlayer-QK">
+      <div class="video-viewer--video-player__player-1k">
+        <video class="zen-ui-video-video-player__player" preload="none" muted></video>
+      </div>
+    </div>
+    <div class="dzen-play-btn"></div>
+    <div class="video-viewer--video-controls__videoControls-3i">
+      <p class="video-viewer--video-header__title-2L">Как ускорить длинное видео и не потерять смысл</p>
+      <div class="video-viewer--cover__item-37 video-viewer--cover__bottom-29">
+        <div class="video-viewer--video-controls__seekbar-so"></div>
+        <span style="font-variant-numeric:tabular-nums">08:12 / 24:40</span>
+        <button class="dzen-btn" type="button" aria-label="Настройки"></button>
+        <button class="dzen-btn" type="button" aria-label="Во весь экран"></button>
+      </div>
+    </div>
+  </div>
+  <div class="dzen-meta">124 559 просмотров · 2 дня назад · Канал · Технологии</div>
+</div>
+</div>
+</body>
+</html>

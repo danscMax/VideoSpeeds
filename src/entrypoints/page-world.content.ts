@@ -5,8 +5,8 @@
  * page's `window`, `history`, `localStorage` as the page itself sees them.
  * Does NOT have chrome.* APIs (those only exist in isolated world).
  *
- * SCOPE: RuTube only.
- *   - RuTube React Router patches window.history.pushState in page context.
+ * SCOPE: the React-router sites (RuTube, Dzen) — see SPA_BRIDGE_HOST_PATTERNS.
+ *   - Their routers patch window.history.pushState in page context.
  *     To intercept those calls (so we re-attach speed controls after SPA
  *     navigation) we must run in the same world the patches live in.
  *   - YouTube is intentionally excluded: its strict Trusted Types CSP blocks
@@ -28,6 +28,7 @@
  *     adding it to web_accessible_resources).
  */
 import { defineContentScript } from 'wxt/utils/define-content-script';
+import { spaBridgeOrigins } from '../sites/host-patterns';
 
 // Audit 2026-05-11 W5.2 (PLAT-003): versioned envelope. Must match
 // bridge-protocol.ts SOURCE. Bump together when the envelope shape
@@ -38,7 +39,9 @@ const SOURCE = 'video-speeds@1';
 const INSTALL_FLAG = '__vs_historyHookInstalled';
 
 export default defineContentScript({
-  matches: ['*://rutube.ru/*', '*://*.rutube.ru/*'],
+  // Derived, not re-typed: a React-router site added to the host list must
+  // not be able to arrive without its history hook.
+  matches: spaBridgeOrigins(),
   runAt: 'document_start',
   world: 'MAIN',
   registration: 'manifest',

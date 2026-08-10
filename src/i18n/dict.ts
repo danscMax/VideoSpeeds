@@ -65,10 +65,11 @@ export const I18N_DICT = {
     // The floors differ per site and neither is 0.5 (see config.ts SPEED_BOUNDS)
     // — the old "0.5–10x" was copied from the HDRezka twin and promised a
     // slow-down this extension cannot do.
-    'welcome.subtitle': '0.75–10x on YouTube, 1–10x on RuTube. No ads, no tracking.',
+    'welcome.subtitle': '0.75–10x on YouTube, 1–10x on RuTube and Dzen. No ads, no tracking.',
     'welcome.value': '⚡ Save time on long videos',
     'welcome.step1.title': 'Speed buttons in one click',
-    'welcome.step1.body': 'Visit YouTube or RuTube — the panel appears automatically.',
+    'welcome.step1.body':
+      'Visit YouTube or RuTube — the panel appears automatically. Dzen works too, after you allow it once from the toolbar popup.',
     'welcome.ann.clicks':
       '**Click** — switch speed.\n**Double-click** — set as default for new videos.\n**Alt+. / Alt+,** — fine-tune by 0.1×.',
     'welcome.ann.slider': '**Slider** — smooth speed, e.g. 1.7x or 2.3x.',
@@ -127,7 +128,7 @@ export const I18N_DICT = {
     'general.pos.bottom': 'Below',
     'general.pos.bottom.tip': 'Slider on a separate row below the buttons',
     'general.pos.video': 'In player',
-    'general.pos.video.tip': "Embed slider into the YouTube player's bottom control bar",
+    'general.pos.video.tip': "Embed slider into the player's bottom control bar",
     'general.pos.narrow_hint':
       'Auto: on narrow screens the slider wraps below — your choice is kept and restored when there is enough room.',
 
@@ -433,10 +434,11 @@ export const I18N_DICT = {
 
     // welcome.*
     'welcome.title': 'Скорость, которую выбираете Вы',
-    'welcome.subtitle': '0.75–10x на YouTube, 1–10x на RuTube. Без рекламы и трекинга.',
+    'welcome.subtitle': '0.75–10x на YouTube, 1–10x на RuTube и Дзене. Без рекламы и трекинга.',
     'welcome.value': '⚡ Экономьте время на длинных видео',
     'welcome.step1.title': 'Кнопки скорости в один клик',
-    'welcome.step1.body': 'Зайдите на YouTube или RuTube — панель встраивается автоматически.',
+    'welcome.step1.body':
+      'Зайдите на YouTube или RuTube — панель встраивается автоматически. Дзен тоже работает: один раз разрешите доступ в окошке расширения.',
     'welcome.ann.clicks':
       '**Клик** — сменить скорость.\n**Двойной клик** — сделать скоростью по умолчанию для новых видео.\n**Alt+. / Alt+,** — точная настройка ±0.1×.',
     'welcome.ann.slider': '**Ползунок** — плавная скорость, например 1.7x или 2.3x.',
@@ -491,7 +493,7 @@ export const I18N_DICT = {
     'general.pos.bottom': 'Снизу',
     'general.pos.bottom.tip': 'Ползунок на отдельной строке под кнопками',
     'general.pos.video': 'В плеере',
-    'general.pos.video.tip': 'Встроить ползунок в нижнюю панель плеера YouTube',
+    'general.pos.video.tip': 'Встроить ползунок в нижнюю панель плеера',
     'general.pos.narrow_hint':
       'Авто: на узком экране ползунок переносится вниз. Ваш выбор сохранён и вернётся, когда места будет достаточно.',
 

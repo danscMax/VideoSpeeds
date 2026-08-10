@@ -1,6 +1,6 @@
 import { defineConfig } from 'wxt';
 import pkg from './package.json' with { type: 'json' };
-import { supportedOrigins } from './src/sites/host-patterns';
+import { optionalOrigins, supportedOrigins } from './src/sites/host-patterns';
 
 // WXT config: builds Chrome MV3 + Firefox MV3 from the same source.
 // Browser-specific manifest tweaks are handled via the `manifest` callback below.
@@ -64,14 +64,28 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: 'Video Speed Controller (YouTube + RuTube)',
     description:
-      'Adds speed buttons, slider, and hotkeys to YouTube and RuTube videos. Bilingual interface (English/Russian).',
+      'Adds speed buttons, slider, and hotkeys to YouTube, RuTube and Dzen videos. Bilingual interface (English/Russian).',
     version: pkg.version,
     author: 'MaxScorpy',
-    permissions: ['storage'],
-    // Product scope is YouTube + RuTube. Audit H5 dropped the *.piped.video
+    // `activeTab` is what lets the popup see the URL of the tab you clicked
+    // from. Without it `tabs.query` returns no `url` for a host we have no
+    // permission for yet — so on an opt-in site the popup cannot tell which
+    // site it is on and never renders the "Allow" button, making the grant
+    // unreachable and the opt-in host dead on arrival. It is also the state a
+    // Firefox install starts in for EVERY site.
+    // Chosen over `tabs`: activeTab is scoped to the tab you invoked the
+    // extension on, shows no install-time permission warning, and therefore
+    // cannot disable existing installs on update.
+    permissions: ['storage', 'activeTab'],
+    // Product scope is YouTube + RuTube, with Dzen as an opt-in host (see
+    // optional_host_permissions below). Audit H5 dropped the *.piped.video
     // host that an earlier scaffold included -- it was out of product scope
     // and would have read as CWS overreach during listing review.
     host_permissions: supportedOrigins(),
+    // Opt-in hosts (Dzen). Kept out of host_permissions so a Chrome update
+    // cannot disable the extension on every existing install for a site the
+    // user may never open. See src/sites/host-patterns.ts.
+    optional_host_permissions: optionalOrigins(),
     // Firefox needs explicit ID for AMO submission and storage isolation.
     // data_collection_permissions is required for all new AMO extensions
     // since 2025-11-03 (Mozilla mandate). We don't transmit any personal

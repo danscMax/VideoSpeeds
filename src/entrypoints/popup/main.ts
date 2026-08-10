@@ -26,7 +26,7 @@ import type { DiagnosticReport } from '../../health/types';
 import { detectBrowserLang } from '../../i18n/detect';
 import { createTranslator } from '../../i18n/translator';
 import { detectSite } from '../../sites/detect';
-import { supportedOriginGroups, supportedOrigins } from '../../sites/host-patterns';
+import { originsForSite } from '../../sites/host-patterns';
 import { createBrowserStorageAdapter } from '../../storage/adapter';
 import { createSettingsStore } from '../../storage/settings-store';
 import { createSpeedStore } from '../../storage/speed-store';
@@ -166,9 +166,15 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
   // next to a panel shouting "no access" is a worse bug than either answer
   // alone. Flat `contains` over both sites was exactly that: a profile with
   // YouTube granted and RuTube not got a permanent nag while YouTube worked.
+  //
+  // Asked PER SITE rather than "any site at all": the popup knows which tab it
+  // was opened from, so it can answer the precise question. That matters for
+  // the opt-in hosts — on Dzen the extension is dormant until granted, and a
+  // check over the REQUIRED sites would report "all good" while the panel is
+  // nowhere to be seen.
   let missingAccess = false;
   async function refreshMissingAccess(): Promise<void> {
-    missingAccess = !(await hasAnySiteAccess(browser.permissions, supportedOriginGroups()));
+    missingAccess = !(await hasAnySiteAccess(browser.permissions, [originsForSite(site)]));
   }
   await refreshMissingAccess();
 
@@ -263,7 +269,7 @@ async function bootstrapPopup(host: HTMLElement): Promise<void> {
         // No await before the request: Firefox only honours it while the
         // click's user-gesture token is alive.
         void browser.permissions
-          .request({ origins: supportedOrigins() })
+          .request({ origins: originsForSite(site) })
           .then((granted) => {
             if (!granted) return;
             void refreshMissingAccess().then(rerender);

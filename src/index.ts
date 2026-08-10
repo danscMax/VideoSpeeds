@@ -28,7 +28,7 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { CleanupRegistry } from './app/cleanup';
 import type { AppContext } from './app/context';
-import type { DiagnosticsPort, Logger as LoggerPort, Translator, UiPort } from './app/ports';
+import type { DiagnosticsPort, Logger as LoggerPort, Site, Translator, UiPort } from './app/ports';
 import { SPEED_STEP, speedBoundsFor } from './config';
 import { createSelectorCache } from './discovery/cache';
 import { createDiscoveryEngine } from './discovery/engine';
@@ -40,6 +40,7 @@ import type { DiagnosticReport } from './health/types';
 import { detectBrowserLang } from './i18n/detect';
 import { createTranslator } from './i18n/translator';
 import { detectSite } from './sites/detect';
+import { bootstrapDzenSite } from './sites/dzen';
 import { bootstrapRutubeSite } from './sites/rutube';
 import {
   bootstrapYouTubeSite,
@@ -673,8 +674,14 @@ export async function bootstrap(
     // re-paints during the SPA transition (audit M10).
     reapplyTheme();
   };
+  // One bootstrap per site. YouTube listens for its own CustomEvent; RuTube
+  // and Dzen both ride the MAIN-world history bridge, but RuTube's bootstrap
+  // additionally owns its hide-title / hide-Premium stylesheets, so they are
+  // not interchangeable.
   if (site === 'youtube') {
     bootstrapYouTubeSite(ctx).onNavigation(reattach);
+  } else if (site === 'dzen') {
+    bootstrapDzenSite(ctx).onNavigation(reattach);
   } else {
     bootstrapRutubeSite(ctx).onNavigation(reattach);
   }
@@ -1164,7 +1171,7 @@ function attachToVideo(
   let lastSrc = v.currentSrc || v.src || '';
   let isSelfWrite = false;
 
-  const isSite = (s: 'youtube' | 'rutube'): boolean => ctx.site === s;
+  const isSite = (s: Site): boolean => ctx.site === s;
   // FEAT-019: ads play at YouTube's own pace. While an ad is showing we
   // neither count ratechanges in the meter, nor sync our UI to the ad's
   // rate, nor force the user's speed onto it — the post-ad 'playing'

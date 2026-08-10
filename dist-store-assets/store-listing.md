@@ -8,24 +8,24 @@ per-locale fields (CWS and AMO both take a separate RU listing).
 
 Benefit-first: the first line is what a searcher sees before "read more".
 
-> Speed up YouTube and RuTube — speed buttons right under the player,
+> Speed up YouTube, RuTube and Dzen — speed buttons under the player,
 > a slider, and custom hotkeys. Bilingual EN/RU, no tracking.
 
 (127 characters.)
 
 ### Russian translation
 
-> Ускоряйте видео на YouTube и RuTube: кнопки скорости прямо под
+> Ускоряйте видео на YouTube, RuTube и Дзене: кнопки скорости под
 > плеером, ползунок и горячие клавиши. Двуязычно EN/RU, без трекинга.
 
-(130 characters.)
+(131 characters.)
 
 ## Detailed description (under 16,000 characters)
 
 ```
 Watch lectures, tutorials and reviews in less time. Video Speed
-Controller puts a row of speed buttons right under the YouTube and
-RuTube player — one click takes a slow talk up to 2x, one more click
+Controller puts a row of speed buttons right under the YouTube,
+RuTube and Dzen player — one click takes a slow talk up to 2x, one more click
 brings it back to 1x. A slider and customizable hotkeys give you exact
 control.
 
@@ -56,6 +56,9 @@ WHAT IT DOES
     Cloudflare Worker — no third-party analytics).
 - Toolbar popup mirrors the in-player menu so you can adjust settings
   without opening a video.
+- Dzen video is supported as an OPT-IN site: it is not requested at
+  install time, so an update never disables the extension. Open a Dzen
+  video, click the extension icon and press "Allow" once.
 - RuTube-only quality-of-life toggles: hide the overlay player title,
   hide Premium subscription banners.
 - Accessibility: aria-labels on the gear button, aria-live status
@@ -179,7 +182,9 @@ Russian: Управление скоростью воспроизведения 
 | Permission | Why |
 |---|---|
 | `storage` | Persist user preferences (speed presets, hotkeys, language, slider position). |
+| `activeTab` | Read the address of the tab you clicked the extension on, so the popup can show settings for that site and offer the one-click opt-in on Dzen. Scoped to that click; no background access to browsing history. |
 | `host_permissions: *://*.youtube.com/*, *://rutube.ru/*, *://*.rutube.ru/*` | Inject the speed-control UI on the supported video sites. |
+| `optional_host_permissions: *://dzen.ru/*, *://*.dzen.ru/*` | Same speed-control UI on Dzen video, requested only if the user opens Dzen and clicks "Allow" in the extension popup. Optional so that adding the site cannot disable the extension for existing users. |
 
 (No `tabs`, no `activeTab` for the popup -- the existing host_permissions
 already grant URL access for the toolbar popup's active-tab check.)

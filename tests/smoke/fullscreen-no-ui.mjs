@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Live smoke: the extension must show NO UI of its own in fullscreen.
+ * Live smoke: in fullscreen the extension hides its floating panel, but keeps
+ * the controls that belong to the player — the in-chrome slider and the
+ * feedback surfaces.
  *
  * Runs the REAL build in a REAL Chromium against the offline mock page, so it
  * catches what jsdom cannot: whether the browser actually paints our panel,
@@ -29,7 +31,7 @@
  *     human aid, not as the check.
  */
 import { chromium } from '@playwright/test';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,18 +46,42 @@ const SCENARIOS = [
     hostUrl: 'https://www.youtube.com/watch?v=storeMockId12345',
     /** Element the site puts into fullscreen. */
     playerSelector: '#movie_player',
+    /** sliderPosition='video' is offered here, so the in-chrome slider is testable. */
+    hasInChromeSlider: true,
+    /** Used only by LIVE=1. A dead id fails loudly, which is the intent. */
+    liveUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
   },
   {
     name: 'rutube',
     mockPath: resolve(REPO, 'tests/store-screenshots/mock-rutube.html'),
     hostUrl: 'https://rutube.ru/video/storeMockId12345/',
     playerSelector: '.video-player',
+    hasInChromeSlider: true,
+    // A normal video, deliberately NOT a /live/video/ stream: isRutubeVideoPath
+    // excludes live streams (speeding a broadcast means nothing), so a live URL
+    // here would look like the panel failing to appear.
+    liveUrl: 'https://rutube.ru/video/6e62ad497b0bfb57c9c0b108e9d97911/',
+  },
+  {
+    name: 'dzen',
+    mockPath: resolve(REPO, 'tests/store-screenshots/mock-dzen.html'),
+    hostUrl: 'https://dzen.ru/video/watch/storeMockId12345',
+    // The outermost box that still matches the video — what insertion.ts
+    // anchors to and what the site fullscreens.
+    playerSelector: '[class*="video-viewer--video-viewer-player__playerWrap"]',
+    hasInChromeSlider: true,
+    liveUrl: 'https://dzen.ru/video/watch/6a673a21d29c014a1b594be3',
   },
 ];
 
 const EXT_DIR = resolve(REPO, '.output/chrome-mv3');
 const SHOT_DIR = resolve(REPO, '.output/smoke');
 const PROFILE_DIR = resolve(REPO, '.output/smoke-profile');
+
+const live = !!process.env.LIVE;
+// SCENARIO=<name> narrows the run to one site — mostly for LIVE passes, where
+// hitting three real sites to re-check one is waste.
+const onlyScenario = process.env.SCENARIO;
 
 const failures = [];
 function check(label, condition, detail) {
@@ -69,8 +95,69 @@ function check(label, condition, detail) {
 
 /** Hidden = absent, display:none, or outside the painted fullscreen subtree. */
 const hidden = (s) => !s.present || s.display === 'none' || s.inFsSubtree === false;
+/** Visible = built, not display:none, and (in native fullscreen) actually painted. */
+const shown = (s) => s.present && s.display !== 'none' && s.inFsSubtree !== false;
+
+/**
+ * Switch the panel to sliderPosition='video' through the real settings UI.
+ *
+ * Why this exists: the default is 'right', so `.vs-slider-in-chrome` never gets
+ * created in a default run. Every assertion about it was therefore vacuous —
+ * `hidden()` returned true purely because the element was absent, and the check
+ * passed while proving nothing (found 2026-08-10, same class of bug as the
+ * first-run chip measured by its label).
+ */
+async function useInChromeSlider(page) {
+  await clickOurs(page, '.vs-gear-button');
+  await page.waitForSelector('[data-vs-pos="video"]', { timeout: 8000 });
+  await clickOurs(page, '[data-vs-pos="video"]');
+  await page.waitForTimeout(300);
+  await clickOurs(page, '.vs-gear-button').catch(() => null); // close the modal again
+  await page.waitForTimeout(400);
+}
+
+/**
+ * Click / double-click one of OUR controls, falling back to a direct DOM event.
+ *
+ * Playwright's actionability check refuses when anything overlaps the target,
+ * and on a real site plenty does: under LIVE=1 Dzen's sticky header and its own
+ * `__controlToggle` layer both sit over the panel, so the normal click retried
+ * until it timed out and two toast assertions failed for a reason that had
+ * nothing to do with the product. That is the harness losing to the page — the
+ * button is there and works. The real click stays first because it is the
+ * honest path; the fallback only takes the page's furniture out of the way.
+ */
+async function dblclickOurs(page, selector) {
+  try {
+    await page.dblclick(selector, { timeout: 4000 });
+  } catch {
+    await page.$eval(selector, (el) => {
+      el.click();
+      el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    });
+  }
+}
+
+/** @see dblclickOurs for why the fallback exists. */
+async function clickOurs(page, selector) {
+  try {
+    await page.click(selector, { timeout: 4000 });
+  } catch {
+    // page.$eval is Playwright's "run this function on that element" API — it
+    // ships a function reference to the page, it does not parse a string, so
+    // none of the usual eval() hazards apply.
+    await page.$eval(selector, (el) => el.click());
+  }
+}
 
 mkdirSync(SHOT_DIR, { recursive: true });
+// Start from a clean profile every run. Reusing it saved a few seconds and cost
+// a debugging cycle: after a LIVE pass, and again after the manifest gained a
+// permission, the stale profile left the extension in a state where the panel
+// never appeared and the whole suite failed for a reason that had nothing to do
+// with the code under test. Nothing here depends on carried-over state —
+// useInChromeSlider sets the one setting the run needs.
+rmSync(PROFILE_DIR, { recursive: true, force: true });
 const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
   headless: false,
   args: [
@@ -86,11 +173,16 @@ const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
 });
 
 try {
-  for (const scenario of SCENARIOS) {
+  for (const scenario of SCENARIOS.filter((s) => !onlyScenario || s.name === onlyScenario)) {
     console.log(`\n── scenario: ${scenario.name} ──`);
     const mockBody = readFileSync(scenario.mockPath, 'utf-8');
     const page = await ctx.newPage();
-    await page.route('**/*', async (route) => {
+    // LIVE=1 runs the same assertions against the REAL site instead of the
+    // offline mock. The mock is the gate (deterministic, offline, in CI); the
+    // live pass is what catches the mock having drifted from the site it
+    // imitates — the failure mode where every assertion is green and the
+    // product finds nothing on the page people actually open.
+    if (!live) await page.route('**/*', async (route) => {
       const url = route.request().url();
       if (url === scenario.hostUrl) {
         await route.fulfill({
@@ -104,12 +196,53 @@ try {
         await route.abort();
       }
     });
-    await page.goto(scenario.hostUrl, { waitUntil: 'load' });
-    await page.waitForSelector('.vs-panel', { timeout: 20_000 });
-
-    // The install-time welcome tab steals focus → fullscreen would be denied.
+    const target = live ? scenario.liveUrl : scenario.hostUrl;
+    if (live && !target) {
+      console.log(`  skip [${scenario.name}] no liveUrl for this scenario`);
+      await page.close();
+      continue;
+    }
+    // Close the install-time welcome tab BEFORE waiting for anything. On a
+    // fresh profile it opens while the target page is still loading and steals
+    // focus; a live site then finishes rendering in a background tab and the
+    // panel wait times out for a reason unrelated to the extension.
     for (const other of ctx.pages()) if (other !== page) await other.close().catch(() => null);
     await page.bringToFront();
+    await page.goto(target, { waitUntil: 'load' });
+    for (const other of ctx.pages()) if (other !== page) await other.close().catch(() => null);
+    await page.bringToFront();
+    await page.waitForSelector('.vs-panel', { timeout: 30_000 });
+    // …and then wait for it to STAY. A live SPA re-renders its layout after
+    // hydration and takes our panel down with it; the extension's removal
+    // observer puts it back, but a probe fired in that window sees nothing and
+    // reports the panel missing. Require it present across consecutive polls
+    // so the run measures the settled state, not the race.
+    await page
+      .waitForFunction(
+        () => {
+          const w = window;
+          w.__vsPanelStreak = document.querySelector('.vs-panel') ? (w.__vsPanelStreak ?? 0) + 1 : 0;
+          return w.__vsPanelStreak >= 5;
+        },
+        { timeout: 30_000, polling: 400 },
+      )
+      .catch(() => console.log(`  note [${scenario.name}] panel never settled — it keeps being torn down`));
+    if (live) {
+      // The mock's <video> is inert, so the offline run can click the moment
+      // the panel exists. A real page needs the media pipeline up first: a
+      // speed change against a <video> with no data does nothing, raises no
+      // toast, and never builds the popup — which reads exactly like the
+      // feature being broken.
+      await page
+        .waitForFunction(
+          () => {
+            const v = document.querySelector('video');
+            return !!v && v.readyState >= 2;
+          },
+          { timeout: 30_000 },
+        )
+        .catch(() => console.log(`  note [${scenario.name}] video never reached readyState 2`));
+    }
 
     const probe = () =>
       page.evaluate((playerSelector) => {
@@ -137,19 +270,47 @@ try {
 
     const shot = (label) => page.screenshot({ path: join(SHOT_DIR, `${scenario.name}-${label}.png`) });
 
-    check(`[${scenario.name}] the mock page really has ${scenario.playerSelector}`, (await probe()).player, 'player element missing — the mock page changed?');
+    check(`[${scenario.name}] the ${live ? 'live' : 'mock'} page really has ${scenario.playerSelector}`, (await probe()).player, live ? 'player element missing — the SITE changed, update src/discovery/selectors.ts' : 'player element missing — the mock page changed?');
 
     // Bring the transient surfaces into existence BEFORE fullscreen, so the run
     // also covers the teardown path and not just "never created".
-    await page.click('.speed-button:nth-child(6)').catch(() => null);
-    await page.dblclick('.speed-button:nth-child(4)').catch(() => null);
+    await clickOurs(page, '.speed-button:nth-child(6)').catch(() => null);
+    await dblclickOurs(page, '.speed-button:nth-child(4)').catch(() => null);
     await page.waitForTimeout(500);
 
     const before = await probe();
     await shot('01-normal');
     console.log('  before fullscreen:', JSON.stringify(before));
     check(`[${scenario.name}] panel is visible outside fullscreen`, before.panel.present, JSON.stringify(before.panel));
-    check(`[${scenario.name}] toast stack was created outside fullscreen`, before.stack.present, 'no stack — the run would not prove the teardown path');
+    // Setup step, not a product claim: the toast stack has to exist BEFORE
+    // fullscreen for the teardown path to be covered at all. Offline that is
+    // deterministic and enforced. On a live page it is not — the site owns the
+    // pointer and the media pipeline — so a missing stack downgrades the
+    // dependent toast checks to a printed skip instead of a red run that means
+    // nothing. Stated out loud; a silent drop would read as coverage.
+    const toastsCovered = before.stack.present;
+    if (live && !toastsCovered) {
+      console.log(`  skip [${scenario.name}] no toast raised on the live page — toast assertions not run`);
+    } else {
+      check(`[${scenario.name}] toast stack was created outside fullscreen`, toastsCovered, 'no stack — the run would not prove the teardown path');
+    }
+
+    // Put the slider where this run is about to make claims about it. Without
+    // this the element does not exist and every slider assertion is vacuous.
+    if (scenario.hasInChromeSlider) {
+      // A missing panel makes this throw, and an uncaught throw kills the run
+      // before it can report WHY — which is how a real finding (the panel being
+      // torn down on a cold RuTube load) turned into a stack trace instead of
+      // an assertion.
+      const switched = await useInChromeSlider(page).then(
+        () => null,
+        (e) => String(e).split('\n')[0],
+      );
+      const inChrome = await probe();
+      check(`[${scenario.name}] the slider really moved into player chrome`, !switched && inChrome.slider.present, switched ?? `sliderPosition='video' did not mount .vs-slider-in-chrome — ${JSON.stringify(inChrome.slider)}`);
+    } else {
+      console.log(`  skip [${scenario.name}] no in-chrome slider on this site — slider assertions not run`);
+    }
 
     // ── A. native fullscreen ──────────────────────────────────────────────
     // requestFullscreen needs a user gesture: click a real button.
@@ -186,7 +347,15 @@ try {
     const fsError = await page.evaluate(() => window.__vsFsError ?? null);
     check(`[${scenario.name}] the page really entered fullscreen`, inFs.fullscreen != null, `fullscreenElement is null (${fsError ?? 'no error reported'}) — focus stolen by another tab?`);
     check(`[${scenario.name}] panel is not rendered in fullscreen`, hidden(inFs.panel), JSON.stringify(inFs.panel));
-    check(`[${scenario.name}] in-chrome slider is not rendered in fullscreen`, hidden(inFs.slider), JSON.stringify(inFs.slider));
+    // The in-chrome slider MUST survive fullscreen (owner report 2026-08-10).
+    // It is mounted inside the player's control bar, which is inside the
+    // fullscreen element — so `inFsSubtree` is the half that matters: a slider
+    // that is styled but parked outside the painted subtree looks identical to
+    // one that was hidden on purpose.
+    if (scenario.hasInChromeSlider) {
+      check(`[${scenario.name}] in-chrome slider is still rendered in fullscreen`, shown(inFs.slider), JSON.stringify(inFs.slider));
+      check(`[${scenario.name}] in-chrome slider sits inside the painted fullscreen subtree`, inFs.slider.inFsSubtree === true, JSON.stringify(inFs.slider));
+    }
     // Messages are ALLOWED in fullscreen since 2026-08-05 — only the
     // persistent chrome above is hidden. What must hold is that a toast
     // raised there is actually PAINTED, i.e. mounted inside the element that
@@ -252,7 +421,7 @@ try {
     // .plyr--fullscreen-fallback matcher in the stylesheet and by the class
     // sniff in notifications.ts. Verified here because a unit test cannot say
     // whether the selector actually matches in a browser.
-    await page.click('.speed-button:nth-child(6)').catch(() => null); // repaint the popup
+    await clickOurs(page, '.speed-button:nth-child(6)').catch(() => null); // repaint the popup
     await page.waitForTimeout(300);
     await page.evaluate((playerSelector) => {
       document.querySelector(playerSelector)?.classList.add('plyr--fullscreen-fallback');
@@ -261,11 +430,22 @@ try {
     const inFallback = await probe();
     await shot('04-plyr-fallback');
     console.log('  in Plyr fallback:', JSON.stringify(inFallback));
-    check(`[${scenario.name}] in-chrome slider is hidden in Plyr pseudo-fullscreen`, hidden(inFallback.slider), JSON.stringify(inFallback.slider));
+    if (scenario.hasInChromeSlider) {
+      check(`[${scenario.name}] in-chrome slider is still rendered in Plyr pseudo-fullscreen`, shown(inFallback.slider), JSON.stringify(inFallback.slider));
+    }
 
-    await page.dblclick('.speed-button:nth-child(4)').catch(() => null);
+    await dblclickOurs(page, '.speed-button:nth-child(4)').catch(() => null);
     await page.waitForTimeout(600);
-    check(`[${scenario.name}] a toast raised in Plyr pseudo-fullscreen IS shown`, (await probe()).stack.present, 'no stack was built during the CSS-only fullscreen');
+    // The Plyr CSS-only pseudo-fullscreen is FORCED here by adding the class;
+    // none of this repo's sites ship Plyr, so on a live page this is a
+    // synthetic state and the toast timing around it measures the harness, not
+    // the product. The offline run asserts it for all three sites, which is
+    // where the claim actually belongs.
+    if (live) {
+      console.log(`  skip [${scenario.name}] Plyr pseudo-fullscreen is synthetic on a live page — toast check left to the offline run`);
+    } else if (toastsCovered) {
+      check(`[${scenario.name}] a toast raised in Plyr pseudo-fullscreen IS shown`, (await probe()).stack.present, 'no stack was built during the CSS-only fullscreen');
+    }
 
     await page.evaluate((playerSelector) => {
       document.querySelector(playerSelector)?.classList.remove('plyr--fullscreen-fallback');

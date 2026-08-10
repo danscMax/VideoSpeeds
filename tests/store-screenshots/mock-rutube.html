@@ -78,6 +78,35 @@
     background: rgba(255, 255, 255, 0.15);
     border-radius: 2px; overflow: hidden;
   }
+  /* RuTube's right-hand control column — what src/discovery/selectors.ts
+     resolves as `rightControls`, i.e. where sliderPosition='video' mounts the
+     slider. Class names copied from live rutube.ru (measured 2026-08-10):
+     the hashed module class plus the `_justify-flex-end_` utility, which is
+     the ONLY thing marking the cluster as the right-hand one — there is no
+     "right" anywhere in RuTube's player DOM. An earlier version of this mock
+     invented `…__column-right`, which matched our then-current selector and
+     would have kept the smoke green against a site the code cannot actually
+     find the cluster on.
+     The `rightControls` validator rejects a container with no interactive
+     child, hence the hidden zero-size button.
+     It stays IN the flex flow. An earlier version pinned it with
+     `position:absolute; right:16px` to guarantee the store screenshots could
+     not shift — and that dropped the mounted slider straight on top of the
+     progress track, which is what the layout looked like to a human. Being
+     in-flow costs one collapsed gap and reads correctly. */
+  .desktop-controls-layout-module__column___mock {
+    display: flex; align-items: center; order: 99;
+  }
+  /* Empty by default (the default slider position is 'right'), and an empty
+     in-flow child would still earn the wrapper's 12px gap. Collapsing the gap
+     for that case keeps the store screenshots unshifted without lying about
+     the layout — cf. the absolute-positioning attempt below, which did lie. */
+  .desktop-controls-layout-module__column___mock:not(:has(.speed-slider-container)) {
+    margin-left: -12px;
+  }
+  .desktop-controls-layout-module__column___mock > button {
+    width: 0; height: 0; padding: 0; border: 0; visibility: hidden;
+  }
   .rt-progress::after {
     content: ''; display: block; width: 30%; height: 100%;
     background: linear-gradient(90deg, #00d8ff 0%, #b46cff 100%);
@@ -110,6 +139,7 @@
     <div class="desktop-controls-layout-module__wrapper">
       <div class="rt-progress"></div>
       <span style="font-variant-numeric:tabular-nums">14:08 / 1:42:30</span>
+      <div class="desktop-controls-layout-module__column___mock _justify-flex-end_abf276_v1-36-0"><button type="button" aria-hidden="true" tabindex="-1"></button></div>
     </div>
   </section>
   <div class="videoTitleSection">

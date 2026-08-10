@@ -55,16 +55,77 @@ const SELECTORS: Record<Site, SelectorMap> = {
     ],
     controlsContainer: ['[class*="desktop-controls-layout-module__wrapper"]'],
     leftControls: ['[class*="desktop-controls-layout-module__column"][class*="left"]'],
+    // Measured on live rutube.ru 2026-08-10, and the measurement corrected the
+    // list: the right-hand cluster carries NO "right" anywhere in its class
+    // attribute. The bar is a flex column of rows; the left cluster is tagged
+    // `__left___`, but its counterpart is identified only by the utility class
+    // `_justify-flex-end_`. The three entries that used to lead this list
+    // ([class*="…column"][class*="right"], desktopButtonsBlockRight,
+    // controlsBlockRight) matched nothing on the current site — grep for
+    // "right" over the whole player subtree returns zero hits. They stay as
+    // trailing fallbacks for older builds, but they must not lead, or the
+    // slider silently falls back to the whole wrapper.
     rightControls: [
+      '[class*="desktop-controls-layout-module__column"][class*="justify-flex-end"]',
       '[class*="desktop-controls-layout-module__column"][class*="right"]',
       '[class*="desktopButtonsBlockRight"]',
       '[class*="controlsBlockRight"]',
+    ],
+  },
+  // Dzen video (dzen.ru/video/watch/…). Every selector here was measured on a
+  // live page with scripts/harvest-site-selectors.mjs on 2026-08-10, not
+  // guessed. Two properties of this site shape the list:
+  //
+  //   1. Class names are hashed CSS-Modules with a per-build suffix
+  //      (`__player-1k`, `__videoControls-3i`). Only the stable module prefix
+  //      may be matched, so every entry is a substring match — an exact class
+  //      would survive exactly one Yandex deploy.
+  //   2. The whole page is a viewer overlay: the title sits ON the video
+  //      rather than under it, so the panel anchors to the content column
+  //      below the player instead of to a metadata block.
+  dzen: {
+    video: ['video.zen-ui-video-video-player__player', 'video'],
+    playerContainer: [
+      // Outer wrapper first: it is the element the site fullscreens, and its
+      // parent is the content column where the panel goes as a sibling.
+      '[class*="video-viewer--video-viewer-player__playerWrap"]',
+      '[class*="video-viewer--video-player__videoPlayer"]',
+      '[class*="video-viewer--video-player__player"]',
+    ],
+    infoElem: [
+      '[class*="video-viewer--video-viewer-content__wrapper"]',
+      '[class*="video-viewer--viewer-layout__content"]',
+    ],
+    controlsContainer: ['[class*="video-viewer--video-controls__videoControls"]'],
+    // The bottom row of the overlay — the one that actually holds buttons.
+    // `cover__bottom` is Dzen's own name for it; pairing it with the controls
+    // module keeps it from matching the other three full-bleed cover layers,
+    // which carry no interactive children and would fail the validator anyway.
+    rightControls: [
+      '[class*="video-viewer--cover__item"][class*="video-viewer--cover__bottom"]',
+      '[class*="video-viewer--video-controls__composer"]',
     ],
   },
 };
 
 export function selectorsFor(site: Site): SelectorMap {
   return SELECTORS[site];
+}
+
+/**
+ * Can this site host the slider inside the player's own control bar
+ * (`sliderPosition: 'video'`)? True when there is somewhere to mount it —
+ * which is exactly what panel.applyLayout() looks up before it moves the
+ * slider, so the settings menu and the layout agree by construction.
+ *
+ * This used to be a literal `site === 'youtube'` in the settings modal. That
+ * hid the option on RuTube even though its control-bar selectors had been in
+ * this table all along, and it would silently hide it again for every site
+ * added later. Derive it, don't re-type it per site.
+ */
+export function supportsInPlayerSlider(site: Site): boolean {
+  const map = SELECTORS[site];
+  return (map.rightControls?.length ?? 0) > 0 || (map.controlsContainer?.length ?? 0) > 0;
 }
 
 /**
@@ -84,6 +145,18 @@ const SUBSTRING_FRAGMENTS: Record<Site, Partial<Record<SelectorKey, readonly str
       'videoTitleSection',
       'pageInfoContainerWrapper',
       'wdp-videopage-description-module__wrapper',
+    ],
+  },
+  // Dzen hashes EVERY class per build, so the substring strategy is not a
+  // fallback here — it is the only thing that keeps working after a deploy.
+  dzen: {
+    playerContainer: [
+      'video-viewer--video-viewer-player__playerWrap',
+      'video-viewer--video-player__videoPlayer',
+    ],
+    infoElem: [
+      'video-viewer--video-viewer-content__wrapper',
+      'video-viewer--viewer-layout__content',
     ],
   },
 };

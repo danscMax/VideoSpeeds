@@ -162,7 +162,13 @@ describe('renderSettingsMenu', () => {
     expect(host.querySelector('[data-vs-pos="video"]')).toBeTruthy();
   });
 
-  it('omits the in-player option for RuTube and shows hide-title/hide-premium toggles', () => {
+  it('offers the in-player option on RuTube too, plus its hide-title/hide-premium toggles', () => {
+    // Until 2026-08-10 this asserted the opposite. The option was gated on a
+    // literal `site === 'youtube'` while RuTube's control-bar selectors had
+    // been sitting in src/discovery/selectors.ts the whole time — so the mode
+    // was withheld from a site that could host it. The gate now derives from
+    // that table (`supportsInPlayerSlider`), which is also what
+    // panel.applyLayout() consults, so the menu and the layout cannot disagree.
     const host = mountModal({
       settings: defaultSettings('en'),
       site: 'rutube',
@@ -170,7 +176,7 @@ describe('renderSettingsMenu', () => {
       activeTab: 'general',
       scriptVersion: '0.1.0',
     });
-    expect(host.querySelector('[data-vs-pos="video"]')).toBe(null);
+    expect(host.querySelector('[data-vs-pos="video"]')).toBeTruthy();
     expect(host.querySelector('input[name="hide-player-title"]')).toBeTruthy();
     expect(host.querySelector('input[name="hide-premium"]')).toBeTruthy();
   });

@@ -15,6 +15,7 @@
 
 import type { Site, Translator } from '../../app/ports';
 import { SPEED_POOL, speedBoundsFor } from '../../config';
+import { supportsInPlayerSlider } from '../../discovery/selectors';
 import type { Settings } from '../../storage/types';
 import { fragment, type HChild, h } from '../dom-h';
 import { vsIcon } from '../icons';
@@ -105,8 +106,10 @@ function vsSegmentedOption(
 function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
   const { settings, site, i18n } = opts;
   const t = i18n.t;
-  const isYouTube = site === 'youtube';
   const isRutube = site === 'rutube';
+  // Whether the "in player" slider position is offered at all — derived from
+  // the selector table, so a site with a control bar gets it automatically.
+  const canEmbedSlider = supportsInPlayerSlider(site);
   const sel = (v: string): string => (v === settings.sliderPosition ? 'true' : 'false');
 
   const sliderPosSection = vsSection(
@@ -130,7 +133,7 @@ function generalTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
         ' ',
         t('general.pos.bottom'),
       ),
-      isYouTube
+      canEmbedSlider
         ? vsSegmentedOption(
             {
               'data-vs-pos': 'video',

@@ -89,6 +89,32 @@
   .ytp-progress::after {
     content: ''; display: block; width: 35%; height: 100%; background: #ff0000;
   }
+  /* Real YouTube hangs the right-hand control cluster here, and it is what
+     src/discovery/selectors.ts resolves as `rightControls` — i.e. where
+     sliderPosition='video' mounts the slider. The mock used to omit it, so
+     that display mode silently could not be exercised at all (found
+     2026-08-10 when the fullscreen smoke started asserting on it).
+
+     Two constraints shaped this markup, both measured rather than guessed:
+       - The `rightControls` validator (src/discovery/validators.ts) rejects a
+         container with no interactive child, so the cluster must really hold
+         a button — an empty div resolves to null and the slider silently
+         stays in the panel.
+       - It stays IN the flex flow, at the end of the bar. `.ytp-controls` has
+         `gap: 12px`, so the empty default case collapses that gap instead of
+         shifting every store screenshot. */
+  .ytp-right-controls { display: flex; align-items: center; order: 99; }
+  /* Empty by default (the default slider position is 'right'), and an empty
+     in-flow child would still earn the bar's 12px gap. Collapsing the gap for
+     that case keeps the store screenshots unshifted without lying about the
+     layout — the earlier absolute-positioned version did lie, and dropped the
+     mounted slider on top of the progress track. */
+  .ytp-right-controls:not(:has(.speed-slider-container)) { margin-left: -12px; }
+  /* Placeholder for YouTube's own buttons: satisfies the validator without
+     drawing anything the screenshots did not have before. */
+  .ytp-right-controls > .ytp-button {
+    width: 0; height: 0; padding: 0; border: 0; visibility: hidden;
+  }
 
   /* Title block — anchor for the panel injection (`ytd-watch-metadata`
      is the primary infoElem in src/discovery/selectors.ts). */
@@ -118,9 +144,10 @@
   <div id="movie_player" class="yt-player">
     <video preload="none" muted></video>
     <div class="yt-play-btn"></div>
-    <div class="ytp-controls">
+    <div class="ytp-controls ytp-chrome-bottom">
       <div class="ytp-progress"></div>
       <span style="font-variant-numeric:tabular-nums">12:34 / 38:42</span>
+      <div class="ytp-right-controls"><button class="ytp-button" type="button" aria-hidden="true" tabindex="-1"></button></div>
     </div>
   </div>
   <ytd-watch-metadata>

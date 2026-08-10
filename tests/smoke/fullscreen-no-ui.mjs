@@ -74,7 +74,10 @@ const SCENARIOS = [
   },
 ];
 
-const EXT_DIR = resolve(REPO, '.output/chrome-mv3');
+// EXT_DIR=<path> runs the harness against a DIFFERENT build — e.g. one built
+// from a git worktree at an older commit. That is how a live-only symptom gets
+// attributed to a change instead of being guessed at.
+const EXT_DIR = process.env.EXT_DIR ?? resolve(REPO, '.output/chrome-mv3');
 const SHOT_DIR = resolve(REPO, '.output/smoke');
 const PROFILE_DIR = resolve(REPO, '.output/smoke-profile');
 

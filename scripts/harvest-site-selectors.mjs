@@ -47,6 +47,28 @@ const TARGETS = {
 };
 
 const only = process.argv[2];
+
+// --snippet prints a self-contained console one-liner instead of driving a
+// browser. Some players (VK, measured 2026-08-10) refuse to create their
+// <video> under ANY automated browser — headless Chromium, headed real Chrome,
+// a persistent on-disk profile, and the official /video_ext.php embed all come
+// back with zero <video> on a page that renders its title, view count and
+// comments. Automation is not going to win that argument, and inventing the
+// selectors instead is how a mock ends up encoding a fiction the product can
+// never find on the real site. So: the human opens the page in their own
+// browser, pastes this into DevTools, and hands back the same report the
+// automated path produces.
+if (process.argv.includes('--snippet')) {
+  console.log(`Open the video in your normal browser, press F12 → Console, paste this, and
+send back everything it prints:
+
+copy((()=>{const v=[...document.querySelectorAll('video')].sort((a,b)=>{const x=a.getBoundingClientRect(),y=b.getBoundingClientRect();return y.width*y.height-x.width*x.height})[0];if(!v)return'NO VIDEO';const i=e=>e&&{tag:e.tagName.toLowerCase(),id:e.id||void 0,cls:(typeof e.className==='string'?e.className:'').slice(0,160),box:Math.round(e.getBoundingClientRect().width)+'x'+Math.round(e.getBoundingClientRect().height)};const r=v.getBoundingClientRect();const anc=[];for(let n=v.parentElement,k=0;n&&k<10;n=n.parentElement,k++)anc.push({...i(n),sameBox:Math.abs(n.getBoundingClientRect().width-r.width)<8});const ov=b=>b.width>0&&b.left<r.right&&b.right>r.left&&b.top<r.bottom&&b.bottom>r.top;const ctl=[...document.querySelectorAll('*')].filter(e=>/control|panel|bottom|toolbar/i.test(typeof e.className==='string'?e.className:'')&&ov(e.getBoundingClientRect())).map(e=>({...i(e),btn:!!e.querySelector('button,[role=button],svg,[class*=Button]')})).filter(c=>parseInt(c.box)>120).slice(0,12);let rate;try{const p=v.playbackRate;v.playbackRate=1.25;rate=Math.abs(v.playbackRate-1.25)<0.01;v.playbackRate=p}catch(e){rate=String(e)}return JSON.stringify({url:location.href,canControlRate:rate,video:i(v),ancestors:anc,controls:ctl,titles:[...document.querySelectorAll('h1,[class*=title],[class*=Title]')].map(i).filter(t=>t.box!=='0x0').slice(0,6)},null,1)})())
+
+It copies the report to your clipboard (the \`copy()\` at the front) and reads
+nothing but the page's own layout — no accounts, no cookies, no network.`);
+  process.exit(0);
+}
+
 const names = only ? [only] : Object.keys(TARGETS);
 
 // Three launch modes, in increasing order of "looks like a person's browser".

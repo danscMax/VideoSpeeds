@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ## [Unreleased]
 
+### Changed
+
+- **The speed confirmation no longer moves between modes.** It hung at the
+  middle of the right edge in a window and jumped to the top centre in
+  fullscreen; both spots had a reason, but a control that relocates reads as a
+  bug. It now sits at the top centre of the player in both, where video players
+  conventionally put an OSD — clear of the controls along the bottom and out of
+  the picture's focal centre. It still grows in fullscreen; that is scale, not a
+  different place.
+
 ### Added
 
 - **VK Video (vkvideo.ru and the video section of vk.com) is now supported** —

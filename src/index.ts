@@ -65,11 +65,25 @@ import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { createPanel, createUiPort, injectStyles, insertPanel, installThemeWatcher } from './ui';
 import { disposeNotificationStack, showActionChip, showNotification } from './ui/notifications';
+import { createShortsControls } from './ui/shorts-controls';
 import { createLogger } from './utils/logger';
 import { detectAndClaim, release as releaseCoexistMarker } from './utils/tm-coexist';
 
 declare const __VS_VERSION__: string | undefined;
 const SCRIPT_VERSION = typeof __VS_VERSION__ === 'string' ? __VS_VERSION__ : '0.1.0';
+
+/**
+ * Which remembered-speed bucket the current URL belongs to.
+ *
+ * Shorts is a different viewing surface on the same host: the panel has no
+ * anchor in its vertical layout, so before this the viewer's regular-video
+ * speed was applied there with nothing on screen to change it (user report
+ * 2026-08-10). Its own bucket means Shorts starts at the site default and
+ * remembers separately from watch pages.
+ */
+function surfaceOf(s: Site): string | undefined {
+  return s === 'youtube' && isYouTubeShortsPath() ? 'shorts' : undefined;
+}
 
 export interface BootstrapOptions {
   /** Storage adapter override. Defaults to the wxt/browser-backed one;
@@ -136,7 +150,8 @@ export async function bootstrap(
   });
   const speedStore = createSpeedStore(coalescedSpeedAdapter);
   await settingsStore.init(site);
-  await speedStore.init(site);
+  // Shorts keeps its own remembered speed — see ensureSurface below.
+  await speedStore.init(site, surfaceOf(site));
   // Without this, a double-click "save as default" followed by an instant
   // reload (within the 200 ms coalesce window) silently loses the write.
   cleanup.addEventListener(window, 'pagehide', () => {
@@ -394,7 +409,23 @@ export async function bootstrap(
   // Shorts vertical layout — skip insertion there. Hotkeys and the
   // toolbar popup still control the Shorts <video>; the panel returns
   // on the next regular watch navigation.
-  if (!(site === 'youtube' && isYouTubeShortsPath())) {
+  // Shorts gets its own three controls in the action column — the panel has no
+  // anchor there. Built lazily; nothing is added to a watch page.
+  const shortsControls = createShortsControls(ctx);
+
+  if (site === 'youtube' && isYouTubeShortsPath()) {
+    // Landed straight on a Short: no panel, but the action-column controls
+    // still have to appear. The bar is built by the reel renderer, so retry
+    // briefly rather than assuming it is there on the first tick.
+    let tries = 0;
+    const mount = (): void => {
+      shortsControls.ensureMounted();
+      if (++tries < 20 && !document.getElementById('vs-shorts-controls')) {
+        setTimeout(mount, 400);
+      }
+    };
+    mount();
+  } else {
     scheduleInsertWithRetry(panel.element, ctx);
   }
   panel.applyLayout();
@@ -403,6 +434,17 @@ export async function bootstrap(
   //     luminance walk can use the panel as its reference element. The
   //     watcher itself listens to OS theme + host-page attribute changes;
   //     `reapplyTheme` is also invoked manually on each SPA reattach.
+  // 9a-bis. Tag <html> with the site so surfaces that live OUTSIDE the panel
+  //     still get the site accent. The accent is declared on
+  //     `.vs-panel[data-vs-site]`, which works only while a surface is inside
+  //     the panel — and sliderPosition='video' deliberately moves the slider
+  //     into the player's own control bar. Detached, it fell back to :root and
+  //     was painted YouTube red on every site (owner report 2026-08-10, seen on
+  //     HDRezka). Setting the attribute here fixes it at the shared point
+  //     instead of per-surface: anything that leaves the panel inherits.
+  //     The popup already does the same on its own document.
+  document.documentElement.dataset.vsSite = site;
+
   const reapplyTheme = installThemeWatcher(site, ctx, () => panel.element);
 
   // 9b. Persist the detected theme to per-site settings so the toolbar
@@ -597,6 +639,16 @@ export async function bootstrap(
   // (which may still be alive on the same reused element) drop before
   // we register fresh ones. Without this we double-fire ratechange on
   // every nav after the first (audit S15).
+  let activeSurface = surfaceOf(site);
+
+  /** Re-point the speed store when the surface changed. No-op otherwise. */
+  const ensureSurface = async (): Promise<void> => {
+    const next = surfaceOf(ctx.site);
+    if (next === activeSurface) return;
+    activeSurface = next;
+    await ctx.speedStore.init(ctx.site, next);
+  };
+
   const reattach = (): void => {
     // Audit 2026-05-09 sec C8: bail out immediately if the outer
     // bootstrap cleanup has already disposed. Without this guard, a
@@ -649,10 +701,21 @@ export async function bootstrap(
     // when navigating back to a watch page.
     if (ctx.site === 'youtube' && isYouTubeShortsPath()) {
       panel.element.parentElement?.removeChild(panel.element);
-      attachToVideo(ctx, meter, attachCleanup);
-      reapplyTheme();
+      // Order matters: the bucket has to be in place BEFORE the speed is
+      // applied, otherwise the first Short still plays at the watch-page
+      // speed for the moment it takes the swap to resolve.
+      void ensureSurface().then(() => {
+        attachToVideo(ctx, meter, attachCleanup);
+        // After the bucket AND the video, so the readout shows the speed that
+        // is actually playing rather than the one we were about to leave.
+        shortsControls.ensureMounted();
+        reapplyTheme();
+      });
       return;
     }
+    // Leaving Shorts — put the watch-page bucket back before reattaching.
+    shortsControls.remove();
+    void ensureSurface();
 
     // RuTube React re-renders the page column AFTER the
     // history.pushState that triggers our reattach. Querying the DOM

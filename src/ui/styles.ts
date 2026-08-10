@@ -1176,6 +1176,52 @@ html:not([dark]) #speed-popup.speed-popup[data-vs-site="youtube"] {
 }
 
 
+/* Shorts action-column controls. Sized and shaped after YouTube's own
+   like/comment buttons in the reel-action-bar-view-model element (measured on
+   a live Short 2026-08-10: a 52px column), so the stack reads as part of the
+   player rather than as something bolted on. The panel cannot live here: the
+   Shorts layout has no metadata column to anchor it to, which is why these
+   three controls are the entire interface on this surface. */
+.vs-shorts-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.vs-shorts-btn,
+.vs-shorts-readout {
+  border: 0;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background 0.15s ease;
+}
+.vs-shorts-btn:hover,
+.vs-shorts-readout:hover { background: rgba(255, 255, 255, 0.24); }
+.vs-shorts-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* The readout doubles as the reset control, so it has to look pressable —
+   a plain label would leave "back to 1x" undiscoverable. */
+.vs-shorts-readout {
+  min-width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0 6px;
+}
+
 /* Settings modal -- glassmorphic floating popover (parity
    .user.js:3019-3066). Dark translucent fill + backdrop-filter blur so
    the modal feels lifted above the player chrome instead of pasted on.

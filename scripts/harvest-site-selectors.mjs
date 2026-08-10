@@ -36,6 +36,13 @@ const TARGETS = {
     listing: 'https://vkvideo.ru/',
     watchPattern: '/video-',
   },
+  'youtube-shorts': {
+    // The homepage and channel tabs bounce an automated browser to
+    // consent.youtube.com; the search results page does not (measured
+    // 2026-08-10), and it reliably carries /shorts/ links.
+    listing: 'https://www.youtube.com/results?search_query=shorts&sp=EgIYAQ%253D%253D',
+    watchPattern: '/shorts/',
+  },
   dzen: {
     listing: 'https://dzen.ru/video',
     watchPattern: '/video/watch/',

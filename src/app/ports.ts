@@ -48,7 +48,11 @@ export interface SettingsStore {
 }
 
 export interface SpeedStore {
-  init(site: Site): Promise<void>;
+  /**
+   * `surface` gives one site a second, independent remembered speed.
+   * Shorts uses it — see the note in storage/speed-store.ts.
+   */
+  init(site: Site, surface?: string): Promise<void>;
   /** Currently selected speed (e.g. 1.5). Sync after init. */
   current(): number;
   /** Last "smart" speed (Wave 1.7) — null if rememberSpeed is off. */

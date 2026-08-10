@@ -12,7 +12,7 @@ import { speedBoundsFor, storageKeysFor } from '../config';
 import type { StorageAdapter } from './adapter';
 
 export interface SpeedStoreImpl {
-  init(site: Site): Promise<void>;
+  init(site: Site, surface?: string): Promise<void>;
   current(): number;
   smart(): number | null;
   setCurrent(speed: number): Promise<void>;
@@ -58,8 +58,15 @@ export function createSpeedStore(adapter: StorageAdapter): SpeedStoreImpl {
   }
 
   return {
-    async init(site: Site): Promise<void> {
-      storageKey = storageKeysFor(site).speed;
+    async init(site: Site, surface?: string): Promise<void> {
+      // A `surface` gives one site a second, independent remembered speed.
+      // Shorts needs it: the panel has no place in that layout, so a viewer
+      // who keeps regular videos at 2x used to land in Shorts already sped up
+      // with no visible control at all (user report 2026-08-10). A separate
+      // key means Shorts simply starts at the site default, and whatever the
+      // viewer picks there stays there.
+      const base = storageKeysFor(site).speed;
+      storageKey = surface ? `${base}:${surface}` : base;
       bounds = speedBoundsFor(site);
 
       const raw = await adapter.get<string | number | null>(storageKey, null);

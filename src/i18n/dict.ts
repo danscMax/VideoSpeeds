@@ -129,6 +129,11 @@ export const I18N_DICT = {
     'general.pos.bottom.tip': 'Slider on a separate row below the buttons',
     'general.pos.video': 'In player',
     'general.pos.video.tip': "Embed slider into the player's bottom control bar",
+    // shorts.* — the compact controls in the Shorts action column. Shorts has
+    // no room for the panel, so these three are the whole interface there.
+    'shorts.faster.tip': 'Speed up this Short',
+    'shorts.slower.tip': 'Slow down this Short',
+    'shorts.reset.tip': 'Back to normal speed',
     'general.pos.narrow_hint':
       'Auto: on narrow screens the slider wraps below — your choice is kept and restored when there is enough room.',
 
@@ -494,6 +499,9 @@ export const I18N_DICT = {
     'general.pos.bottom.tip': 'Ползунок на отдельной строке под кнопками',
     'general.pos.video': 'В плеере',
     'general.pos.video.tip': 'Встроить ползунок в нижнюю панель плеера',
+    'shorts.faster.tip': 'Ускорить этот Shorts',
+    'shorts.slower.tip': 'Замедлить этот Shorts',
+    'shorts.reset.tip': 'Вернуть обычную скорость',
     'general.pos.narrow_hint':
       'Авто: на узком экране ползунок переносится вниз. Ваш выбор сохранён и вернётся, когда места будет достаточно.',
 

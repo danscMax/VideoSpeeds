@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Shorts now has its own speed, and its own controls.** Someone who keeps
+  regular videos at 2x used to land in Shorts already sped up with nothing on
+  screen to change it — the panel has no anchor in that layout. Shorts now
+  remembers its speed separately (starting at normal), and three compact
+  controls sit in the action column beside like and share: faster, the current
+  speed, slower. Tapping the readout returns to normal speed.
+
+### Fixed
+
+- **The in-player slider was painted YouTube red on every site.** The site
+  accent is declared on the panel, and the "in player" slider position moves the
+  slider out of the panel into the player's own control bar — where the rule no
+  longer matched and the default red won. The page now carries the site tag, so
+  every surface that leaves the panel inherits the right colour.
+
 ## [0.7.0] — 2026-08-10
 
 ### Changed

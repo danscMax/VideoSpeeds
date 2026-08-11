@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
-## [Unreleased]
+## [0.7.1] — 2026-08-11
 
 ### Changed
 
@@ -25,8 +25,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
   branch, so it never fired, and nothing else looks until you navigate. A few
   checks in the seconds after insertion now catch it and put the panel back.
   Six live loads in a row after the fix, against two failures in three before.
-
-## [0.7.1] — 2026-08-10
 
 ### Fixed
 

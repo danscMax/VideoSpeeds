@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Video Speed: RuTube, Dzen, VK, YouTube",
+    "description": "Store listing title. Chrome caps it at 45 characters; AMO at 50. The uncontested sites lead on purpose — 'Video Speed Controller' is the name of a 3M-install incumbent, and competing for that exact phrase is how this listing stayed invisible."
+  },
+  "extDescription": {
+    "message": "Speed buttons, a slider and hotkeys for RuTube, Dzen, VK Video and YouTube. Bilingual EN/RU, no tracking.",
+    "description": "Store listing summary. Chrome caps it at 132 characters, AMO at 250 — keep it under 132."
+  }
+}

@@ -62,9 +62,15 @@ export default defineConfig({
     },
   }),
   manifest: ({ browser }) => ({
-    name: 'Video Speed Controller (YouTube + RuTube)',
-    description:
-      'Adds speed buttons, slider, and hotkeys to YouTube, RuTube and Dzen videos. Bilingual interface (English/Russian).',
+    // Title and summary come from public/_locales, NOT from a literal here.
+    // The store shows a single listing per item and takes these two strings
+    // from the package, so a Russian-speaking searcher could only ever be
+    // matched against English text — which is how a product built for RuTube,
+    // Dzen and VK ended up with 86% of its installs from English speakers and
+    // 951 store impressions in ninety days.
+    default_locale: 'en',
+    name: '__MSG_extName__',
+    description: '__MSG_extDescription__',
     version: pkg.version,
     author: 'MaxScorpy',
     // `activeTab` is what lets the popup see the URL of the tab you clicked

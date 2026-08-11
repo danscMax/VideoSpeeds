@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ## [Unreleased]
 
+### Changed
+
+- **The store listing is now bilingual.** Chrome shows one listing per item and
+  takes its title and summary from the package, so a Russian-speaking searcher
+  was only ever matched against English text — which is how a product built for
+  RuTube, Dzen and VK ended up with 86% of its installs from English speakers.
+  The package now carries `_locales`, and the title leads with the sites that
+  have no competition instead of echoing a 3M-install incumbent's name.
+
 ### Fixed
 
 - **On RuTube the speed panel sometimes never appeared at all.** On a cold

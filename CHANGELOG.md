@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **On RuTube the speed panel sometimes never appeared at all.** On a cold
+  profile it was missing on two loads out of three: RuTube replaces the whole
+  page column while hydrating, and the panel went down with the branch it was
+  standing in. The watcher that would have noticed was attached to that very
+  branch, so it never fired, and nothing else looks until you navigate. A few
+  checks in the seconds after insertion now catch it and put the panel back.
+  Six live loads in a row after the fix, against two failures in three before.
+
 ## [0.7.1] — 2026-08-10
 
 ### Fixed

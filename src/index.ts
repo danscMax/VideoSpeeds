@@ -1170,6 +1170,30 @@ function installRemovalObserver(
   });
   observer.observe(parent, { childList: true });
   ctx.cleanup.addObserver(observer);
+
+  // Watchdog for the one case the observer above structurally cannot see: the
+  // host replacing the panel's whole PARENT. It observes `parent`, so once
+  // that node is detached no mutation ever reaches it again — and the panel
+  // sits in a torn-down branch with nothing to notice. `reattach` does not
+  // cover it either: it fires on navigation, and this happens during the FIRST
+  // load, while the framework hydrates.
+  //
+  // Measured, not guessed: on a cold profile the panel was gone on 2 of 3 live
+  // RuTube loads, identically before and after the 0.7.0 changes (proved with
+  // EXT_DIR against an older build), and never on a warm one — the profile
+  // decides whether hydration finishes before or after our insert.
+  //
+  // A few bounded checks rather than a document-wide subtree observer: that
+  // was tried once and YouTube's mutation volume made the page stop responding
+  // to clicks (user bug 2026-04-27). These stop after the hydration window.
+  for (const delay of [1000, 2500, 5000, 9000]) {
+    ctx.cleanup.setTimeout(() => {
+      if (document.contains(panelEl)) return;
+      ctx.logger.info(`panel vanished with its branch (${delay}ms after insert); re-inserting`);
+      observer.disconnect();
+      reschedule(panelEl, ctx);
+    }, delay);
+  }
 }
 
 /**

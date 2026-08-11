@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
-## [Unreleased]
+## [0.7.1] — 2026-08-10
 
 ### Fixed
 

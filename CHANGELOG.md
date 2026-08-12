@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.7.2] — 2026-08-12
+
+### Changed
+
+- **YouTube leads the title again.** 0.7.1 had put the uncontested sites first
+  — RuTube, Dzen, VK — on the reasoning that competing for "video speed
+  controller" against a 3M-install incumbent is how a listing stays invisible.
+  The owner's call is that recognition wins: a title opening with sites a
+  reader has never heard of reads as a different product. The reverse order
+  ran for one day and produced no number either way, so nothing was measured
+  and nothing is being discarded. The short description follows the same order.
+
 ## [0.7.1] — 2026-08-11
 
 ### Changed

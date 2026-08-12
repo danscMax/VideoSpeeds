@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "Video Speed: RuTube, Dzen, VK, YouTube",
-    "description": "Store listing title. Chrome caps it at 45 characters; AMO at 50. The uncontested sites lead on purpose — 'Video Speed Controller' is the name of a 3M-install incumbent, and competing for that exact phrase is how this listing stayed invisible."
+    "message": "Video Speed: YouTube, RuTube, Dzen, VK",
+    "description": "Store listing title. Chrome caps it at 45 characters; AMO at 50. YouTube leads by the owner's decision (2026-08-12): it is the site people recognise, and a title that opens with sites they have never heard of reads as a different product. 0.7.1 had tried the reverse order — leading with the uncontested sites to avoid competing with a 3M-install incumbent for 'Video Speed Controller' — but it only ran for a day and never produced a number either way. Do not flip it back without measuring."
   },
   "extDescription": {
-    "message": "Speed buttons, a slider and hotkeys for RuTube, Dzen, VK Video and YouTube. Bilingual EN/RU, no tracking.",
-    "description": "Store listing summary. Chrome caps it at 132 characters, AMO at 250 — keep it under 132."
+    "message": "Speed buttons, a slider and hotkeys for YouTube, RuTube, Dzen and VK Video. Bilingual EN/RU, no tracking.",
+    "description": "Store listing summary. Chrome caps it at 132 characters, AMO at 250 — keep it under 132. Site order matches extName on purpose."
   }
 }

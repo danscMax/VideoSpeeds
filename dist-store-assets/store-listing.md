@@ -4,21 +4,15 @@ Drop-in copy for the listing forms. EN sections are canonical; Russian
 translations follow each. Paste the matching language into the store's
 per-locale fields (CWS and AMO both take a separate RU listing).
 
-## Short description (max 132 characters)
+## Short description and item name — NOT here
 
-Benefit-first: the first line is what a searcher sees before "read more".
-
-> Speed up YouTube, RuTube and Dzen — speed buttons under the player,
-> a slider, and custom hotkeys. Bilingual EN/RU, no tracking.
-
-(127 characters.)
-
-### Russian translation
-
-> Ускоряйте видео на YouTube, RuTube и Дзене: кнопки скорости под
-> плеером, ползунок и горячие клавиши. Двуязычно EN/RU, без трекинга.
-
-(131 characters.)
+Both live in `public/_locales/{en,ru}/messages.json` (`extName`,
+`extDescription`), because Chrome renders them straight from the package and
+ignores anything typed into the dashboard. This file used to keep a second
+copy; by the time the two were compared they disagreed on every word, and the
+copy nobody could see was the one being pushed to AMO. `push-amo-listing.mjs`
+now reads `_locales` for the summary, so editing it there updates both stores.
+Chrome caps it at 132 characters — half of AMO's limit, and the binding one.
 
 ## Detailed description (under 16,000 characters)
 

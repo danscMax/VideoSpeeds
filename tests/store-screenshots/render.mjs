@@ -1,13 +1,17 @@
 /**
  * Renders Chrome Web Store / AMO listing screenshots for VideoSpeeds.
  *
- * Produces five 1280×800 JPEGs (CWS-required format — exactly that
+ * Produces six 1280×800 JPEGs (CWS-required format — exactly that
  * resolution, no alpha channel):
  *   01-youtube-panel.jpg    — full mock YouTube watch page with the panel
  *   02-youtube-settings.jpg — same page with the settings modal open
- *   03-rutube-panel.jpg     — full mock RuTube watch page with the panel
- *   04-rutube-settings.jpg  — same page with the settings modal open
- *   05-welcome-page.jpg     — extension's actual welcome.html
+ *   03-dzen-panel.jpg       — Dzen, whose own player has no speed control
+ *   04-rutube-panel.jpg     — full mock RuTube watch page with the panel
+ *   05-rutube-settings.jpg  — same page with the settings modal open
+ *   06-welcome-page.jpg     — extension's actual welcome.html
+ *
+ * Chrome shows only the FIRST FIVE, so the order is the point: welcome falls
+ * off that edge on purpose, and Dzen sits inside it. AMO takes all six.
  *
  * How this works (v0.3.5+):
  *   1. Chromium is launched with the unpacked extension loaded.
@@ -38,6 +42,7 @@ const REPO = resolve(__dirname, '..', '..');
 const OUT = resolve(REPO, 'dist-store-assets', 'screenshots');
 const MOCK_YT_PATH = resolve(__dirname, 'mock-youtube.html');
 const MOCK_RT_PATH = resolve(__dirname, 'mock-rutube.html');
+const MOCK_DZ_PATH = resolve(__dirname, 'mock-dzen.html');
 const EXT_DIR = resolve(REPO, '.output', 'chrome-mv3');
 
 if (!existsSync(EXT_DIR)) {
@@ -56,8 +61,10 @@ if (!existsSync(OUT)) {
 
 const MOCK_YT = readFileSync(MOCK_YT_PATH, 'utf-8');
 const MOCK_RT = readFileSync(MOCK_RT_PATH, 'utf-8');
+const MOCK_DZ = readFileSync(MOCK_DZ_PATH, 'utf-8');
 const YT_URL = 'https://www.youtube.com/watch?v=storeMockId12345';
 const RT_URL = 'https://rutube.ru/video/storeMockId12345/';
+const DZ_URL = 'https://dzen.ru/video/watch/storeMockId12345';
 
 const userDataDir = resolve(__dirname, '.tmp-profile');
 const ctx = await chromium.launchPersistentContext(userDataDir, {
@@ -109,7 +116,7 @@ function makeRoute(url, body) {
 /**
  * Capture a panel + settings shot pair against a host URL.
  */
-async function captureHost(label, url, mockBody, scrollSettingsTo = 0) {
+async function captureHost(label, url, mockBody, scrollSettingsTo = 0, { settings = true } = {}) {
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.route('**/*', makeRoute(url, mockBody));
@@ -122,6 +129,11 @@ async function captureHost(label, url, mockBody, scrollSettingsTo = 0) {
   // shot; the profile is throwaway anyway.
   await page.evaluate(() => document.getElementById('speed-notifications')?.remove());
   await shoot(page, `${label}-panel`);
+
+  if (!settings) {
+    await page.close();
+    return;
+  }
 
   await page.click('.vs-gear-button');
   await page
@@ -145,6 +157,11 @@ async function captureHost(label, url, mockBody, scrollSettingsTo = 0) {
 }
 
 await captureHost('youtube', YT_URL, MOCK_YT);
+// Dzen sits third on purpose: Chrome shows only the first five images, and
+// Dzen is the one claim no competitor can make — its own player has no speed
+// control at all. Ahead of the welcome page, which is the least interesting
+// thing a browsing installer can be shown.
+await captureHost('dzen', DZ_URL, MOCK_DZ, 0, { settings: false });
 await captureHost('rutube', RT_URL, MOCK_RT, 620);
 
 // 5. Welcome — through the built extension.

@@ -206,21 +206,29 @@ same terms without tripping the filter.)
 
 ## Screenshots to upload
 
-Five 1280x800 JPEGs in `dist-store-assets/screenshots/`, designed for
+Six 1280x800 JPEGs in `dist-store-assets/screenshots/`, designed for
 the Chrome Web Store size + format constraints (CWS rejects anything
 that isn't exactly 1280x800 / 640x400 and won't accept PNGs with an
-alpha channel). Recommended upload order:
+alpha channel). Upload order matters: **Chrome shows only the first
+five**, AMO takes all six.
 
 1. `01-youtube-panel.jpg` — full mock YouTube watch page with the
    panel docked under the player.
 2. `02-youtube-settings.jpg` — same page with the settings modal open;
    shows preset grid + slider position + behaviour toggles in one
    image.
-3. `03-rutube-panel.jpg` — full mock RuTube watch page with the panel.
-4. `04-rutube-settings.jpg` — RuTube settings modal; demonstrates the
+3. `03-dzen-panel.jpg` — Dzen with the panel under its player. Third
+   on purpose: Dzen's own player has no speed control of any kind, so
+   this is the one image no competitor's listing can show. Added
+   2026-08-12 — the deck had promised Dzen since 0.7.0 while showing
+   only YouTube and RuTube.
+4. `04-rutube-panel.jpg` — full mock RuTube watch page with the panel.
+5. `05-rutube-settings.jpg` — RuTube settings modal; demonstrates the
    RuTube-specific "Hide player title" / "Hide Premium banners" rows.
-5. `05-welcome-page.jpg` — welcome onboarding (light theme; adds
-   visual variety to the otherwise dark deck).
+6. `06-welcome-page.jpg` — welcome onboarding (light theme; adds
+   visual variety to the otherwise dark deck). Falls outside Chrome's
+   five-image limit deliberately: it is the least persuasive frame for
+   somebody deciding whether to install.
 
 Re-generate any time with: `node tests/store-screenshots/render.mjs`
 (needs an extension build under `.output/chrome-mv3/`; run

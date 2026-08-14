@@ -17,78 +17,62 @@ Chrome caps it at 132 characters — half of AMO's limit, and the binding one.
 ## Detailed description (under 16,000 characters)
 
 ```
-Watch lectures, tutorials and reviews in less time. Video Speed
-Controller puts a row of speed buttons right under the YouTube,
-RuTube and Dzen player — one click takes a slow talk up to 2x, one more click
-brings it back to 1x. A slider and customizable hotkeys give you exact
-control.
+Watch lectures, tutorials and reviews in less time. This extension puts a
+row of speed buttons right under the player on YouTube, RuTube, Dzen and
+VK Video: one click and a slow talk moves at twice the pace, one more
+click brings it back to normal.
 
-WHAT IT DOES
+What it does
 
-- 9 preset speed buttons on YouTube (1x, 1.5x, 1.75x, 2x, 2.25x, 2.5x,
-  2.75x, 3x, 3.25x) and 9 on RuTube (1x through 3x in 0.25 steps),
-  positioned right below the video. The 1x preset is included by
-  default so a fast-forwarded video can return to normal in a single
-  click. The button row is customizable (you can add speeds up to 4x).
-- Slider for in-between values, with a coloured fill and a value
-  tooltip that follows the thumb so you always see the exact rate.
-- Single-click on a button = temporary speed for this video only.
-  Double-click = save as the default for new videos. The saved speed
-  is marked with a small accent dot in the corner of its button.
-- Configurable hotkeys — assign multiple combinations per action so a
-  remote and a keyboard can both trigger speed changes. Rebind them and
-  set the step size in Settings → Keys.
-- In-player gear menu with four tabs:
-  - General: slider position (right / below / inside player), language
-    switch (English / Russian), preset chips grouped by range
-    (slower than 1×, 1×–2×, faster than 2×), behaviour toggles.
-  - Keys: rebind speed-up / speed-down, add additional combos,
-    reset to defaults.
-  - Diagnostics: copy a structured report for bug submissions; clear
-    cached selectors if a site update breaks the panel.
-  - Support: feedback form (sends to the developer's Telegram via a
-    Cloudflare Worker — no third-party analytics).
-- Toolbar popup mirrors the in-player menu so you can adjust settings
-  without opening a video.
-- Dzen video and VK Video are supported as OPT-IN sites: they are not
-  requested at install time, so an update never disables the extension.
-  Open a video there, click the extension icon and press "Allow" once.
-  On VK the extension only ever runs on the video section.
-- RuTube-only quality-of-life toggles: hide the overlay player title,
-  hide Premium subscription banners.
-- Accessibility: aria-labels on the gear button, aria-live status
-  announcements for diagnostic state and speed changes,
-  prefers-reduced-motion support. In fullscreen the panel steps out of the
-  way — no extension UI on top of the picture; the shortcuts keep working.
+- Speed buttons under the video. Out of the box they run from 1x to
+  3.25x on YouTube and to 3x on the other sites. Which buttons you see
+  is up to you — pick them in the settings from a range that goes from
+  0.5x to 4x.
+- A slider for anything in between, with the exact rate shown above the
+  handle as you drag. It stops at your fastest button by default; raise
+  its ceiling to 10x in the settings if you want more.
+- One click sets the speed for the video you are watching. A double
+  click makes it the speed every new video starts at — the saved button
+  is marked with a dot in the corner.
+- Keyboard shortcuts, several combinations per action if you like, so a
+  remote and a keyboard can both do the job. Rebind them and set the
+  step in the settings.
+- A gear menu inside the player: where the slider sits, interface
+  language, which speed buttons to show, how the panel behaves. There is
+  also a feedback form that reaches the developer directly, and a report
+  you can copy in one click if a site update ever knocks the panel out.
+- The toolbar icon opens the same menu without opening a video first.
+- Dzen and VK Video are opt-in. Nothing is requested when you install:
+  open a video there, click the icon and allow it once. On VK the
+  extension only ever runs in the video section.
+- On RuTube you can also hide the title that sits on top of the player
+  and the Premium banners.
+- In fullscreen the panel keeps out of the picture, while the speed you
+  chose is confirmed by a large label. The shortcuts keep working.
 
-WHY IT'S RELIABLE
+When a site changes
 
-When YouTube or RuTube ships a layout change, the panel recovers
-automatically through a five-strategy discovery chain (cached selector
--> exact match -> substring match -> walk up from the video element
--> geometric heuristic). A built-in watchdog detects broken state,
-purges bad cache entries, and re-attaches the panel. If the player
-SPA-navigates between videos, the panel re-mounts via a MutationObserver
-without losing your settings.
+Video sites redesign without warning, and a panel pinned to one spot
+disappears the moment they do. This one looks for the player five
+different ways in turn and re-attaches itself wherever it turns up. The
+check runs continuously, so there is nothing for you to fix by hand.
 
-PRIVACY
+Privacy
 
-- All settings stored locally in browser.storage.local.
-- Zero telemetry, zero analytics, zero remote calls.
-- The AMO data_collection_permissions disclosure is set to "none".
-- Source available on GitHub for review.
+Your settings stay in your own browser. The extension collects no
+statistics, tracks nothing you watch and sends nothing anywhere. The
+source code is open, so any of this can be checked.
 
-LANGUAGES
+Languages
 
-English and Russian. UI language is auto-detected from your browser on
-first run; switch any time from the gear menu.
+English and Russian. The interface follows your browser on first run and
+can be switched from the menu at any time.
 
-AFTER YOU INSTALL
+Right after you install
 
-A short walkthrough opens automatically in a new tab: what each control
-does, how to set your keyboard shortcuts, and how to pin the icon to the
-toolbar. It takes about a minute, and you can close it and start using
-the extension right away.
+A short guide opens in a new tab: what each control does, how to set
+your shortcuts, how to pin the icon to the toolbar. A minute to read,
+then close it and get on with it.
 ```
 
 (Roughly 1,800 characters out of the 16,000 limit -- room to grow.)
@@ -96,77 +80,62 @@ the extension right away.
 ### Russian translation
 
 ```
-Смотрите лекции, разборы и обзоры за меньшее время. Video Speed
-Controller ставит ряд кнопок скорости прямо под плеером YouTube,
-RuTube и Дзена — один клик разгоняет размеренную речь до 2x, ещё один
-возвращает к 1x. Ползунок и настраиваемые горячие клавиши дают точный
-контроль.
+Смотрите лекции, разборы и обзоры быстрее. Расширение ставит ряд кнопок
+скорости прямо под плеером YouTube, RuTube, Дзена и VK Видео: один клик —
+и размеренная речь идёт вдвое быстрее, ещё один возвращает обычную
+скорость.
 
-ЧТО УМЕЕТ
+Что умеет
 
-- 9 кнопок скорости на YouTube (1x, 1.5x, 1.75x, 2x, 2.25x, 2.5x,
-  2.75x, 3x, 3.25x) и 9 на RuTube (от 1x до 3x с шагом 0.25) — прямо
-  под видео. Кнопка 1x включена по умолчанию: ускоренное видео
-  возвращается к обычной скорости одним кликом. Список кнопок
-  настраивается (можно добавить до 4x).
-- Ползунок для промежуточных значений с цветной заливкой и
-  всплывающей подписью над бегунком — точное значение видно всегда.
-- Один клик по кнопке — временная скорость только для этого видео.
-  Двойной клик — сохранить как скорость по умолчанию для новых видео.
-  Сохранённая кнопка отмечена маленькой точкой в углу.
-- Настраиваемые горячие клавиши: несколько комбинаций на одно
-  действие (например, клавиатура и пульт разом), переназначаются в
-  настройках.
-- Меню на шестерёнке в плеере с вкладками:
-  - «Общие»: положение ползунка (справа / под плеером / внутри),
-    язык интерфейса (English / Русский), кнопки скорости
-    сгруппированы по диапазонам (медленнее 1×, 1×–2×, быстрее 2×).
-  - «Клавиши»: переназначение ускорения/замедления, дополнительные
-    комбинации, сброс к умолчанию.
-  - «Диагностика»: скопировать структурированный отчёт для баг-репорта;
-    очистить кеш селекторов, если обновление сайта сломало панель.
-  - «Поддержать»: форма обратной связи (уходит в Telegram
-    разработчика через Cloudflare Worker — без сторонней аналитики).
-- Иконка в тулбаре открывает то же меню без открытия видео.
-- Видео Дзена и VK Video подключаются ПО ЖЕЛАНИЮ: доступ к ним не
-  запрашивается при установке, поэтому обновление никогда не выключает
-  расширение. Откройте там видео, нажмите на иконку расширения и один
-  раз подтвердите «Разрешить». На VK расширение работает только в
-  разделе видео.
-- Только для RuTube: переключатели скрытия заголовка плеера и
-  Premium-баннеров.
-- Доступность: aria-labels на шестерёнке, объявления через aria-live
-  при смене скорости и статуса диагностики, поддержка
-  prefers-reduced-motion. В полноэкранном режиме панель не мешает —
-  интерфейс расширения не показывается поверх картинки, хоткеи работают.
+- Кнопки скорости под видео. Из коробки — от 1× до 3.25× на YouTube и до
+  3× на остальных сайтах. Какие кнопки видны, решаете вы: набор
+  собирается в настройках из значений от 0.5× до 4×.
+- Ползунок для промежуточных значений: точное число видно над бегунком,
+  пока вы его тянете. По умолчанию он доходит до вашей самой быстрой
+  кнопки, а в настройках предел поднимается до 10×.
+- Один клик задаёт скорость для этого видео. Двойной — делает её той, с
+  которой начинаются все новые; сохранённая кнопка помечена точкой в
+  углу.
+- Горячие клавиши. На одно действие можно назначить несколько сочетаний
+  — скажем, чтобы работали и клавиатура, и пульт. Сочетания и шаг
+  меняются в настройках.
+- Меню на шестерёнке прямо в плеере: где показывать ползунок, язык
+  интерфейса, набор кнопок, поведение панели. Там же форма обратной
+  связи — письмо приходит разработчику, — и отчёт, который копируется
+  одной кнопкой, если после обновления сайта панель собьётся.
+- Значок на панели браузера открывает то же меню, не открывая видео.
+- Дзен и VK Видео подключаются по желанию. При установке доступ к ним не
+  запрашивается: откройте там ролик, нажмите на значок и один раз
+  разрешите. На VK расширение работает только в разделе видео.
+- На RuTube можно вдобавок убрать заголовок поверх плеера и баннеры
+  Premium.
+- В полноэкранном режиме панель не загораживает картинку, а выбранная
+  скорость подтверждается крупной плашкой. Горячие клавиши продолжают
+  работать.
 
-ПОЧЕМУ РАБОТАЕТ НАДЁЖНО
+Если сайт изменится
 
-Когда YouTube или RuTube меняет вёрстку, панель восстанавливается сама
-через цепочку из пяти стратегий поиска (кеш селектора → точное
-совпадение → подстрока → подъём от элемента видео → геометрическая
-эвристика). Встроенный watchdog замечает поломку, чистит плохой кеш и
-заново прикрепляет панель. При SPA-переходе между видео панель
-пере-монтируется через MutationObserver, не теряя ваши настройки.
+Видеосайты меняют вёрстку без предупреждения, и панель, привязанная к
+одному месту, после этого просто исчезает. Эта ищет плеер пятью
+способами по очереди и прикрепляется туда, где он оказался. Проверка
+идёт постоянно, так что чинить руками ничего не нужно.
 
-ПРИВАТНОСТЬ
+Приватность
 
-- Все настройки хранятся локально в browser.storage.local.
-- Никакой телеметрии, аналитики и удалённых вызовов.
-- Декларация AMO data_collection_permissions = "none".
-- Исходники открыты на GitHub для проверки.
+Настройки хранятся в вашем браузере. Расширение не собирает статистику,
+не следит за тем, что вы смотрите, и никуда ничего не отправляет.
+Исходный код открыт — всё это можно проверить.
 
-ЯЗЫКИ
+Языки
 
-Английский и русский. Язык интерфейса определяется автоматически по
-языку браузера при первом запуске; переключается в меню в любой момент.
+Русский и английский. При первом запуске язык берётся из браузера, потом
+переключается в меню.
 
-СРАЗУ ПОСЛЕ УСТАНОВКИ
+Сразу после установки
 
-В новой вкладке автоматически откроётся короткая инструкция: что делает
-каждый элемент, как назначить свои горячие клавиши и как закрепить
-значок на панели. Занимает около минуты — можно закрыть и сразу
-пользоваться.
+В новой вкладке откроется короткая инструкция: что делает каждый
+элемент, как назначить горячие клавиши и как закрепить значок на панели.
+Минута чтения — и можно закрывать.
 ```
 
 ## Single-purpose statement (CWS requires this)

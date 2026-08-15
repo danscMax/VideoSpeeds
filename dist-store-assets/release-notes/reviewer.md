@@ -1,42 +1,23 @@
-0.7.0 — adds two sites. This release DOES change the permission set, so the
-relevant parts are listed first.
+0.7.4 — a manifest-only release. No source file changed, no new permissions, no
+new endpoints, no new hosts. The permission set is byte-identical to 0.7.2.
 
-PERMISSIONS
+1. wxt.config.ts — adds `browser_specific_settings.gecko_android` with
+   `strict_min_version: "142.0"`, the same floor already declared for desktop
+   under `gecko`. Everything the extension does on Android it already did on
+   desktop; 142.0 is where Android Firefox learned
+   `data_collection_permissions`, which this add-on declares as
+   `required: ["none"]`.
 
-1. optional_host_permissions gains dzen.ru and VK Video:
-     *://dzen.ru/*, *://*.dzen.ru/*
-     *://vkvideo.ru/*, *://*.vkvideo.ru/*
-     *://vk.com/video*, *://vk.ru/video*
-   These are OPTIONAL, not required. Nothing is requested at install time; the
-   user grants a site from the extension popup after opening a video there.
-   The VK patterns are deliberately path-scoped to the video section — the
-   extension never runs on the rest of vk.com.
+   Why now: versions 0.5.2–0.6.1 were listed as Android-compatible, then 0.6.2
+   onwards silently lost it when uploads moved to the AMO API. Declaring the key
+   in the manifest makes the flag part of the build instead of an upload-time
+   checkbox.
 
-2. `activeTab` added to permissions. The popup needs the address of the tab it
-   was opened from in order to show settings for that site and to offer the
-   opt-in grant. Without it, tabs.query returns no URL for a host the extension
-   has no permission for yet, so the grant button could never be reached.
-   activeTab is scoped to the tab the user invoked the extension on; `tabs` was
-   deliberately NOT used.
+2. public/_locales/ru/messages.json — one word in the Russian store summary,
+   «трекинга» → «слежки». Listing copy only, not used anywhere in code.
 
-No new network endpoints. The only outbound call remains the feedback POST to
-speeds-feedback.matsiyak.workers.dev, unchanged, and it is the sole entry in
-connect-src.
-
-BEHAVIOUR
-
-3. src/sites/host-patterns.ts is now one table keyed by site; host_permissions,
-   optional_host_permissions, the content-script matches and the MAIN-world
-   history-hook matches are all derived from it rather than written out again.
-
-4. src/discovery/selectors.ts — new entries for Dzen, measured on the live site.
-   VK carries only one selector (from VK's own stylesheet); the rest of VK is
-   resolved by the existing heuristic strategy, because VK's player does not
-   initialise under an automated browser and its DOM could not be measured.
-
-5. src/ui/styles.ts — the in-player slider is no longer hidden in fullscreen,
-   and the speed confirmation now uses one anchor (top centre) in both windowed
-   and fullscreen modes instead of two.
+Nothing else changed. Same build as 0.7.2 otherwise. (0.7.3 was skipped so this
+add-on carries the same version number as its sister add-on again.)
 
 Build: WXT + Vite, output minified; source archive attached.
 Build it with `npm ci && npm run zip:firefox` on Node 22.

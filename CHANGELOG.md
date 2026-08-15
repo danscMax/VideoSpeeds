@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.7.4] — 2026-08-15
+
+Version 0.7.3 was skipped so both twins carry the same number again — HDRezka
+needed a 0.7.3 of its own for a Chrome rejection that never applied here.
+
+### Fixed
+
+- Firefox for Android stopped offering updates after 0.6.1. AMO marks a version
+  desktop-only unless the manifest declares `browser_specific_settings.
+  gecko_android`; the versions that did reach Android (0.5.2–0.6.1) were
+  uploaded through the dev hub with the Android box ticked by hand, and every
+  release since went up through `scripts/submit-amo.mjs`, which never set it.
+  Confirmed against the AMO versions API on 2026-08-15: `compatibility` carries
+  no `android` entry from 0.6.2 on. The key is now emitted by `wxt.config.ts`
+  for the Firefox target, with the same 142.0 floor as desktop.
+
+### Changed
+
+- Russian store summary: «без рекламы и трекинга» → «без рекламы и слежки».
+  Chrome only picks the summary up from a new package, so the wording that has
+  been live on AMO since 2026-08-14 reaches the Chrome listing with this build.
+
+---
+
 ## [0.7.2] — 2026-08-12
 
 ### Changed

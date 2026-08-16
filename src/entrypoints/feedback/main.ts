@@ -374,23 +374,39 @@ async function collectDiagnostics(): Promise<string> {
   const ytSpeed = await adapter.get<unknown>(storageKeysFor('youtube').speed, null);
   const rtSpeed = await adapter.get<unknown>(storageKeysFor('rutube').speed, null);
 
+  // Data minimization, ported from the sister extension (which got it first —
+  // the twins had drifted apart on the one thing where drift matters most).
+  // The raw settings blob carries every hotkey combination the user chose;
+  // navigator.languages is an ordered list and a strong fingerprint; and
+  // devicePixelRatio narrows the device further. None of the three is needed
+  // to reproduce a speed-control bug, and none of them was named on the
+  // checkbox the user ticks — so they are not collected at all.
   const snapshot = {
     extension: FEEDBACK_APP_ID,
     version: SCRIPT_VERSION,
     timestamp: new Date().toISOString(),
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      dpr: window.devicePixelRatio,
-    },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
     language: navigator.language,
-    languages: navigator.languages,
-    settings: { youtube: ytSettings ?? null, rutube: rtSettings ?? null },
+    settings: { youtube: pickSettings(ytSettings), rutube: pickSettings(rtSettings) },
     speed: { youtube: ytSpeed ?? null, rutube: rtSpeed ?? null },
     browser: detectBrowser(),
   };
 
   return JSON.stringify(snapshot, null, 2);
+}
+
+/** Whitelisted, non-identifying settings fields for the diagnostic snapshot. */
+function pickSettings(s: Partial<Settings> | null): Record<string, unknown> | null {
+  if (!s || typeof s !== 'object') return null;
+  return {
+    sliderPosition: s.sliderPosition,
+    compactMode: s.compactMode,
+    rememberPerVideo: s.rememberPerVideo,
+    preservePitch: s.preservePitch,
+    volumeBoost: s.volumeBoost,
+    presetCount: Array.isArray(s.speedPresets) ? s.speedPresets.length : undefined,
+    healing: s.healing,
+  };
 }
 
 function detectBrowser(): string {

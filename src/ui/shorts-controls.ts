@@ -19,13 +19,19 @@
  */
 
 import type { AppContext } from '../app/context';
-import { speedBoundsFor } from '../config';
+import { SPEED_STEP, speedBoundsFor } from '../config';
 import { setGlobal } from '../speed/controller';
 
 const ROOT_ID = 'vs-shorts-controls';
 const ACTION_BAR = 'reel-action-bar-view-model';
-/** One press. Matches the hotkey step people already know from the panel. */
-const STEP = 0.25;
+/**
+ * One press. This USED to be a hardcoded 0.25 while claiming, in this very
+ * comment, to match the hotkey step — which is user-configurable and defaults
+ * to 0.1 (`storage/types.ts` speedStep, `config.ts` SPEED_STEP). So the two
+ * ways to nudge the speed on the same page moved by different amounts. Read
+ * the live setting instead, and the claim becomes true.
+ */
+const stepFor = (ctx: AppContext): number => ctx.settingsStore.getKey('speedStep') ?? SPEED_STEP;
 
 export interface ShortsControls {
   /** Re-mount if the reel was swapped; safe to call on every navigation. */
@@ -93,9 +99,12 @@ export function createShortsControls(ctx: AppContext): ShortsControls {
     });
 
     el.append(
-      button('+', t('shorts.faster.tip'), () => nudge(STEP)),
+      // Read the step per press, not once at build time: the user can change
+      // it in Settings while the Short is open, and the controls are only
+      // rebuilt when YouTube swaps the reel.
+      button('+', t('shorts.faster.tip'), () => nudge(stepFor(ctx))),
       readout,
-      button('−', t('shorts.slower.tip'), () => nudge(-STEP)),
+      button('−', t('shorts.slower.tip'), () => nudge(-stepFor(ctx))),
     );
     paint(ctx.speedStore.current());
     return el;

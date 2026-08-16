@@ -65,7 +65,7 @@ import { createSettingsStore } from './storage/settings-store';
 import { createSpeedStore } from './storage/speed-store';
 import { createPanel, createUiPort, injectStyles, insertPanel, installThemeWatcher } from './ui';
 import { disposeNotificationStack, showActionChip, showNotification } from './ui/notifications';
-import { createShortsControls } from './ui/shorts-controls';
+import { createShortsControls, type ShortsControls } from './ui/shorts-controls';
 import { createLogger } from './utils/logger';
 import { detectAndClaim, release as releaseCoexistMarker } from './utils/tm-coexist';
 
@@ -321,10 +321,22 @@ export async function bootstrap(
       });
   };
 
+  // Filled in below, once the Shorts controls exist — they are created after
+  // the UI port and cannot be referenced directly here.
+  let shortsRef: ShortsControls | null = null;
+
   const realUi = createUiPort({
     panel,
     playerContainer: () => discoveryPort.resolve('playerContainer'),
-    onSpeed: setToolbarBadge,
+    onSpeed: (speed: number) => {
+      setToolbarBadge(speed);
+      // The Shorts readout used to repaint only when its own +/- buttons were
+      // pressed or when YouTube rebuilt the action column: `refresh()` was
+      // written and then never called from anywhere. A hotkey or the toolbar
+      // popup changed the real speed while the number on screen stayed put.
+      // This is the one callback that already fires on every applied speed.
+      shortsRef?.refresh(speed);
+    },
   });
   ctx.ui = realUi;
   cleanup.add(() => panel.dispose());
@@ -412,6 +424,7 @@ export async function bootstrap(
   // Shorts gets its own three controls in the action column — the panel has no
   // anchor there. Built lazily; nothing is added to a watch page.
   const shortsControls = createShortsControls(ctx);
+  shortsRef = shortsControls;
 
   if (site === 'youtube' && isYouTubeShortsPath()) {
     // Landed straight on a Short: no panel, but the action-column controls
@@ -713,9 +726,14 @@ export async function bootstrap(
       });
       return;
     }
-    // Leaving Shorts — put the watch-page bucket back before reattaching.
+    // Leaving Shorts — put the watch-page bucket back BEFORE reattaching, for
+    // the same reason the entering branch above sequences it: attachToVideo()
+    // reads the speed immediately, so firing ensureSurface() and not waiting
+    // for it meant the first watch page played at the Shorts speed until the
+    // ratechange-revert snapped it back — a visible jump, the mirror image of
+    // the bug the comment above was written for.
     shortsControls.remove();
-    void ensureSurface();
+    const bucketRestored = ensureSurface();
 
     // RuTube React re-renders the page column AFTER the
     // history.pushState that triggers our reattach. Querying the DOM
@@ -730,7 +748,17 @@ export async function bootstrap(
     } else {
       scheduleInsertWithRetry(panel.element, ctx);
     }
-    attachToVideo(ctx, meter, attachCleanup);
+    // Only the speed application waits on the bucket; the panel insertion above
+    // does not depend on it and stays synchronous so the UI is not delayed.
+    // The catch is not cosmetic: if speedStore.init() ever rejects, an
+    // unguarded .then would skip attachToVideo entirely and leave a panel
+    // wired to nothing. Attaching with a stale bucket is strictly better than
+    // not attaching at all.
+    void bucketRestored
+      .catch(() => undefined)
+      .then(() => {
+        attachToVideo(ctx, meter, attachCleanup);
+      });
     // Re-detect theme: YouTube users sometimes toggle dark mode mid-session
     // and we already re-evaluate on attribute change, but a manual reapply
     // here is cheap and covers any edge case where the host-page DOM
@@ -1286,7 +1314,17 @@ function attachToVideo(
     // FEAT-019: never force the user's speed onto an ad.
     if (isAd()) return;
     const target = pickInitialSpeed(ctx);
-    if (Math.abs(v.playbackRate - target) < 0.005) return;
+    if (Math.abs(v.playbackRate - target) < 0.005) {
+      // The rate needs no write — but the READOUT still does. `playbackRate`
+      // survives an SPA navigation, so a viewer who always watches at the same
+      // speed lands on the next video already at target and this branch used to
+      // return before anything refreshed. The "−N min" badge is computed from
+      // the CURRENT video's duration (panel.ts updateTimeSaved), so it went on
+      // showing the saving for the PREVIOUS video. silent:true keeps the
+      // centred speed popup from firing on a navigation nobody asked about.
+      ctx.ui.refreshButtons(target, { silent: true });
+      return;
+    }
     // Use applyTransient (no storage write) — storage already holds the
     // value we're applying; pickInitialSpeed READS it. Before this change
     // each retry tick called setSpeed, which wrote to storage twice. With

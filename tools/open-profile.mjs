@@ -27,10 +27,14 @@
 import { chromium } from '@playwright/test';
 import { join } from 'node:path';
 
+// Second argument picks WHICH seeded profile to open — the toolkit creates one
+// directory per registered server (mcp-firefox, mcp-saashub, …), and a site the
+// cookie transfer could not carry has to be signed into inside its own profile,
+// not the shared one.
 const PROFILE = join(
   process.env.LOCALAPPDATA ?? '',
   'ms-playwright',
-  'mcp-firefox',
+  process.argv[3] ?? 'mcp-firefox',
 );
 
 // Any URL can be passed as the first argument — the catalogue sites (

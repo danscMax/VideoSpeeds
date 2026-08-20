@@ -1,21 +1,22 @@
-0.7.5 — a bug-fix release. No new permissions, no new hosts, no new endpoints.
+0.7.6 — a bug-fix release. No new permissions, no new hosts, no new endpoints.
 The permission set is byte-identical to 0.7.4. Nothing is sent anywhere; the
 only storage used is browser.storage.local.
 
-What changed, all of it in the extension's own content-script logic:
+One file changed, src/sites/youtube.ts, in the helper that derives a per-channel
+key for the opt-in "remember a speed per channel" feature:
 
-1. src/index.ts — the opt-in "remember a speed per YouTube channel" feature
-   needs to know which channel the open video belongs to. It read that from the
-   watch-page metadata and gave up after four attempts (0/800/1600/2400 ms).
-   When YouTube rendered the metadata later than that, the feature went silent
-   for the rest of the page. The lookup now retries for up to 30 seconds and a
-   new navigation cancels the previous chain.
+1. The key used to be matched with a regular expression anchored to a leading
+   slash, so an absolute author link (https://www.youtube.com/@handle/videos —
+   what a user running other YouTube add-ons gets, since they rewrite that
+   block) never matched and the feature stayed inert. The href is now resolved
+   with the URL constructor and only the first path segment is used.
 
-2. src/storage/speed-store.ts, src/speed/controller.ts, src/app/ports.ts — a
-   speed chosen before that lookup succeeded used to be discarded. It is now
-   held in memory and written once the channel is known; a navigation drops it
-   so a choice from the previous page cannot be attributed to the next channel.
+2. The same channel is linked as /@handle on some pages and /channel/UC… on
+   others; the helper now prefers the handle so one channel cannot end up with
+   two separate entries.
 
-Both are local behaviour of an opt-in convenience feature that is off by
-default. No change to the network surface, the host list or the data the
-extension touches.
+3. Handles outside the Latin alphabet are decoded rather than skipped.
+
+The key never leaves the browser: it is a map key inside
+browser.storage.local, used to restore the playback rate the user last chose
+for that channel. Covered by tests/unit/youtube-channel-key.spec.ts.

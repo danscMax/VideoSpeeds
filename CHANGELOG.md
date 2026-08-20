@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.7.6] — 2026-08-20
+
+### Fixed
+
+- **The channel was not recognised when its link was absolute.** The key was
+  parsed with a pattern anchored to a leading slash, so
+  `https://www.youtube.com/@handle/videos` — the shape a viewer running other
+  YouTube add-ons gets, since they rewrite the owner block — never matched. No
+  key means per-channel memory does nothing at all: nothing is read, nothing is
+  written. Reported and measured on the owner's own browser. The link is now
+  resolved as a URL, so relative and absolute forms give the same key.
+- **One channel could end up with two keys.** YouTube links the same channel as
+  `/@handle` on one page and `/channel/UC…` on another, and whichever came
+  first in the DOM won — so a speed saved under one form was invisible under
+  the other. The handle now always wins, with the id as the fallback.
+- **Non-ASCII handles** (`/@Дайте_Пушку`) are recognised; the old `\w`-based
+  pattern silently skipped them.
+
+---
+
 ## [0.7.5] — 2026-08-20
 
 ### Fixed

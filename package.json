@@ -1,6 +1,6 @@
 {
   "name": "video-speeds",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Video Speed Controller for YouTube and RuTube — speed buttons, slider, hotkeys, diagnostics. Bilingual (EN/RU).",
   "private": true,
   "license": "GPL-3.0-or-later",

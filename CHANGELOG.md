@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.7.5] — 2026-08-20
+
+### Fixed
+
+- **Per-channel speed memory did nothing on a slow YouTube.** The channel key
+  was looked up four times only — 0/800/1600/2400 ms after a navigation. Past
+  that the feature went silent for the whole page: the remembered speed was
+  never read, and every later click was dropped without a trace, because the
+  write bailed out when no key was set. Measured on the live site 2026-08-20:
+  after an SPA navigation the metadata regularly renders past that window, so
+  for a viewer on a throttled YouTube the toggle looked broken. The lookup now
+  keeps retrying for 30 s (a new navigation cancels the previous chain), and a
+  speed chosen before the key resolves is parked and written as soon as it
+  does — a navigation drops the parked value so it cannot land in the next
+  channel.
+
+---
+
 ## [0.7.4] — 2026-08-15
 
 Version 0.7.3 was skipped so both twins carry the same number again — HDRezka

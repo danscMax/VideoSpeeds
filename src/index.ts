@@ -388,9 +388,21 @@ export async function bootstrap(
   // FEAT-015 (YouTube): per-channel memory key. The channel link renders
   // a beat after navigation, so retry a few times; once found, re-apply
   // the initial speed so a remembered per-channel value kicks in.
-  const refreshChannelMemoryKey = (attempt = 0): void => {
+  //
+  // The old version gave up after 4 tries (0/800/1600/2400 ms). Measured on
+  // the real site 2026-08-20: after an SPA navigation the metadata can stay
+  // unrendered well past that — and once the retries ran out the feature was
+  // silently dead for that page. No key means the remembered speed is never
+  // read AND every later click is dropped without a trace, which reads as
+  // "per-channel memory does nothing". Keep looking for 30 s instead, and
+  // let a new navigation cancel the previous chain via the epoch counter.
+  let channelKeyEpoch = 0;
+  const CHANNEL_KEY_TRIES = 40;
+  const CHANNEL_KEY_INTERVAL_MS = 750;
+  const refreshChannelMemoryKey = (attempt = 0, epoch = ++channelKeyEpoch): void => {
     if (site !== 'youtube') return;
     if (cleanup.isDisposed) return;
+    if (epoch !== channelKeyEpoch) return; // superseded by a newer navigation
     const key = extractYouTubeChannelKey();
     if (key) {
       if (ctx.speedStore.activeMemoryKey() !== key) {
@@ -405,8 +417,11 @@ export async function bootstrap(
       return;
     }
     ctx.speedStore.setActiveMemoryKey(null);
-    if (attempt < 3) {
-      ctx.cleanup.setTimeout(() => refreshChannelMemoryKey(attempt + 1), 800 * (attempt + 1));
+    if (attempt < CHANNEL_KEY_TRIES) {
+      ctx.cleanup.setTimeout(
+        () => refreshChannelMemoryKey(attempt + 1, epoch),
+        CHANNEL_KEY_INTERVAL_MS,
+      );
     }
   };
   refreshChannelMemoryKey();
@@ -706,7 +721,10 @@ export async function bootstrap(
       panel.element.parentElement?.removeChild(panel.element);
     }
 
-    // FEAT-015 (YouTube): the channel changed with the navigation.
+    // FEAT-015 (YouTube): the channel changed with the navigation. Drop a
+    // speed parked for a key that never resolved on the PREVIOUS page —
+    // otherwise it would land in whatever channel resolves next.
+    ctx.speedStore.resetPendingMemory();
     refreshChannelMemoryKey();
 
     // FEAT-020 (Shorts): no panel on the Shorts layout — detach if we

@@ -132,3 +132,30 @@ describe('SpeedStore', () => {
     });
   });
 });
+
+describe('SpeedStore per-content memory (FEAT-015)', () => {
+  it('parks a speed chosen before the key resolves and writes it once it does', async () => {
+    const adapter = createMemoryStorageAdapter();
+    const store = createSpeedStore(adapter);
+    await store.init('youtube');
+
+    // Key not known yet — YouTube has not rendered the channel link.
+    await store.rememberForActive(2);
+    expect(store.activeMemory()).toBeNull();
+
+    store.setActiveMemoryKey('yt:@somechannel');
+    await Promise.resolve();
+    expect(store.activeMemory()).toBe(2);
+  });
+
+  it('drops the parked speed on navigation so it cannot leak into the next channel', async () => {
+    const store = createSpeedStore(createMemoryStorageAdapter());
+    await store.init('youtube');
+
+    await store.rememberForActive(2);
+    store.resetPendingMemory();
+    store.setActiveMemoryKey('yt:@othechannel');
+    await Promise.resolve();
+    expect(store.activeMemory()).toBeNull();
+  });
+});

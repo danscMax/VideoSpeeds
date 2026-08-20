@@ -63,4 +63,22 @@ export interface DiagnosticReport {
   issues: string[];
   /** Used by diag-status to render the "last check" timestamp. */
   lastCheckTime?: string;
+  /** FEAT-015 visibility: what the per-content memory currently holds for
+   *  THIS page. Added after a user could not tell whether "remember per
+   *  channel" had recognised the channel at all — the answer lived only in
+   *  storage, invisible from the UI. */
+  speed_memory: SpeedMemorySnapshot;
+}
+
+export interface SpeedMemorySnapshot {
+  /** Whether the per-channel setting is on. */
+  enabled: boolean;
+  /** Key for the current page, or null when the channel is not identified. */
+  key: string | null;
+  /** Speed stored for that key, or null when nothing is stored yet. */
+  remembered: number | null;
+  /** The saved global speed — what plays where no memory exists. */
+  global: number;
+  /** Speed actually playing right now. */
+  playing: number | null;
 }

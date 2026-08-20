@@ -32,14 +32,13 @@ export interface YouTubeSiteHandle {
  *    the owner block carries in practice, and fall back to the id.
  *  - Handles are not ASCII-only (`/@Дайте_Пушку`), so no `\w` shortcuts.
  */
-export function extractYouTubeChannelKey(doc: Document = document): string | null {
-  const scope =
-    doc.querySelector('ytd-watch-metadata #owner') ??
-    doc.querySelector('#owner') ??
-    doc.querySelector('ytd-watch-metadata');
-  const links = scope
-    ? [...scope.querySelectorAll<HTMLAnchorElement>('a[href]')]
-    : [...doc.querySelectorAll<HTMLAnchorElement>('ytd-watch-metadata ytd-channel-name a[href]')];
+export function extractYouTubeChannelKey(
+  doc: Document = document,
+  videoId: string | null = currentVideoId(doc),
+): string | null {
+  const scope = freshOwnerScope(doc, videoId);
+  if (!scope) return null;
+  const links = [...scope.querySelectorAll<HTMLAnchorElement>('a[href]')];
 
   let byId: string | null = null;
   for (const link of links) {
@@ -49,6 +48,38 @@ export function extractYouTubeChannelKey(doc: Document = document): string | nul
     if (!byId) byId = `yt:${path}`;
   }
   return byId;
+}
+
+/** The `?v=` of the page being watched. */
+function currentVideoId(doc: Document): string | null {
+  try {
+    return new URL(doc.defaultView?.location.href ?? '').searchParams.get('v');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The owner block, but ONLY when the metadata it lives in belongs to the video
+ * in the address bar.
+ *
+ * YouTube swaps the URL on an SPA navigation before it repaints the metadata,
+ * and our navigation handler runs synchronously on `yt-navigate-finish` — so a
+ * read taken there sees the PREVIOUS video's author and looks perfectly valid.
+ * Acting on it served one channel's remembered speed on another channel's
+ * video (owner report 2026-08-20). `ytd-watch-metadata` carries a `video-id`
+ * attribute; when it disagrees with `?v=`, the block is stale and the honest
+ * answer is "not known yet" rather than a confident wrong one.
+ *
+ * Layouts without that attribute (older markup, tests) are trusted as before.
+ */
+function freshOwnerScope(doc: Document, videoId: string | null): Element | null {
+  const meta = doc.querySelector('ytd-watch-metadata') ?? doc.querySelector('ytd-watch-flexy');
+  if (meta && videoId) {
+    const shown = meta.getAttribute('video-id');
+    if (shown && shown !== videoId) return null;
+  }
+  return meta?.querySelector('#owner') ?? meta ?? doc.querySelector('#owner');
 }
 
 /** First path segment of a YouTube channel link, or null if it is not one.

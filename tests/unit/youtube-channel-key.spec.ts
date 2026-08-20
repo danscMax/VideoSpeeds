@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { extractYouTubeChannelKey } from '../../src/sites/youtube';
 
 /** Build a watch-page-ish document with the given owner links. */
-function docWith(hrefs: string[]): Document {
+function docWith(hrefs: string[], videoIdAttr?: string): Document {
   const doc = document.implementation.createHTMLDocument('watch');
   const base = doc.createElement('base');
   base.href = 'https://www.youtube.com/watch?v=abc';
   doc.head.appendChild(base);
   doc.body.innerHTML = `
-    <ytd-watch-metadata>
+    <ytd-watch-metadata${videoIdAttr ? ` video-id="${videoIdAttr}"` : ''}>
       <div id="owner">
         <ytd-channel-name id="channel-name">
           ${hrefs.map((h) => `<a href="${h}">name</a>`).join('')}
@@ -54,5 +54,18 @@ describe('extractYouTubeChannelKey', () => {
 
   it('returns null when the owner block rendered empty', () => {
     expect(extractYouTubeChannelKey(docWith([]))).toBeNull();
+  });
+
+  it('refuses metadata that still belongs to the PREVIOUS video', () => {
+    // YouTube swaps the URL before repainting the author block, so a read
+    // taken during navigation sees the old channel. Answering "not known yet"
+    // beats answering confidently with the wrong channel.
+    const stale = docWith(['/@previousChannel'], 'OLD_VIDEO');
+    expect(extractYouTubeChannelKey(stale, 'NEW_VIDEO')).toBeNull();
+    expect(extractYouTubeChannelKey(stale, 'OLD_VIDEO')).toBe('yt:@previousChannel');
+  });
+
+  it('trusts markup that carries no video-id at all', () => {
+    expect(extractYouTubeChannelKey(docWith(['/@veritasium']), 'ANY_VIDEO')).toBe('yt:@veritasium');
   });
 });

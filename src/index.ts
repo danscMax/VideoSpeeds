@@ -396,6 +396,25 @@ export async function bootstrap(
   // read AND every later click is dropped without a trace, which reads as
   // "per-channel memory does nothing". Keep looking for 30 s instead, and
   // let a new navigation cancel the previous chain via the epoch counter.
+  //
+  // Two things this loop has to survive, both measured on the live site:
+  //
+  //  - The metadata can render LATE. The first version gave up after four
+  //    tries (0/800/1600/2400 ms); past that the feature went silent for the
+  //    whole page — nothing read, nothing written.
+  //  - The metadata can be STALE. YouTube swaps the URL on navigation before
+  //    it repaints the owner block, so a read taken right after
+  //    `yt-navigate-finish` returns the PREVIOUS video's channel. Stopping at
+  //    the first key found (as the first version did) latched that stale
+  //    channel for the whole page: a user watching channel B was served
+  //    channel A's remembered speed, which looks exactly like "the speed I set
+  //    for one channel spread over the whole of YouTube" (owner report,
+  //    2026-08-20 — diagnostics showed `yt:@NavalnyRu` while the page was
+  //    SHAWSTRENGTH).
+  //
+  // So: keep re-reading for the whole window and adopt whatever the page says
+  // NOW, rather than trusting the first answer. A newer navigation cancels the
+  // previous chain via the epoch counter.
   let channelKeyEpoch = 0;
   const CHANNEL_KEY_TRIES = 40;
   const CHANNEL_KEY_INTERVAL_MS = 750;
@@ -404,19 +423,15 @@ export async function bootstrap(
     if (cleanup.isDisposed) return;
     if (epoch !== channelKeyEpoch) return; // superseded by a newer navigation
     const key = extractYouTubeChannelKey();
-    if (key) {
-      if (ctx.speedStore.activeMemoryKey() !== key) {
-        ctx.speedStore.setActiveMemoryKey(key);
-        if (ctx.settingsStore.getKey('rememberPerVideo') === true) {
-          const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
-          if (v instanceof HTMLVideoElement) {
-            applyTransient(ctx, pickInitialSpeed(ctx), { silent: true });
-          }
+    if (key !== ctx.speedStore.activeMemoryKey()) {
+      ctx.speedStore.setActiveMemoryKey(key);
+      if (key !== null && ctx.settingsStore.getKey('rememberPerVideo') === true) {
+        const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
+        if (v instanceof HTMLVideoElement) {
+          applyTransient(ctx, pickInitialSpeed(ctx), { silent: true });
         }
       }
-      return;
     }
-    ctx.speedStore.setActiveMemoryKey(null);
     if (attempt < CHANNEL_KEY_TRIES) {
       ctx.cleanup.setTimeout(
         () => refreshChannelMemoryKey(attempt + 1, epoch),
@@ -723,8 +738,12 @@ export async function bootstrap(
 
     // FEAT-015 (YouTube): the channel changed with the navigation. Drop a
     // speed parked for a key that never resolved on the PREVIOUS page —
-    // otherwise it would land in whatever channel resolves next.
+    // otherwise it would land in whatever channel resolves next. Clear the key
+    // itself too: until the new page's owner block is painted, the old channel
+    // is simply wrong, and serving its remembered speed is worse than serving
+    // the global default for a second.
     ctx.speedStore.resetPendingMemory();
+    ctx.speedStore.setActiveMemoryKey(null);
     refreshChannelMemoryKey();
 
     // FEAT-020 (Shorts): no panel on the Shorts layout — detach if we

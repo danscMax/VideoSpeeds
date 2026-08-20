@@ -5,6 +5,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.7.9] — 2026-08-20
+
+### Fixed
+
+- **The speed set on one channel spread across all of YouTube.** On an SPA
+  navigation YouTube swaps the URL before it repaints the owner block, so the
+  channel read a moment later is still the PREVIOUS video's. The lookup stopped
+  at the first key it found, latched that stale channel for the whole page, and
+  then served its remembered speed on every following video — which reads as
+  "the speed I chose for one channel became the speed for everything". The
+  owner's diagnostics showed it plainly: `yt:@NavalnyRu` while the page was
+  SHAWSTRENGTH. The key is now cleared on navigation and re-read for the whole
+  30-second window, adopting whatever the page says now instead of trusting the
+  first answer. And the read itself is now honest about freshness: the owner
+  block is only believed when the `video-id` on `ytd-watch-metadata` matches
+  the `?v=` in the address bar. Without that check the very first read — which
+  happens synchronously inside the navigation handler, exactly when the DOM is
+  known-stale — still answered with the previous channel, so the wrong speed
+  was applied for the first second and a fast click could be written into the
+  previous channel's entry. Unknown beats confidently wrong.
+
+### Added
+
+- **Diagnostics now says what the per-channel memory knows about this page** —
+  the identified channel, the speed stored for it, the global default and what
+  is actually playing. Until now that state lived only in storage, so a user
+  reporting "it does not remember" and the author reading the code had no
+  common ground; the answer needed a console session on the user's machine.
+
+---
+
 ## [0.7.6] — 2026-08-20
 
 ### Fixed

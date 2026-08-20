@@ -598,6 +598,10 @@ function diagTab(opts: ModalRenderOptions, hidden: boolean): HTMLElement {
     // verifies — without it "Run check" was a mystery button for
     // non-technical users.
     h('p', { class: 'vs-help-text' }, t('diag.explainer')),
+    // FEAT-015 visibility: what the per-channel memory knows about THIS page.
+    // Filled by refreshDiagnosticStatus; without it the only way to tell
+    // whether the channel was recognised was reading storage by hand.
+    h('p', { class: 'vs-help-text', 'data-vs-diag-memory': '' }, ''),
     h(
       'div',
       {

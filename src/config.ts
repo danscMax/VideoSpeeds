@@ -52,6 +52,16 @@ const SPEED_BOUNDS: Record<Site, SpeedBounds> = {
   vk: { min: 1.0, max: 10.0, defaultSpeed: 1.0 },
 };
 
+/**
+ * Sites where a page identifies its content well enough to key a speed on
+ * it — the YouTube channel here, the film id in the HDRezka twin. RuTube,
+ * Dzen and VK have no stable equivalent, so the per-content pin button is
+ * not offered there.
+ */
+export function supportsContentMemory(site: Site): boolean {
+  return site === 'youtube';
+}
+
 export function speedBoundsFor(site: Site): SpeedBounds {
   return SPEED_BOUNDS[site];
 }

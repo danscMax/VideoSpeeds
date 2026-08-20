@@ -425,11 +425,17 @@ export async function bootstrap(
     const key = extractYouTubeChannelKey();
     if (key !== ctx.speedStore.activeMemoryKey()) {
       ctx.speedStore.setActiveMemoryKey(key);
+      const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
       if (key !== null && ctx.settingsStore.getKey('rememberPerVideo') === true) {
-        const v = ctx.discovery.resolve('video') as HTMLVideoElement | null;
         if (v instanceof HTMLVideoElement) {
           applyTransient(ctx, pickInitialSpeed(ctx), { silent: true });
         }
+      } else if (v instanceof HTMLVideoElement) {
+        // UX-034: the per-channel button is disabled until the channel is
+        // known, so its state has to follow the key even when the feature
+        // is off — otherwise the button a user would press to turn it ON
+        // stays greyed out forever.
+        ctx.ui.refreshButtons(v.playbackRate, { silent: true });
       }
     }
     if (attempt < CHANNEL_KEY_TRIES) {

@@ -5,6 +5,7 @@ import {
   pickInitialSpeed,
   setGlobal,
   setTemporary,
+  toggleContentMemory,
 } from '../../src/speed/controller';
 import { createMockContext, createMockDiscovery } from '../helpers/mock-context';
 
@@ -132,5 +133,57 @@ describe('pickInitialSpeed', () => {
       initialSettings: { rememberSpeed: false },
     });
     expect(pickInitialSpeed(ctx)).toBe(speedBoundsFor('youtube').defaultSpeed);
+  });
+});
+
+describe('per-channel memory is written only by its own control (UX-034)', () => {
+  it('a preset click no longer records the channel speed', async () => {
+    const video = makeVideo();
+    const { ctx, speedStore } = await createMockContext({
+      site: 'youtube',
+      initialSpeed: 1,
+      discovery: createMockDiscovery({ video }),
+    });
+    await ctx.settingsStore.update({ rememberPerVideo: true });
+    speedStore.setActiveMemoryKey('yt:@somechannel');
+
+    await setTemporary(ctx, 1.5);
+    expect(speedStore.activeMemory()).toBeNull();
+
+    await setGlobal(ctx, 2);
+    expect(speedStore.activeMemory()).toBeNull();
+  });
+
+  it('toggleContentMemory pins what is playing, then clears it', async () => {
+    const video = makeVideo();
+    const { ctx, speedStore } = await createMockContext({
+      site: 'youtube',
+      initialSpeed: 1,
+      discovery: createMockDiscovery({ video }),
+    });
+    speedStore.setActiveMemoryKey('yt:@somechannel');
+    await setTemporary(ctx, 1.5);
+
+    await toggleContentMemory(ctx);
+    expect(speedStore.activeMemory()).toBe(1.5);
+    // pressing it turns the feature on by itself — the press IS the intent
+    expect(ctx.settingsStore.getKey('rememberPerVideo')).toBe(true);
+
+    await toggleContentMemory(ctx);
+    expect(speedStore.activeMemory()).toBeNull();
+  });
+
+  it('does nothing while the channel is unknown', async () => {
+    const video = makeVideo();
+    const { ctx, speedStore } = await createMockContext({
+      site: 'youtube',
+      initialSpeed: 1,
+      discovery: createMockDiscovery({ video }),
+    });
+    speedStore.setActiveMemoryKey(null);
+    await setTemporary(ctx, 1.5);
+
+    await toggleContentMemory(ctx);
+    expect(speedStore.activeMemory()).toBeNull();
   });
 });

@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.8.0] — 2026-08-20
+
+### Changed
+
+- **A single click on a preset no longer changes the channel's speed.** It used
+  to mean two things at once — "play this video at 1.5×" and "remember 1.5× for
+  this channel" — so slowing down one clip silently rewrote the channel's
+  setting and there was no way to do the former without the latter (owner
+  report 2026-08-20). Presets are now purely per-video.
+- **New button on the panel: save the speed for this channel.** It sits next to
+  the bookmark (which still means "default everywhere") and lights up while the
+  channel has its own speed; pressing it again clears it. Pressing it also turns
+  the per-channel feature on, so the feature is discoverable from the panel
+  instead of hiding in the settings.
+
+### Fixed
+
+- **"Slider on the right" no longer collapses into a two-storey panel.** A
+  wrapping flex container moves its last children to a new line instead of
+  shrinking the elastic ones, so one preset too many pushed the slider and the
+  gear underneath the buttons. The presets row is now the part that gives way:
+  it wraps its own buttons while the slider and the icon cluster keep their
+  place on the right.
+
 ## [0.7.9] — 2026-08-20
 
 ### Fixed

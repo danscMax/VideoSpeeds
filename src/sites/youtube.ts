@@ -18,15 +18,74 @@ export interface YouTubeSiteHandle {
  * FEAT-015: stable per-channel key for the speed-memory map. Reads the
  * channel link from the watch-page metadata; YouTube renders it a beat
  * after yt-navigate-finish, so callers retry with a small delay.
- * Normalises both /@handle and /channel/UC… link shapes.
+ *
+ * Three things this has to survive (all measured on live pages, 2026-08-20):
+ *
+ *  - The href can be ABSOLUTE. A viewer running other YouTube add-ons had
+ *    `https://www.youtube.com/@handle/videos` where a clean profile has
+ *    `/@handle`; the old pattern was anchored to a leading slash, so the
+ *    channel was never identified and the whole feature stayed dead.
+ *  - The SAME channel is linked as `/@handle` on one page and
+ *    `/channel/UC…` on another. Keying on whichever link happens to come
+ *    first splits one channel's memory across two keys, which looks exactly
+ *    like "the speed was not remembered". Prefer the handle, which is what
+ *    the owner block carries in practice, and fall back to the id.
+ *  - Handles are not ASCII-only (`/@Дайте_Пушку`), so no `\w` shortcuts.
  */
 export function extractYouTubeChannelKey(doc: Document = document): string | null {
-  const link = doc.querySelector<HTMLAnchorElement>(
-    'ytd-watch-metadata ytd-channel-name a[href], #owner #channel-name a[href]',
-  );
-  const href = link?.getAttribute('href') ?? '';
-  const m = /^\/(@[\w.-]+|channel\/[\w-]+)/.exec(href);
-  return m ? `yt:${m[1]}` : null;
+  const scope =
+    doc.querySelector('ytd-watch-metadata #owner') ??
+    doc.querySelector('#owner') ??
+    doc.querySelector('ytd-watch-metadata');
+  const links = scope
+    ? [...scope.querySelectorAll<HTMLAnchorElement>('a[href]')]
+    : [...doc.querySelectorAll<HTMLAnchorElement>('ytd-watch-metadata ytd-channel-name a[href]')];
+
+  let byId: string | null = null;
+  for (const link of links) {
+    const path = channelPathOf(link);
+    if (!path) continue;
+    if (path.startsWith('@')) return `yt:${path}`; // handle wins — most stable
+    if (!byId) byId = `yt:${path}`;
+  }
+  return byId;
+}
+
+/** First path segment of a YouTube channel link, or null if it is not one.
+ *  Returns `@handle` or `channel/UC…`; the trailing `/videos`, `/featured`
+ *  and friends are dropped. */
+function channelPathOf(link: HTMLAnchorElement): string | null {
+  const raw = link.getAttribute('href');
+  if (!raw) return null;
+  let url: URL;
+  try {
+    // `link.href` would resolve relative hrefs too, but a detached document
+    // in tests has no base — resolve against the page location explicitly.
+    url = new URL(raw, baseUriOf(link));
+  } catch {
+    return null;
+  }
+  if (url.hostname && !/(^|\.)youtube\.com$/.test(url.hostname)) return null;
+  // URL percent-encodes a non-ASCII handle; decode so the key stays readable
+  // and matches whichever form the next page happens to render.
+  const seg = url.pathname.split('/').filter(Boolean).map(decodeSafe);
+  const first = seg[0];
+  if (!first) return null;
+  if (first.startsWith('@') && first.length > 1) return first;
+  if (first === 'channel' && seg[1]) return `channel/${seg[1]}`;
+  return null;
+}
+
+function decodeSafe(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
+function baseUriOf(link: HTMLAnchorElement): string {
+  return link.ownerDocument?.baseURI || 'https://www.youtube.com/';
 }
 
 /** FEAT-019/020: YouTube player state probes. */

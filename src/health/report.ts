@@ -64,7 +64,8 @@ export function buildReport(deps: ReportDeps): DiagnosticReport {
       remembered: safeProbe(() => deps.ctx.speedStore.activeMemory(), null),
       global: safeProbe(() => deps.ctx.speedStore.current(), Number.NaN),
       playing: safeProbe(
-        () => (deps.ctx.discovery.resolve('video') as HTMLVideoElement | null)?.playbackRate ?? null,
+        () =>
+          (deps.ctx.discovery.resolve('video') as HTMLVideoElement | null)?.playbackRate ?? null,
         null,
       ),
     },

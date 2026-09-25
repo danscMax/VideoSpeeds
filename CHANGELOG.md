@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ---
 
+## [0.8.1] — 2026-09-25
+
+### Fixed
+
+- The channel pin button no longer sits on top of the "default everywhere"
+  bookmark. It carries both `.vs-pin-button` and `.vs-channel-button`, the two
+  grid-area rules had the same weight, and the bookmark rule came later — so
+  with the slider below the buttons, and in the narrow right layout, both
+  buttons landed in the same grid cell.
+
 ## [0.8.0] — 2026-08-20
 
 ### Changed

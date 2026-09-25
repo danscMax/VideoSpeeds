@@ -507,7 +507,10 @@ html[data-vs-site="youtube"] {
   align-items: center;
   gap: 12px 12px;
 }
-.vs-panel[data-vs-slider-position="bottom"] .vs-channel-button {
+/* Two classes on purpose: this button is ALSO a .vs-pin-button, and the pin
+   rule has the same weight, so whichever came later in the file won and
+   parked both buttons in the "pin" cell on top of each other (2026-09-25). */
+.vs-panel[data-vs-slider-position="bottom"] .vs-pin-button.vs-channel-button {
   grid-area: channel;
   justify-self: start;
 }
@@ -556,7 +559,10 @@ html[data-vs-site="youtube"] {
     align-items: center;
     gap: 12px 12px;
   }
-  .vs-panel[data-vs-slider-position="right"] .vs-channel-button {
+  /* Two classes on purpose: this button is ALSO a .vs-pin-button, and the pin
+     rule has the same weight, so whichever came later in the file won and
+     parked both buttons in the "pin" cell on top of each other (2026-09-25). */
+  .vs-panel[data-vs-slider-position="right"] .vs-pin-button.vs-channel-button {
     grid-area: channel;
     justify-self: start;
   }
